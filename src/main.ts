@@ -3,18 +3,17 @@ import compression from 'compression';
 import { AppModule } from '@/app.module';
 import { NestFactory } from '@nestjs/core';
 import { HttpExceptionFilter } from '@/common/filters';
-import { APP_CONFIG } from '@/common/config/app.config';
 import { ResponseInterceptor } from '@/common/interceptors';
-import { LoggingInterceptor } from '@/common/interceptors/logging.interceptor';
-import { requestIdMiddleware } from '@/common/middleware/request-id.middleware';
+import { validateGameSecrets } from '@/common/utils';
 import { Logger, HttpException, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  validateGameSecrets();
+
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
-  app.use(requestIdMiddleware);
 
   app.use(
     helmet({
@@ -27,9 +26,10 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: APP_CONFIG.corsOrigins,
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
     methods: ['GET', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    origin: process.env.CORS_ORIGIN?.split(',') ?? 'http://localhost:5173',
   });
 
   app.useGlobalPipes(
@@ -65,7 +65,7 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new ResponseInterceptor(), new LoggingInterceptor());
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   app.use(
     compression({

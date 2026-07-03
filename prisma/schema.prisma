@@ -7,79 +7,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Game {
-  id        String   @id
-  name      String
-  isActive  Boolean  @default(true)
-  config    Json?
-  createdAt DateTime @default(now())
-
-  gameResults GameResult[]
-  leaderboard Leaderboard[]
-
-  @@map("games")
+enum GameId {
+  FRULOOP
 }
 
 model GuestPlayer {
-  id                    String   @id @default(uuid())
-  installId             String?  @unique
-  installSecretHash     String?
-  sessionTokenHash      String   @unique
-  sessionTokenExpiresAt DateTime
-  name                  String?
-  createdAt             DateTime @default(now())
+  id              String   @id @default(uuid())
+  gameId          GameId
+  name            String?
+  secretTokenHash String
+  createdAt       DateTime @default(now())
 
-  gameResults GameResult[]
-  leaderboard Leaderboard[]
+  gameResults  GameResult[]
+  leaderboards Leaderboard?
 
+  @@unique([gameId, id])
+  @@unique([secretTokenHash])
   @@map("guest_players")
 }
 
-/// Deduplication index for replay hashes — survives partition drops on game_results.
-model GameReplayKey {
-  gameId     String
-  replayHash String
-  guestId    String
-  score      Int
-  createdAt  DateTime @default(now())
-
-  @@id([gameId, replayHash])
-  @@index([guestId])
-  @@index([createdAt])
-  @@map("game_replay_keys")
-}
-
-/// Partitioned by month on createdAt (managed via SQL migrations + maintenance cron).
 model GameResult {
-  id         String    @default(uuid())
-  gameId     String
-  guestId    String
-  score      Int
-  replayHash String
-  metadata   Json?
-  playedAt   DateTime?
-  createdAt  DateTime  @default(now())
+  id             String    @default(uuid())
+  createdAt      DateTime  @default(now())
+  gameId         GameId
+  guestId        String
+  clientResultId String
+  score          Int
+  replayHash     String
+  metadata       Json?
+  playedAt       DateTime?
 
-  game  Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  guest GuestPlayer @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
 
   @@id([id, createdAt])
+  @@index([gameId, guestId, clientResultId])
   @@index([gameId, guestId])
   @@index([gameId, createdAt])
-  @@index([gameId, replayHash])
   @@map("game_results")
 }
 
 model Leaderboard {
-  gameId    String
+  gameId    GameId
   guestId   String
   bestScore Int
   updatedAt DateTime @updatedAt
 
-  game  Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  guest GuestPlayer @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
 
   @@id([gameId, guestId])
-  @@index([gameId, bestScore(sort: Desc), guestId(sort: Asc)])
-  @@map("leaderboard")
+  @@index([gameId, bestScore(sort: Desc)])
+  @@map("leaderboards")
 }

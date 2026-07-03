@@ -1,3 +1,2 @@
-export { GuestAuthGuard } from '@/common/guards/guest-auth.guard';
-export { OptionalGuestAuthGuard } from '@/common/guards/optional-guest-auth.guard';
-export { GuestRateLimitGuard } from '@/common/guards/guest-rate-limit.guard';
+export * from './guest-auth.guard';
+export * from './rate-limit.guard';

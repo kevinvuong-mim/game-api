@@ -1,9 +1,15 @@
 import { Type } from 'class-transformer';
-import { Max, Min, IsInt, IsString } from 'class-validator';
+import { Max, Min, IsInt, IsString, IsOptional, IsUUID } from 'class-validator';
+
+import { GameId } from '@/common/constants';
 
 export class LeaderboardQueryDto {
   @IsString()
-  gameId!: string;
+  gameId!: GameId;
+
+  @IsOptional()
+  @IsUUID()
+  guestId?: string;
 
   @Min(1)
   @IsInt()
@@ -14,5 +20,5 @@ export class LeaderboardQueryDto {
   @IsInt()
   @Max(100)
   @Type(() => Number)
-  limit: number = 100;
+  limit: number = 20;
 }

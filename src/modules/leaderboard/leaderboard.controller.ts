@@ -1,21 +1,23 @@
-import { Get, Query, Controller, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 
-import { CurrentGuest } from '@/common/decorators/current-guest.decorator';
-import { LeaderboardService } from '@/modules/leaderboard/leaderboard.service';
-import { OptionalGuestAuthGuard } from '@/common/guards/optional-guest-auth.guard';
+import { RateLimit } from '@/common/decorators/rate-limit.decorator';
+import { RateLimitGuard } from '@/common/guards';
 import { LeaderboardQueryDto } from '@/modules/leaderboard/dto/leaderboard-query.dto';
-import { LeaderboardResponseDto } from '@/modules/leaderboard/dto/leaderboard-response.dto';
+import { LeaderboardService } from '@/modules/leaderboard/leaderboard.service';
 
 @Controller('leaderboards')
+@UseGuards(RateLimitGuard)
 export class LeaderboardController {
   constructor(private readonly leaderboardService: LeaderboardService) {}
 
   @Get()
-  @UseGuards(OptionalGuestAuthGuard)
-  getLeaderboard(
-    @Query() query: LeaderboardQueryDto,
-    @CurrentGuest() guest?: { id: string },
-  ): Promise<LeaderboardResponseDto> {
-    return this.leaderboardService.getLeaderboard(query, guest?.id);
+  @RateLimit({
+    keyPrefix: 'rate:lb:',
+    keySource: 'ip',
+    limit: Number(process.env.RATE_LIMIT_LEADERBOARD ?? 30),
+    windowSeconds: 60,
+  })
+  getLeaderboard(@Query() query: LeaderboardQueryDto) {
+    return this.leaderboardService.getLeaderboard(query);
   }
 }

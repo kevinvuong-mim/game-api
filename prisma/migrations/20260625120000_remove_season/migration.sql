@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS "leaderboard_weekly" CASCADE;
-DROP TABLE IF EXISTS "seasons" CASCADE;

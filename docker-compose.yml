@@ -7,24 +7,24 @@ services:
     restart: unless-stopped
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: game
-      POSTGRES_USER: game_user
-      POSTGRES_PASSWORD: change_me
-    container_name: game-postgres
+      POSTGRES_DB: game-api
+      POSTGRES_USER: kwong2000
+      POSTGRES_PASSWORD: 1234abcd
+    container_name: postgres-database
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       retries: 5
       timeout: 5s
       interval: 10s
-      test: ['CMD-SHELL', 'pg_isready -U game_user -d game']
+      test: ['CMD-SHELL', 'pg_isready -U kwong2000 -d game-api']
 
   redis:
     ports:
       - '6379:6379'
     restart: unless-stopped
     image: redis:8.6-alpine
-    container_name: game-redis
+    container_name: redis-cache
     volumes:
       - redis_data:/data
     healthcheck:

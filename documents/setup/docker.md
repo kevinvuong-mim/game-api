@@ -19,25 +19,25 @@ services:
       - '5432:5432'
     restart: unless-stopped
     image: postgres:16-alpine
-    container_name: game-postgres
     environment:
-      POSTGRES_DB: game
-      POSTGRES_USER: game_user
-      POSTGRES_PASSWORD: change_me
+      POSTGRES_DB: game-api
+      POSTGRES_USER: kwong2000
+      POSTGRES_PASSWORD: 1234abcd
+    container_name: postgres-database
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       retries: 5
       timeout: 5s
       interval: 10s
-      test: ['CMD-SHELL', 'pg_isready -U game_user -d game']
+      test: ['CMD-SHELL', 'pg_isready -U kwong2000 -d game-api']
 
   redis:
     ports:
       - '6379:6379'
     restart: unless-stopped
     image: redis:8.6-alpine
-    container_name: game-redis
+    container_name: redis-cache
     volumes:
       - redis_data:/data
     healthcheck:
@@ -55,19 +55,19 @@ volumes:
 
 ### Thông tin kết nối (development)
 
-| Service    | Host      | Port | Credentials                          |
-| ---------- | --------- | ---- | ------------------------------------ |
-| PostgreSQL | localhost | 5432 | `game_user` / `change_me`, DB `game` |
-| Redis      | localhost | 6379 | Không password (local dev)           |
+| Service    | Host      | Port | Credentials                             |
+| ---------- | --------- | ---- | --------------------------------------- |
+| PostgreSQL | localhost | 5432 | `kwong2000` / `1234abcd`, DB `game-api` |
+| Redis      | localhost | 6379 | Không password (local dev)              |
 
 **`.env` tương ứng:**
 
 ```env
-DATABASE_URL="postgresql://game_user:change_me@localhost:5432/game"
+DATABASE_URL="postgresql://kwong2000:1234abcd@localhost:5432/game-api"
 REDIS_URL="redis://localhost:6379"
 ```
 
-> Đổi `change_me` trước khi deploy. Không dùng credential mặc định trên production.
+> Đổi `1234abcd` trước khi deploy. Không dùng credential mặc định trên production.
 
 ---
 
@@ -84,7 +84,7 @@ docker-compose up -d
 ```bash
 docker-compose ps
 docker-compose exec redis redis-cli ping
-docker-compose exec postgres pg_isready -U game_user -d game
+docker-compose exec postgres pg_isready -U kwong2000 -d game-api
 ```
 
 ### Dừng
@@ -107,7 +107,7 @@ npm run prisma:generate
 ## PostgreSQL CLI
 
 ```bash
-docker-compose exec postgres psql -U game_user -d game
+docker-compose exec postgres psql -U kwong2000 -d game-api
 ```
 
 ```sql
@@ -131,8 +131,8 @@ ZREVRANGE lb:global:puzzle-quest 0 9 WITHSCORES
 ## Backup / Restore
 
 ```bash
-docker-compose exec postgres pg_dump -U game_user game > backup.sql
-docker-compose exec -T postgres psql -U game_user game < backup.sql
+docker-compose exec postgres pg_dump -U kwong2000 game > backup.sql
+docker-compose exec -T postgres psql -U kwong2000 game < backup.sql
 ```
 
 ---
@@ -147,13 +147,13 @@ docker-compose exec -T postgres psql -U game_user game < backup.sql
 
 ```bash
 docker-compose logs postgres
-docker-compose exec postgres pg_isready -U game_user -d game
+docker-compose exec postgres pg_isready -U kwong2000 -d game-api
 ```
 
 ---
 
 ## Security
 
-- Credential `change_me` chỉ cho **local development**.
+- Credential `1234abcd` chỉ cho **local development**.
 - Không expose port 5432/6379 ra internet.
 - Production: managed DB (RDS, Cloud SQL, …) + Redis có auth/TLS.
