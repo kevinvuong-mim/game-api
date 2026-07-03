@@ -72,22 +72,22 @@ curl http://localhost:3000/api/health
 
 Global prefix: `/api`
 
-| Method | Path               | Auth   | Description                    |
-| ------ | ------------------ | ------ | ------------------------------ |
-| GET    | `/health`          | Public | Health check (Postgres + Redis) |
-| POST   | `/guest/init`      | Public | Create guest, receive token    |
-| PATCH  | `/guest/name`      | Bearer | Update display name            |
-| POST   | `/results`         | Bearer | Submit game results (batch)    |
-| GET    | `/leaderboards`    | Public | Paginated leaderboard          |
+| Method | Path            | Auth   | Description                     |
+| ------ | --------------- | ------ | ------------------------------- |
+| GET    | `/health`       | Public | Health check (Postgres + Redis) |
+| POST   | `/guest/init`   | Public | Create guest, receive token     |
+| PATCH  | `/guest/name`   | Bearer | Update display name             |
+| POST   | `/results`      | Bearer | Submit game results (batch)     |
+| GET    | `/leaderboards` | Public | Paginated leaderboard           |
 
 Detailed API docs:
 
-| Endpoint        | Documentation                                      |
-| --------------- | -------------------------------------------------- |
-| Health check    | [documents/apis/health-check.md](./documents/apis/health-check.md) |
-| Guest           | [documents/apis/guest.md](./documents/apis/guest.md)               |
-| Results         | [documents/apis/results.md](./documents/apis/results.md)           |
-| Leaderboard     | [documents/apis/leaderboard.md](./documents/apis/leaderboard.md)   |
+| Endpoint     | Documentation                                                      |
+| ------------ | ------------------------------------------------------------------ |
+| Health check | [documents/apis/health-check.md](./documents/apis/health-check.md) |
+| Guest        | [documents/apis/guest.md](./documents/apis/guest.md)               |
+| Results      | [documents/apis/results.md](./documents/apis/results.md)           |
+| Leaderboard  | [documents/apis/leaderboard.md](./documents/apis/leaderboard.md)   |
 
 ## Project Structure
 
@@ -167,9 +167,9 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 Games are declared in source code (`GameId` enum), not in a database table.
 
-| Game ID   | Name     |
-| --------- | -------- |
-| `FRULOOP` | Fruloop  |
+| Game ID   | Name    |
+| --------- | ------- |
+| `FRULOOP` | Fruloop |
 
 To add a new game, update `GAME_CONFIG` in `src/common/constants/game.constants.ts` and add a matching `replaySecret` (64-char hex). See [GAME_API_BUILD_SPEC.md](./GAME_API_BUILD_SPEC.md).
 
@@ -182,7 +182,7 @@ All successful responses are wrapped by `ResponseInterceptor`:
   "success": true,
   "statusCode": 200,
   "message": "Data retrieved successfully",
-  "data": { },
+  "data": {},
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/..."
 }
@@ -192,25 +192,25 @@ Errors use `HttpExceptionFilter` with `success: false`.
 
 ## Scripts
 
-| Command                  | Description                    |
-| ------------------------ | ------------------------------ |
-| `npm run start:dev`      | Dev server with hot-reload     |
-| `npm run start:prod`     | Run compiled `dist/main`       |
-| `npm run build`          | Compile TypeScript             |
-| `npm run lint`           | ESLint with auto-fix           |
-| `npm run format`         | Prettier write                 |
-| `npm run prisma:migrate` | Run Prisma migrations (dev)  |
-| `npm run prisma:generate`| Generate Prisma client         |
-| `npm run prisma:reset`   | Reset database and re-migrate  |
+| Command                   | Description                   |
+| ------------------------- | ----------------------------- |
+| `npm run start:dev`       | Dev server with hot-reload    |
+| `npm run start:prod`      | Run compiled `dist/main`      |
+| `npm run build`           | Compile TypeScript            |
+| `npm run lint`            | ESLint with auto-fix          |
+| `npm run format`          | Prettier write                |
+| `npm run prisma:migrate`  | Run Prisma migrations (dev)   |
+| `npm run prisma:generate` | Generate Prisma client        |
+| `npm run prisma:reset`    | Reset database and re-migrate |
 
 ## Documentation
 
-| Topic                | Path                                                         |
-| -------------------- | ------------------------------------------------------------ |
-| Full build spec      | [GAME_API_BUILD_SPEC.md](./GAME_API_BUILD_SPEC.md)           |
-| Docker setup         | [documents/setup/docker.md](./documents/setup/docker.md)     |
-| Environment variables| [documents/setup/environment-variables.md](./documents/setup/environment-variables.md) |
-| Partition maintenance| [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md) |
+| Topic                 | Path                                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| Full build spec       | [GAME_API_BUILD_SPEC.md](./GAME_API_BUILD_SPEC.md)                                             |
+| Docker setup          | [documents/setup/docker.md](./documents/setup/docker.md)                                       |
+| Environment variables | [documents/setup/environment-variables.md](./documents/setup/environment-variables.md)         |
+| Partition maintenance | [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md) |
 
 ## Related Projects
 

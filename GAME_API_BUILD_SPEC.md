@@ -110,17 +110,17 @@ new ValidationPipe({
 
 ### HTTP Status
 
-| Mã  | Ý nghĩa                     |
-| --- | --------------------------- |
-| 200 | Thành công                  |
-| 201 | Tạo mới thành công          |
-| 400 | Validation lỗi              |
-| 401 | Token không hợp lệ          |
+| Mã  | Ý nghĩa                                              |
+| --- | ---------------------------------------------------- |
+| 200 | Thành công                                           |
+| 201 | Tạo mới thành công                                   |
+| 400 | Validation lỗi                                       |
+| 401 | Token không hợp lệ                                   |
 | 403 | Guest không thuộc game (ví dụ `gameId` body ≠ token) |
-| 404 | gameId không tồn tại        |
-| 429 | Rate limit                  |
-| 503 | DB hoặc Redis không kết nối |
-| 500 | Lỗi nội bộ                  |
+| 404 | gameId không tồn tại                                 |
+| 429 | Rate limit                                           |
+| 503 | DB hoặc Redis không kết nối                          |
+| 500 | Lỗi nội bộ                                           |
 
 ---
 
@@ -746,9 +746,7 @@ Response (200 OK, bọc envelope):
     "total": 150,
     "page": 1,
     "limit": 20,
-    "items": [
-      { "rank": 1, "guestId": "uuid", "name": "PlayerOne", "bestScore": 9999 }
-    ],
+    "items": [{ "rank": 1, "guestId": "uuid", "name": "PlayerOne", "bestScore": 9999 }],
     "self": { "rank": 12, "bestScore": 5000 }
   },
   "path": "/api/leaderboards?gameId=FRULOOP",
@@ -842,12 +840,12 @@ crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(received, 'hex'
 
 Implement bằng Redis counter cố định (`INCR` + `EXPIRE` trên lần hit đầu tiên trong window). Guard: `RateLimitGuard` + decorator `@RateLimit`.
 
-| Endpoint          | Limit | Window | Key source | Redis Key prefix    |
-| ----------------- | ----: | -----: | ---------- | ------------------- |
-| POST /guest/init  |     5 |    60s | IP         | `rate:init:{ip}`    |
-| PATCH /guest/name |    10 |    60s | guest      | `rate:name:{guestId}` |
+| Endpoint          | Limit | Window | Key source | Redis Key prefix        |
+| ----------------- | ----: | -----: | ---------- | ----------------------- |
+| POST /guest/init  |     5 |    60s | IP         | `rate:init:{ip}`        |
+| PATCH /guest/name |    10 |    60s | guest      | `rate:name:{guestId}`   |
 | POST /results     |    20 |    60s | guest      | `rate:result:{guestId}` |
-| GET /leaderboards |    30 |    60s | IP         | `rate:lb:{ip}`      |
+| GET /leaderboards |    30 |    60s | IP         | `rate:lb:{ip}`          |
 
 > `GET /api/health` **không** có rate limit.
 
@@ -1118,7 +1116,7 @@ app.enableCors({
 
 | Điểm đồng bộ        | Backend                                                                 | Frontend (game-starter-kit)                                 |
 | ------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------- |
-| GameId              | `GameId` enum trong `game.constants.ts`                               | `VITE_GAME_ID` → `gameConfig.id` trong `src/game/config.ts` |
+| GameId              | `GameId` enum trong `game.constants.ts`                                 | `VITE_GAME_ID` → `gameConfig.id` trong `src/game/config.ts` |
 | replaySecret        | `GAME_CONFIG[gameId].replaySecret` (hardcoded trong source)             | `VITE_REPLAY_SECRET` env var (phải khớp backend)            |
 | HMAC payload        | `${gameId}\|${guestId}\|${clientResultId}\|${score}\|${playedAt\|\|''}` | Idem (`game-sync` module)                                   |
 | API base URL        | Global prefix `/api`, PORT=3000                                         | `VITE_API_URL` hoặc default trong platform config           |

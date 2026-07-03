@@ -35,8 +35,8 @@ Content-Type: application/json
 
 ### Request Body Schema
 
-| Field  | Type   | Required | Validation | Description                          |
-| ------ | ------ | -------- | ---------- | ------------------------------------ |
+| Field  | Type   | Required | Validation        | Description                          |
+| ------ | ------ | -------- | ----------------- | ------------------------------------ |
 | gameId | string | Yes      | `@IsEnum(GameId)` | Mã game hợp lệ. Hiện tại: `FRULOOP`. |
 
 ### Business Logic
@@ -75,8 +75,8 @@ Content-Type: application/json
 
 ### Request Body Schema
 
-| Field | Type   | Required | Validation              | Description                    |
-| ----- | ------ | -------- | ----------------------- | ------------------------------ |
+| Field | Type   | Required | Validation                  | Description                    |
+| ----- | ------ | -------- | --------------------------- | ------------------------------ |
 | name  | string | Yes      | MinLength: 1, MaxLength: 32 | Tên hiển thị trên leaderboard. |
 
 ### Business Logic

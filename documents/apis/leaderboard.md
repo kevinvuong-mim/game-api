@@ -28,11 +28,11 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 
 ### Query Parameters Schema
 
-| Field   | Type   | Required | Validation              | Default | Description                                      |
-| ------- | ------ | -------- | ----------------------- | ------- | ------------------------------------------------ |
-| gameId  | string | Yes      | Phải là `GameId` hợp lệ | -       | Mã game (`FRULOOP`)                              |
-| page    | number | No       | Min: 1, integer         | `1`     | Trang hiện tại (1-based)                         |
-| limit   | number | No       | Min: 1, Max: 100        | `20`    | Số entry mỗi trang (server cap tối đa 100)       |
+| Field   | Type   | Required | Validation              | Default | Description                                       |
+| ------- | ------ | -------- | ----------------------- | ------- | ------------------------------------------------- |
+| gameId  | string | Yes      | Phải là `GameId` hợp lệ | -       | Mã game (`FRULOOP`)                               |
+| page    | number | No       | Min: 1, integer         | `1`     | Trang hiện tại (1-based)                          |
+| limit   | number | No       | Min: 1, Max: 100        | `20`    | Số entry mỗi trang (server cap tối đa 100)        |
 | guestId | string | No       | UUID v4                 | -       | Guest ID để lấy rank và best score của chính mình |
 
 ### Business Logic
@@ -93,20 +93,20 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 
 ### Response Data Schema (`data`)
 
-| Field              | Type           | Description                                                |
-| ------------------ | -------------- | ---------------------------------------------------------- |
-| gameId             | string         | Mã game                                                    |
-| total              | number         | Tổng số player trên leaderboard                            |
-| page               | number         | Trang hiện tại                                             |
-| limit              | number         | Số entry mỗi trang                                         |
-| items              | array          | Danh sách entry trong trang                                |
-| items[].rank       | number         | Thứ hạng (1-based, theo bestScore giảm dần)                |
-| items[].guestId    | string (UUID)  | ID guest                                                   |
-| items[].bestScore  | number         | Điểm cao nhất                                              |
-| items[].name       | string \| null | Tên hiển thị (null nếu guest chưa đặt tên)                |
-| self               | object \| null | Rank của guest hiện tại (chỉ có khi truyền `guestId`)      |
-| self.rank          | number         | Thứ hạng của guest                                         |
-| self.bestScore     | number         | Best score của guest                                       |
+| Field             | Type           | Description                                           |
+| ----------------- | -------------- | ----------------------------------------------------- |
+| gameId            | string         | Mã game                                               |
+| total             | number         | Tổng số player trên leaderboard                       |
+| page              | number         | Trang hiện tại                                        |
+| limit             | number         | Số entry mỗi trang                                    |
+| items             | array          | Danh sách entry trong trang                           |
+| items[].rank      | number         | Thứ hạng (1-based, theo bestScore giảm dần)           |
+| items[].guestId   | string (UUID)  | ID guest                                              |
+| items[].bestScore | number         | Điểm cao nhất                                         |
+| items[].name      | string \| null | Tên hiển thị (null nếu guest chưa đặt tên)            |
+| self              | object \| null | Rank của guest hiện tại (chỉ có khi truyền `guestId`) |
+| self.rank         | number         | Thứ hạng của guest                                    |
+| self.bestScore    | number         | Best score của guest                                  |
 
 **Note**: `self` là `null` khi không truyền `guestId`, hoặc guest chưa có entry trên leaderboard.
 
