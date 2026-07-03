@@ -9,66 +9,95 @@ export interface ValidatedResultItem extends SubmitResultDto {
   replayHash: string;
 }
 
+export interface BatchSubmitResult {
+  insertedCount: number;
+  newBest: number | null;
+  previousBest: number | null;
+}
+
 @Injectable()
 export class ResultsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async insertResultAtomic(
+  async submitValidatedBatch(
     gameId: GameId,
     guestId: string,
-    item: ValidatedResultItem,
-  ): Promise<boolean> {
-    const lockKey = dedupLockKey(gameId, guestId, item.clientResultId);
+    items: ValidatedResultItem[],
+  ): Promise<BatchSubmitResult> {
+    if (items.length === 0) {
+      return { insertedCount: 0, newBest: null, previousBest: null };
+    }
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
+      let insertedCount = 0;
+      const insertedScores: number[] = [];
 
-      const existing = await tx.gameResult.findFirst({
-        where: {
-          gameId,
-          guestId,
-          clientResultId: item.clientResultId,
-        },
-        select: { id: true },
-      });
+      for (const item of items) {
+        const lockKey = dedupLockKey(gameId, guestId, item.clientResultId);
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
 
-      if (existing) {
-        return false;
+        const existing = await tx.gameResult.findFirst({
+          where: {
+            gameId,
+            guestId,
+            clientResultId: item.clientResultId,
+          },
+          select: { id: true },
+        });
+
+        if (existing) {
+          continue;
+        }
+
+        await tx.gameResult.create({
+          data: {
+            gameId,
+            guestId,
+            score: item.score,
+            replayHash: item.replayHash,
+            clientResultId: item.clientResultId,
+            metadata: item.metadata as Prisma.InputJsonValue | undefined,
+            playedAt: item.playedAt ? new Date(item.playedAt) : undefined,
+          },
+        });
+
+        insertedCount++;
+        insertedScores.push(item.score);
       }
 
-      await tx.gameResult.create({
-        data: {
-          gameId,
-          guestId,
-          score: item.score,
-          replayHash: item.replayHash,
-          clientResultId: item.clientResultId,
-          metadata: item.metadata as Prisma.InputJsonValue | undefined,
-          playedAt: item.playedAt ? new Date(item.playedAt) : undefined,
-        },
+      if (insertedCount === 0) {
+        return { insertedCount: 0, newBest: null, previousBest: null };
+      }
+
+      const previousRow = await tx.leaderboard.findUnique({
+        where: { gameId_guestId: { gameId, guestId } },
+        select: { bestScore: true },
+      });
+      const previousBest = previousRow?.bestScore ?? null;
+
+      const maxScore = Math.max(...insertedScores);
+
+      await tx.$executeRaw`
+        INSERT INTO leaderboards ("gameId", "guestId", "bestScore", "updatedAt")
+        VALUES (${gameId}::"GameId", ${guestId}, ${maxScore}, now())
+        ON CONFLICT ("gameId", "guestId")
+        DO UPDATE SET
+          "bestScore" = GREATEST(leaderboards."bestScore", EXCLUDED."bestScore"),
+          "updatedAt" = now()
+        WHERE EXCLUDED."bestScore" > leaderboards."bestScore"
+      `;
+
+      const row = await tx.leaderboard.findUnique({
+        where: { gameId_guestId: { gameId, guestId } },
+        select: { bestScore: true },
       });
 
-      return true;
+      return {
+        insertedCount,
+        previousBest,
+        newBest: row?.bestScore ?? maxScore,
+      };
     });
-  }
-
-  async upsertLeaderboardBestScore(gameId: GameId, guestId: string, score: number) {
-    await this.prisma.$executeRaw`
-      INSERT INTO leaderboards ("gameId", "guestId", "bestScore", "updatedAt")
-      VALUES (${gameId}::"GameId", ${guestId}, ${score}, now())
-      ON CONFLICT ("gameId", "guestId")
-      DO UPDATE SET
-        "bestScore" = GREATEST(leaderboards."bestScore", EXCLUDED."bestScore"),
-        "updatedAt" = now()
-      WHERE EXCLUDED."bestScore" > leaderboards."bestScore"
-    `;
-
-    const row = await this.prisma.leaderboard.findUnique({
-      where: { gameId_guestId: { gameId, guestId } },
-      select: { bestScore: true },
-    });
-
-    return row?.bestScore ?? score;
   }
 
   getTopLeaderboardEntries(gameId: GameId, limit: number) {

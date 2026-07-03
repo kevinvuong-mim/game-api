@@ -708,6 +708,7 @@ Response (201 Created, bọc envelope):
   "data": {
     "success": true,
     "insertedCount": 2,
+    "rejectedCount": 0,
     "message": "Results submitted"
   },
   "path": "/api/results",
@@ -715,7 +716,7 @@ Response (201 Created, bọc envelope):
 }
 ```
 
-> `insertedCount` có thể là `0` khi tất cả items duplicate hoặc signature invalid — vẫn HTTP 201.
+> `insertedCount` có thể là `0` khi tất cả items duplicate hoặc signature invalid — vẫn HTTP 201. `rejectedCount` cho biết số item bị từ chối do chữ ký không hợp lệ; chi tiết trong `rejected`.
 
 ---
 

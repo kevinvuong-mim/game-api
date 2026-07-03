@@ -78,15 +78,15 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 1. **Authenticate**: `GuestAuthGuard` xác thực Bearer token.
 2. **Rate limit check**: Giới hạn theo `guestId` (`rate:result:{guestId}`).
 3. **Validate gameId**: `validateGameId()` + kiểm tra `guest.gameId === dto.gameId` (403 nếu không khớp).
-4. **Verify signatures**: Lọc các item có signature hợp lệ (item invalid bị **skip**, không fail toàn batch).
-5. **Atomic insert** (từng item hợp lệ):
+4. **Verify signatures**: Các item có signature không hợp lệ được ghi vào `rejected` (không fail toàn batch).
+5. **Atomic batch insert** (tất cả item hợp lệ trong một transaction):
    - Advisory lock: `pg_advisory_xact_lock` theo `(gameId, guestId, clientResultId)`.
    - Check duplicate → skip nếu `clientResultId` đã tồn tại.
    - Insert vào `game_results` nếu chưa có.
-6. **Update leaderboard**: Với các item insert thành công:
+6. **Update leaderboard** (cùng transaction với insert):
    - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
-   - Cập nhật Redis sorted set nếu best score mới cao hơn trước đó.
-7. **Return summary**: `insertedCount`, `success`, `message`.
+7. **Update Redis cache** (sau transaction): Cập nhật sorted set nếu best score mới cao hơn trước đó.
+8. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`.
 
 ---
 
@@ -111,13 +111,15 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 ### Response Data Schema (`data`)
 
-| Field         | Type    | Description                                           |
-| ------------- | ------- | ----------------------------------------------------- |
-| insertedCount | number  | Số item mới được insert (bỏ qua duplicate và invalid) |
-| success       | boolean | Luôn `true` khi request thành công                    |
-| message       | string  | `"Results submitted"`                                 |
+| Field         | Type    | Description                                                                            |
+| ------------- | ------- | -------------------------------------------------------------------------------------- |
+| insertedCount | number  | Số item mới được insert (bỏ qua duplicate)                                             |
+| rejectedCount | number  | Số item bị từ chối do signature không hợp lệ                                           |
+| rejected      | array?  | Chi tiết item bị từ chối (`clientResultId`, `reason`) — chỉ có khi `rejectedCount > 0` |
+| success       | boolean | Luôn `true` khi request thành công                                                     |
+| message       | string  | `"Results submitted"`                                                                  |
 
-**Note**: `insertedCount` có thể là `0` nếu tất cả items đều duplicate hoặc signature invalid — vẫn trả HTTP 201.
+**Note**: `insertedCount` có thể là `0` nếu tất cả items đều duplicate hoặc signature invalid — vẫn trả HTTP 201. Kiểm tra `rejectedCount` để biết số item bị từ chối do chữ ký sai.
 
 ### Error Responses
 

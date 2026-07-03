@@ -12,10 +12,6 @@
       {
         "outDir": "./dist",
         "include": "**/*.prisma"
-      },
-      {
-        "watchAssets": true,
-        "include": "mail/templates/**/*"
       }
     ]
   },

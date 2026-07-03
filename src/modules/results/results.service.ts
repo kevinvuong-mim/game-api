@@ -7,6 +7,11 @@ import { ResultsRepository } from '@/modules/results/results.repository';
 import { buildReplayPayload, verifyReplaySignature } from '@/common/utils';
 import { SubmitResultBatchDto } from '@/modules/results/dto/submit-result-batch.dto';
 
+export interface RejectedResultItem {
+  clientResultId: string;
+  reason: 'invalid_signature';
+}
+
 @Injectable()
 export class ResultsService {
   constructor(
@@ -22,7 +27,10 @@ export class ResultsService {
     }
 
     const replaySecret = getGameConfig(gameId).replaySecret;
-    const validItems = dto.items.filter((item) => {
+    const validItems: SubmitResultBatchDto['items'] = [];
+    const rejected: RejectedResultItem[] = [];
+
+    for (const item of dto.items) {
       const payload = buildReplayPayload({
         gameId,
         score: item.score,
@@ -31,40 +39,34 @@ export class ResultsService {
         clientResultId: item.clientResultId,
       });
 
-      return verifyReplaySignature(replaySecret, payload, item.signature);
-    });
-
-    let insertedCount = 0;
-    const insertedScores: number[] = [];
-
-    for (const item of validItems) {
-      const inserted = await this.resultsRepository.insertResultAtomic(gameId, guest.guestId, {
-        ...item,
-        replayHash: item.signature,
-      });
-
-      if (inserted) {
-        insertedCount++;
-        insertedScores.push(item.score);
+      if (verifyReplaySignature(replaySecret, payload, item.signature)) {
+        validItems.push(item);
+      } else {
+        rejected.push({ clientResultId: item.clientResultId, reason: 'invalid_signature' });
       }
     }
 
-    if (insertedCount > 0) {
-      const previousBest = await this.resultsRepository.getGuestBestScore(gameId, guest.guestId);
-      const maxScore = Math.max(...insertedScores);
-      const newBest = await this.resultsRepository.upsertLeaderboardBestScore(
-        gameId,
-        guest.guestId,
-        maxScore,
-      );
+    const batchResult = await this.resultsRepository.submitValidatedBatch(
+      gameId,
+      guest.guestId,
+      validItems.map((item) => ({
+        ...item,
+        replayHash: item.signature,
+      })),
+    );
 
-      if (newBest > (previousBest?.bestScore ?? -Infinity)) {
-        await this.redisService.updateLeaderboardScore(gameId, guest.guestId, newBest);
-      }
+    if (
+      batchResult.insertedCount > 0 &&
+      batchResult.newBest !== null &&
+      batchResult.newBest > (batchResult.previousBest ?? -Infinity)
+    ) {
+      await this.redisService.updateLeaderboardScore(gameId, guest.guestId, batchResult.newBest);
     }
 
     return {
-      insertedCount,
+      insertedCount: batchResult.insertedCount,
+      rejectedCount: rejected.length,
+      rejected: rejected.length > 0 ? rejected : undefined,
       success: true,
       message: 'Results submitted',
     };

@@ -4,6 +4,7 @@ import {
   CanActivate,
   HttpException,
   ExecutionContext,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Reflector } from '@nestjs/core';
@@ -39,7 +40,11 @@ export class RateLimitGuard implements CanActivate {
       options.keySource === 'guest' ? request.user?.guestId : this.extractClientIp(request);
 
     if (!keySuffix) {
-      return true;
+      if (options.keySource === 'guest') {
+        throw new UnauthorizedException('Authentication required for rate limiting');
+      }
+
+      throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
     }
 
     const allowed = await this.redisService.consumeRateLimit(

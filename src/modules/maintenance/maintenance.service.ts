@@ -11,13 +11,18 @@ export class MaintenanceService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   onModuleInit() {
-    void this.ensureNextYearPartition();
+    void this.ensurePartitions();
   }
 
   @Cron(PARTITION_CRON)
-  async ensureNextYearPartition() {
-    const nextYear = new Date().getFullYear() + 1;
-    const tableName = `game_results_${nextYear}`;
+  async ensurePartitions() {
+    const currentYear = new Date().getFullYear();
+    await this.ensurePartitionForYear(currentYear);
+    await this.ensurePartitionForYear(currentYear + 1);
+  }
+
+  private async ensurePartitionForYear(year: number) {
+    const tableName = `game_results_${year}`;
 
     const exists = await this.prisma.$queryRaw<Array<{ exists: boolean }>>`
       SELECT EXISTS (
@@ -30,8 +35,8 @@ export class MaintenanceService implements OnModuleInit {
       return;
     }
 
-    const from = `${nextYear}-01-01`;
-    const to = `${nextYear + 1}-01-01`;
+    const from = `${year}-01-01`;
+    const to = `${year + 1}-01-01`;
 
     await this.prisma.$executeRawUnsafe(`
       CREATE TABLE ${tableName}

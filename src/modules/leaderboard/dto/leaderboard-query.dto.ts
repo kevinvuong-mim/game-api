@@ -1,10 +1,10 @@
 import { Type } from 'class-transformer';
-import { Max, Min, IsInt, IsUUID, IsString, IsOptional } from 'class-validator';
+import { Max, Min, IsInt, IsUUID, IsEnum, IsOptional } from 'class-validator';
 
 import { GameId } from '@/common/constants';
 
 export class LeaderboardQueryDto {
-  @IsString()
+  @IsEnum(GameId)
   gameId!: GameId;
 
   @IsOptional()
