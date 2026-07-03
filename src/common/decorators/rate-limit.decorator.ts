@@ -6,8 +6,8 @@ export type RateLimitKeySource = 'ip' | 'guest';
 
 export interface RateLimitOptions {
   limit: number;
-  windowSeconds: number;
   keyPrefix: string;
+  windowSeconds: number;
   keySource: RateLimitKeySource;
 }
 

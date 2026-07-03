@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
 import { GameId } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '@/modules/prisma/prisma.service';
 

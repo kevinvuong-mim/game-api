@@ -21,11 +21,11 @@ export class AppService {
     const healthy = dbStatus === 'connected' && redisStatus === 'connected';
 
     return {
+      healthy,
+      services,
       status: healthy ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
-      services,
       uptime: Math.floor(process.uptime()),
-      healthy,
     };
   }
 

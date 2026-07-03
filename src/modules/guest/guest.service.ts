@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
 import { GameId } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
 
+import { validateGameId } from '@/common/constants';
 import { InitGuestDto } from '@/modules/guest/dto/init-guest.dto';
 import { GuestRepository } from '@/modules/guest/guest.repository';
-import { validateGameId } from '@/common/constants';
 import { generateSecretToken, hashSecretToken } from '@/common/utils';
 
 @Injectable()
@@ -18,9 +18,9 @@ export class GuestService {
     const guest = await this.guestRepository.create(gameId, secretTokenHash);
 
     return {
+      secretToken,
       guestId: guest.id,
       gameId: guest.gameId,
-      secretToken,
     };
   }
 
@@ -28,9 +28,9 @@ export class GuestService {
     const validatedGameId = validateGameId(gameId) as GameId;
     const updated = await this.guestRepository.updateName(validatedGameId, guestId, name);
     return {
+      name: updated.name,
       guestId: updated.id,
       gameId: updated.gameId,
-      name: updated.name,
     };
   }
 }

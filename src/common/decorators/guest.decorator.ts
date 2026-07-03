@@ -3,8 +3,8 @@ import { ExecutionContext, createParamDecorator } from '@nestjs/common';
 import { GameId } from '@/common/constants';
 
 export interface AuthenticatedGuest {
-  guestId: string;
   gameId: GameId;
+  guestId: string;
 }
 
 export const Guest = createParamDecorator(

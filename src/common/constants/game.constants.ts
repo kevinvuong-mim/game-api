@@ -7,7 +7,7 @@ export enum GameId {
 export const GAME_CONFIG: Record<GameId, { name: string; replaySecret: string }> = {
   [GameId.FRULOOP]: {
     name: 'Fruloop',
-    replaySecret: process.env.REPLAY_SECRET_FRULOOP ?? '',
+    replaySecret: 'b1dec842ef5c5b846eaca346669f2d3ccd9a1811e63d43c249402577207c0820',
   },
 } as const;
 
@@ -20,11 +20,5 @@ export function validateGameId(gameId: string): GameId {
 }
 
 export function getGameConfig(gameId: GameId) {
-  const config = GAME_CONFIG[gameId];
-  const envKey = `REPLAY_SECRET_${gameId}`;
-
-  return {
-    name: config.name,
-    replaySecret: process.env[envKey] ?? config.replaySecret,
-  };
+  return GAME_CONFIG[gameId];
 }

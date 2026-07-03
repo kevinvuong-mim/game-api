@@ -1,9 +1,10 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Get, Query, UseGuards, Controller } from '@nestjs/common';
 
-import { RateLimit } from '@/common/decorators/rate-limit.decorator';
 import { RateLimitGuard } from '@/common/guards';
-import { LeaderboardQueryDto } from '@/modules/leaderboard/dto/leaderboard-query.dto';
+import { RATE_LIMITS } from '@/common/constants';
+import { RateLimit } from '@/common/decorators/rate-limit.decorator';
 import { LeaderboardService } from '@/modules/leaderboard/leaderboard.service';
+import { LeaderboardQueryDto } from '@/modules/leaderboard/dto/leaderboard-query.dto';
 
 @Controller('leaderboards')
 @UseGuards(RateLimitGuard)
@@ -12,10 +13,10 @@ export class LeaderboardController {
 
   @Get()
   @RateLimit({
-    keyPrefix: 'rate:lb:',
     keySource: 'ip',
-    limit: Number(process.env.RATE_LIMIT_LEADERBOARD ?? 30),
     windowSeconds: 60,
+    keyPrefix: 'rate:lb:',
+    limit: RATE_LIMITS.leaderboard,
   })
   getLeaderboard(@Query() query: LeaderboardQueryDto) {
     return this.leaderboardService.getLeaderboard(query);

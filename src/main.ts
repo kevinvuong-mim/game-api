@@ -2,9 +2,9 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { AppModule } from '@/app.module';
 import { NestFactory } from '@nestjs/core';
+import { validateGameSecrets } from '@/common/utils';
 import { HttpExceptionFilter } from '@/common/filters';
 import { ResponseInterceptor } from '@/common/interceptors';
-import { validateGameSecrets } from '@/common/utils';
 import { Logger, HttpException, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
@@ -29,7 +29,6 @@ async function bootstrap() {
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
     methods: ['GET', 'PUT', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    origin: process.env.CORS_ORIGIN?.split(',') ?? 'http://localhost:5173',
   });
 
   app.useGlobalPipes(
