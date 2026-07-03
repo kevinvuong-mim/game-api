@@ -197,7 +197,7 @@ documents/
     leaderboard.md
     health-check.md
   schedule/
-    game-results-partition-maintenance.md
+    game-results-partition.md
   setup/
     docker.md
     environment-variables.md
@@ -215,7 +215,7 @@ docker-compose.yml
 
 # 3. Game Config
 
-`replaySecret` phải là SHA256 hex (64 ký tự), tối thiểu 32 bytes entropy, và được inject qua environment variable — KHÔNG hardcode giá trị thật trong source.
+`replaySecret` phải là SHA256 hex (64 ký tự), tối thiểu 32 bytes entropy, và được khai báo cố định trong source.
 
 ```ts
 // src/common/constants/game.constants.ts
@@ -227,7 +227,7 @@ export enum GameId {
 export const GAME_CONFIG: Record<GameId, { name: string; replaySecret: string }> = {
   [GameId.FRULOOP]: {
     name: 'Fruloop',
-    replaySecret: process.env.REPLAY_SECRET_FRULOOP ?? '',
+    replaySecret: '...fixed value...',
   },
 } as const;
 ```
@@ -482,16 +482,10 @@ CREATE TABLE game_results_<YYYY>
 
 ## Cron tạo partition tự động
 
-- Chạy ngày 1 mỗi tháng (`PARTITION_CRON`)
+- Chạy ngày 1 mỗi tháng theo cron cố định `0 3 1 * *`
 - Logic: kiểm tra xem partition cho **năm tiếp theo** đã tồn tại chưa
 - Nếu chưa có → tạo mới bằng `prisma.$executeRawUnsafe`
 - Nếu đã có → skip (idempotent)
-
-ENV:
-
-```env
-PARTITION_CRON="0 3 1 * *"
-```
 
 ---
 
@@ -597,7 +591,7 @@ Response: guest object đã update.
 
 ---
 
-## POST /api/games/:gameId/results
+## POST /api/results
 
 Auth: Bearer token required
 
@@ -607,6 +601,7 @@ Body:
 
 ```json
 {
+  "gameId": "FRULOOP",
   "items": [
     {
       "clientResultId": "res-001",
@@ -735,8 +730,8 @@ TTL:   5 phút (300s)
 Lý do: tránh query DB mỗi request trên hot path POST /results
 
 > Value phải chứa cả `gameId`, không chỉ `guestId` — route như
-> `POST /games/:gameId/results` cần đối chiếu `gameId` của guest đã
-> xác thực với `gameId` trên URL. Nếu cache chỉ lưu `guestId`, cache
+> `POST /results` cần đối chiếu `gameId` của guest đã
+> xác thực với `gameId` trong body. Nếu cache chỉ lưu `guestId`, cache
 > hit sẽ không có đủ dữ liệu để attach `request.user` đúng như Section 12.
 
 Leaderboard cache:
@@ -798,7 +793,7 @@ Vượt → `429 Too Many Requests`
 
 # 10. Partition Maintenance
 
-Cron schedule (từ `PARTITION_CRON` env):
+Cron schedule (fixed in source):
 
 ```text
 Mặc định: 0 3 1 * * (3:00 sáng ngày 1 mỗi tháng)
@@ -870,7 +865,7 @@ Lấy token từ header Authorization: Bearer <token>
 
 > Cache value luôn là JSON `{ guestId, gameId }`, không chỉ `guestId`,
 > để cache hit không cần query DB thêm lần nào mà vẫn đủ dữ liệu
-> cho các route cần đối chiếu `gameId` (ví dụ `POST /games/:gameId/results`).
+> cho các route cần đối chiếu `gameId` (ví dụ `POST /results`).
 
 Decorator:
 
@@ -918,31 +913,9 @@ REDIS_URL=redis://localhost:6379
 PORT=3000
 
 NODE_ENV=development
-
-# CORS: production nên set domain cụ thể, không dùng *
-CORS_ORIGIN=http://localhost:5173
-
-# Rate limits (requests / 60s)
-RATE_LIMIT_INIT=5
-RATE_LIMIT_NAME=10
-RATE_LIMIT_RESULT=20
-RATE_LIMIT_LEADERBOARD=30
-
-# Redis leaderboard
-LEADERBOARD_CACHE_MAX=1000
-
-# Redis auth token cache TTL (giây)
-AUTH_TOKEN_CACHE_TTL=300
-
-# Partition cron
-PARTITION_CRON="0 3 1 * *"
-
-# Replay secrets — một biến per game, không commit giá trị thật
-# Format: SHA256 hex (64 ký tự)
-REPLAY_SECRET_FRULOOP=
 ```
 
-> **Khi thêm game mới:** Thêm `REPLAY_SECRET_<GAME_ID>=` vào `.env.example` và CI/CD secrets.
+> **Khi thêm game mới:** Sửa `GameId` enum, `GAME_CONFIG` và kiểm tra lại replay secret trong source.
 
 ---
 
@@ -1015,12 +988,12 @@ Nên rotate khi traffic thấp
 
 ```ts
 app.enableCors({
-  origin: process.env.CORS_ORIGIN?.split(',') ?? 'http://localhost:5173',
+  origin: 'http://localhost:5173',
   credentials: true,
 });
 ```
 
-> Production: set `CORS_ORIGIN` thành domain cụ thể (ví dụ: `https://game.example.com`). Không dùng `*` khi có credentials.
+> CORS origin hiện cố định trong source.
 
 ---
 
@@ -1032,7 +1005,7 @@ app.enableCors({
 - Không log `replaySecret` hoặc `secretToken` raw
 - Rate limit bảo vệ tất cả endpoints
 - `timingSafeEqual` cho mọi so sánh secret
-- `CORS_ORIGIN` phải được set cụ thể ở production (không dùng `*`)
+- CORS origin hiện cố định trong source, không đọc từ env
 - Startup Guard chặn app khởi động nếu secret sai format
 
 ---
@@ -1045,7 +1018,7 @@ app.enableCors({
 | Verify HMAC nhanh              | Secret nằm trong client (env, không hardcode)  |
 | Redis cache nhanh              | Redis mất data khi restart → cần rebuild logic |
 | Partition tối ưu write/archive | Custom migration, Prisma không support native  |
-| Token cache Redis              | Cache TTL 5 phút → token revoke không tức thì  |
+| Token cache Redis              | Cache TTL 5 phút, cố định trong source         |
 | Leaderboard upsert idempotent  | GREATEST() chỉ update khi score cao hơn        |
 | Token vĩnh viễn, đơn giản      | Uninstall/clear data = mất data, không relink  |
 | Behavior đồng nhất iOS/Android | Guest mới sau mỗi lần cài app                  |
@@ -1057,7 +1030,7 @@ app.enableCors({
 | Điểm đồng bộ        | Backend                                                                 | Frontend (game-starter-kit)                                 |
 | ------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------- |
 | GameId              | `GameId` enum trong `game.constants.ts`                                 | `gameConfig.id` trong `src/game/config.ts`                  |
-| replaySecret        | `REPLAY_SECRET_<GAME_ID>` env var                                       | `VITE_REPLAY_SECRET` env var                                |
+| replaySecret        | Hardcoded trong source                                                  | `VITE_REPLAY_SECRET` env var                                |
 | HMAC payload        | `${gameId}\|${guestId}\|${clientResultId}\|${score}\|${playedAt\|\|''}` | Idem                                                        |
 | API base URL        | Global prefix `/api`, PORT=3000                                         | `VITE_API_URL=http://localhost:3000/api`                    |
 | Response envelope   | `{ success, statusCode, message, data, path, timestamp }`               | `ApiClient` envelope type                                   |

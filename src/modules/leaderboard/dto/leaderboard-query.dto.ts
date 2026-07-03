@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { Max, Min, IsInt, IsString, IsOptional, IsUUID } from 'class-validator';
+import { Max, Min, IsInt, IsUUID, IsString, IsOptional } from 'class-validator';
 
 import { GameId } from '@/common/constants';
 

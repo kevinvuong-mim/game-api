@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
 import { GameId } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
 
-import { validateGameId } from '@/common/constants';
 import { RedisService } from '@/modules/redis/redis.service';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 import { ResultsRepository } from '@/modules/results/results.repository';
+import { validateGameId, LEADERBOARD_CACHE_MAX } from '@/common/constants';
 import { LeaderboardQueryDto } from '@/modules/leaderboard/dto/leaderboard-query.dto';
 
 @Injectable()
@@ -39,8 +39,8 @@ export class LeaderboardService {
       items: items.map((entry) => ({
         rank: entry.rank,
         guestId: entry.guestId,
-        name: names.get(entry.guestId) ?? null,
         bestScore: entry.bestScore,
+        name: names.get(entry.guestId) ?? null,
       })),
       self,
     };
@@ -80,17 +80,19 @@ export class LeaderboardService {
       return;
     }
 
-    const maxEntries = Number(process.env.LEADERBOARD_CACHE_MAX ?? 1000);
-    const entries = await this.resultsRepository.getTopLeaderboardEntries(gameId, maxEntries);
+    const entries = await this.resultsRepository.getTopLeaderboardEntries(
+      gameId,
+      LEADERBOARD_CACHE_MAX,
+    );
     await this.redisService.rebuildLeaderboard(gameId, entries);
   }
 
   private async fetchLeaderboardFromDb(gameId: GameId, offset: number, limit: number) {
     const rows = await this.prisma.leaderboard.findMany({
+      take: limit,
+      skip: offset,
       where: { gameId },
       orderBy: [{ bestScore: 'desc' }],
-      skip: offset,
-      take: limit,
       select: { guestId: true, bestScore: true },
     });
 

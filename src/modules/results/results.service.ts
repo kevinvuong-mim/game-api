@@ -1,21 +1,21 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException } from '@nestjs/common';
 
-import { getGameConfig, validateGameId } from '@/common/constants';
-import { buildReplayPayload, verifyReplaySignature } from '@/common/utils';
-import type { AuthenticatedGuest } from '@/common/decorators';
 import { RedisService } from '@/modules/redis/redis.service';
-import { SubmitResultBatchDto } from '@/modules/results/dto/submit-result-batch.dto';
+import type { AuthenticatedGuest } from '@/common/decorators';
+import { getGameConfig, validateGameId } from '@/common/constants';
 import { ResultsRepository } from '@/modules/results/results.repository';
+import { buildReplayPayload, verifyReplaySignature } from '@/common/utils';
+import { SubmitResultBatchDto } from '@/modules/results/dto/submit-result-batch.dto';
 
 @Injectable()
 export class ResultsService {
   constructor(
-    private readonly resultsRepository: ResultsRepository,
     private readonly redisService: RedisService,
+    private readonly resultsRepository: ResultsRepository,
   ) {}
 
-  async submitResults(routeGameId: string, guest: AuthenticatedGuest, dto: SubmitResultBatchDto) {
-    const gameId = validateGameId(routeGameId);
+  async submitResults(guest: AuthenticatedGuest, dto: SubmitResultBatchDto) {
+    const gameId = validateGameId(dto.gameId);
 
     if (guest.gameId !== gameId) {
       throw new ForbiddenException('Guest does not belong to this game');
@@ -25,10 +25,10 @@ export class ResultsService {
     const validItems = dto.items.filter((item) => {
       const payload = buildReplayPayload({
         gameId,
-        guestId: guest.guestId,
-        clientResultId: item.clientResultId,
         score: item.score,
+        guestId: guest.guestId,
         playedAt: item.playedAt,
+        clientResultId: item.clientResultId,
       });
 
       return verifyReplaySignature(replaySecret, payload, item.signature);
@@ -64,8 +64,8 @@ export class ResultsService {
     }
 
     return {
-      success: true,
       insertedCount,
+      success: true,
       message: 'Results submitted',
     };
   }

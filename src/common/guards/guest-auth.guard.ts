@@ -1,10 +1,10 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 
-import { validateGameId } from '@/common/constants';
 import { hashSecretToken } from '@/common/utils';
-import { GuestRepository } from '@/modules/guest/guest.repository';
+import { validateGameId } from '@/common/constants';
 import { RedisService } from '@/modules/redis/redis.service';
+import { GuestRepository } from '@/modules/guest/guest.repository';
 import type { AuthenticatedGuest } from '@/common/decorators/guest.decorator';
 
 type GuestRequest = Request & { user?: AuthenticatedGuest };
@@ -12,8 +12,8 @@ type GuestRequest = Request & { user?: AuthenticatedGuest };
 @Injectable()
 export class GuestAuthGuard implements CanActivate {
   constructor(
-    private readonly guestRepository: GuestRepository,
     private readonly redisService: RedisService,
+    private readonly guestRepository: GuestRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

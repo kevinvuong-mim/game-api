@@ -1,4 +1,4 @@
-import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { Get, Controller, ServiceUnavailableException } from '@nestjs/common';
 
 import { AppService } from '@/app.service';
 
@@ -13,9 +13,9 @@ export class AppController {
     if (!health.healthy) {
       throw new ServiceUnavailableException({
         status: health.status,
-        timestamp: health.timestamp,
-        services: health.services,
         uptime: health.uptime,
+        services: health.services,
+        timestamp: health.timestamp,
       });
     }
 

@@ -1,6 +1,6 @@
 # Hướng dẫn sử dụng Docker cho Database và Redis
 
-Tài liệu hướng dẫn chạy PostgreSQL và Redis bằng Docker cho dự án api-starter-kit.
+Tài liệu hướng dẫn chạy PostgreSQL và Redis bằng Docker cho dự án game-api.
 
 ## Yêu cầu
 
@@ -131,8 +131,8 @@ ZREVRANGE lb:global:puzzle-quest 0 9 WITHSCORES
 ## Backup / Restore
 
 ```bash
-docker-compose exec postgres pg_dump -U kwong2000 game > backup.sql
-docker-compose exec -T postgres psql -U kwong2000 game < backup.sql
+docker-compose exec postgres pg_dump -U kwong2000 game-api > backup.sql
+docker-compose exec -T postgres psql -U kwong2000 game-api < backup.sql
 ```
 
 ---

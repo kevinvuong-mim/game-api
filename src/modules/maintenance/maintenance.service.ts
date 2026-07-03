@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 
+import { PARTITION_CRON } from '@/common/constants';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 
 @Injectable()
@@ -13,7 +14,7 @@ export class MaintenanceService implements OnModuleInit {
     void this.ensureNextYearPartition();
   }
 
-  @Cron(process.env.PARTITION_CRON ?? '0 3 1 * *')
+  @Cron(PARTITION_CRON)
   async ensureNextYearPartition() {
     const nextYear = new Date().getFullYear() + 1;
     const tableName = `game_results_${nextYear}`;

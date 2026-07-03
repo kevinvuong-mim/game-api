@@ -18,11 +18,11 @@ export function validateGameSecrets(): void {
 }
 
 export function buildReplayPayload(params: {
+  score: number;
   gameId: GameId;
   guestId: string;
-  clientResultId: string;
-  score: number;
   playedAt?: string;
+  clientResultId: string;
 }): string {
   return `${params.gameId}|${params.guestId}|${params.clientResultId}|${params.score}|${params.playedAt ?? ''}`;
 }
