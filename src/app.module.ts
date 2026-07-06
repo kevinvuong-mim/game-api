@@ -28,8 +28,8 @@ import { NotificationsModule } from '@/modules/notifications/notifications.modul
     MaintenanceModule,
     NotificationsModule,
     ScheduleModule.forRoot(),
-    ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot(),
+    ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
