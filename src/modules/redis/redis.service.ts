@@ -8,8 +8,8 @@ import { LEADERBOARD_CACHE_MAX, AUTH_TOKEN_CACHE_TTL_SECONDS } from '@/common/co
 export const REDIS_CLIENT = 'REDIS_CLIENT';
 
 export const REDIS_KEYS = {
-  authToken: (tokenHash: string) => `auth:token:${tokenHash}`,
   leaderboard: (gameId: string) => `leaderboard:${gameId}`,
+  authToken: (tokenHash: string) => `auth:token:${tokenHash}`,
 } as const;
 
 @Injectable()
@@ -96,6 +96,25 @@ export class RedisService implements OnModuleDestroy {
     return {
       rank: rank + 1,
       bestScore: Number(score),
+    };
+  }
+
+  async getLeaderboardEntryAtRank(gameId: string, rank: number) {
+    if (rank < 1) {
+      return null;
+    }
+
+    const key = REDIS_KEYS.leaderboard(gameId);
+    const results = await this.redis.zrevrange(key, rank - 1, rank - 1, 'WITHSCORES');
+
+    if (results.length < 2) {
+      return null;
+    }
+
+    return {
+      rank,
+      guestId: results[0],
+      bestScore: Number(results[1]),
     };
   }
 

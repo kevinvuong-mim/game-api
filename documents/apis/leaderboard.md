@@ -300,7 +300,8 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 
 - **POST /api/guest/init**: Khởi tạo guest (lấy `guestId` cho param `self`)
 - **PATCH /api/guest/name**: Đặt tên hiển thị trên leaderboard
-- **POST /api/results**: Gửi kết quả game (cập nhật best score và leaderboard)
+- **POST /api/results**: Gửi kết quả game (cập nhật best score và leaderboard; có thể trigger push Top 100)
+- **POST /api/devices**: Đăng ký FCM token để nhận push rank / Top 100
 - **GET /api/health**: Kiểm tra server và dependencies
 
 ---

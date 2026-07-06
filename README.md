@@ -14,9 +14,12 @@ Players are identified by anonymous guest tokens. The server handles score stora
 | ORM        | Prisma 6                            |
 | Database   | PostgreSQL 16 (partitioned results) |
 | Cache      | Redis 8 (ioredis)                   |
+| Queue      | BullMQ (Saturday rank broadcast)    |
+| Push       | firebase-admin (FCM)                |
 | Validation | class-validator, class-transformer  |
 | Security   | helmet, compression                 |
 | Scheduler  | @nestjs/schedule                    |
+| Events     | @nestjs/event-emitter               |
 
 ## Quick Start
 
@@ -41,9 +44,14 @@ DATABASE_URL="postgresql://kwong2000:1234abcd@localhost:5432/game-api"
 REDIS_URL="redis://localhost:6379"
 PORT=3000
 NODE_ENV="development"
+
+# Optional — push notifications (FCM)
+FIREBASE_PROJECT_ID=
+FIREBASE_PRIVATE_KEY=
+FIREBASE_CLIENT_EMAIL=
 ```
 
-See [documents/setup/environment-variables.md](./documents/setup/environment-variables.md) for full details.
+Push is optional: server starts without Firebase; device APIs still work. See [documents/setup/environment-variables.md](./documents/setup/environment-variables.md) for full details.
 
 ### 3. Install and migrate
 
@@ -72,13 +80,17 @@ curl http://localhost:3000/api/health
 
 Global prefix: `/api`
 
-| Method | Path            | Auth   | Description                     |
-| ------ | --------------- | ------ | ------------------------------- |
-| GET    | `/health`       | Public | Health check (Postgres + Redis) |
-| POST   | `/guest/init`   | Public | Create guest, receive token     |
-| PATCH  | `/guest/name`   | Bearer | Update display name             |
-| POST   | `/results`      | Bearer | Submit game results (batch)     |
-| GET    | `/leaderboards` | Public | Paginated leaderboard           |
+| Method | Path                 | Auth   | Description                     |
+| ------ | -------------------- | ------ | ------------------------------- |
+| GET    | `/health`            | Public | Health check (Postgres + Redis) |
+| POST   | `/guest/init`        | Public | Create guest, receive token     |
+| PATCH  | `/guest/name`        | Bearer | Update display name             |
+| POST   | `/results`           | Bearer | Submit game results (batch)     |
+| GET    | `/leaderboards`      | Public | Paginated leaderboard           |
+| POST   | `/devices`           | Bearer | Register FCM device token       |
+| PATCH  | `/devices`           | Bearer | Update FCM token / locale       |
+| DELETE | `/devices`           | Bearer | Unregister device token         |
+| PATCH  | `/devices/heartbeat` | Bearer | Touch `lastSeenAt` on resume    |
 
 Detailed API docs:
 
@@ -88,6 +100,7 @@ Detailed API docs:
 | Guest        | [documents/apis/guest.md](./documents/apis/guest.md)               |
 | Results      | [documents/apis/results.md](./documents/apis/results.md)           |
 | Leaderboard  | [documents/apis/leaderboard.md](./documents/apis/leaderboard.md)   |
+| Devices      | [documents/apis/devices.md](./documents/apis/devices.md)           |
 
 ## Project Structure
 
@@ -109,6 +122,7 @@ game-api/
 │       ├── guest/                 # Guest init + name
 │       ├── results/               # Result submission + dedup
 │       ├── leaderboard/           # Leaderboard query (Redis + DB fallback)
+│       ├── notifications/         # FCM push, device tokens, Saturday cron
 │       ├── maintenance/           # Partition cron job
 │       ├── redis/
 │       └── prisma/
@@ -163,6 +177,17 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 See [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md).
 
+### Push notifications
+
+- Device tokens: `guest_device_tokens` (1 active token per guest per game)
+- `POST /api/devices` — client registers FCM token after guest init
+- **Top 100**: `ResultsService` → `LeaderboardRankTrackerService` emits events → FCM push (`top_100_entered` / `top_100_exited`)
+- **Saturday rank**: Cron `0 9 * * 6` (Asia/Ho_Chi_Minh) → BullMQ batch broadcast; chỉ gửi cho guest **có rank** trên Redis leaderboard
+- FCM payload `data`: `{ type, route }` — client dùng in-app navigation, không phải deeplink URL
+- Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động
+
+Client setup: [game-starter-kit/documents/setup/firebase-native.md](../game-starter-kit/documents/setup/firebase-native.md).
+
 ## Supported Games
 
 Games are declared in source code (`GameId` enum), not in a database table.
@@ -210,11 +235,12 @@ Errors use `HttpExceptionFilter` with `success: false`.
 | Full build spec       | [GAME_API_BUILD_SPEC.md](./GAME_API_BUILD_SPEC.md)                                             |
 | Docker setup          | [documents/setup/docker.md](./documents/setup/docker.md)                                       |
 | Environment variables | [documents/setup/environment-variables.md](./documents/setup/environment-variables.md)         |
+| Devices / push tokens | [documents/apis/devices.md](./documents/apis/devices.md)                                       |
 | Partition maintenance | [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md) |
 
 ## Related Projects
 
-- [game-starter-kit](../game-starter-kit/) — Phaser 3 + Capacitor client that integrates with this API (`guest`, `game-sync`, `leaderboard` modules).
+- [game-starter-kit](../game-starter-kit/) — Phaser 3 + Capacitor client (`guest`, `game-sync`, `leaderboard`, `notifications` modules).
 
 ## License
 

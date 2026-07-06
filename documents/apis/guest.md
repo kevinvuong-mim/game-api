@@ -370,6 +370,7 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 ## Related Endpoints
 
 - **POST /api/results**: Gửi kết quả game (yêu cầu Bearer token từ init)
+- **POST /api/devices**: Đăng ký FCM token sau guest init (push notification)
 - **GET /api/leaderboards**: Xem bảng xếp hạng (có thể truyền `guestId` để xem rank của mình)
 - **GET /api/health**: Kiểm tra server và dependencies
 

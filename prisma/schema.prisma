@@ -11,6 +11,22 @@ enum GameId {
   FRULOOP
 }
 
+enum DevicePlatform {
+  IOS
+  ANDROID
+}
+
+enum DeviceTokenStatus {
+  ACTIVE
+  INVALID
+  INACTIVE
+}
+
+enum NotificationLocale {
+  EN
+  VI
+}
+
 model GuestPlayer {
   id              String   @id @default(uuid())
   gameId          GameId
@@ -18,8 +34,10 @@ model GuestPlayer {
   secretTokenHash String
   createdAt       DateTime @default(now())
 
-  gameResults  GameResult[]
-  leaderboards Leaderboard?
+  gameResults       GameResult[]
+  leaderboards      Leaderboard?
+  deviceToken       GuestDeviceToken?
+  notificationState GuestNotificationState?
 
   @@unique([gameId, id])
   @@unique([secretTokenHash])
@@ -57,4 +75,37 @@ model Leaderboard {
   @@id([gameId, guestId])
   @@index([gameId, bestScore(sort: Desc)])
   @@map("leaderboards")
+}
+
+model GuestDeviceToken {
+  id         String             @id @default(uuid())
+  gameId     GameId
+  guestId    String
+  token      String             @unique
+  platform   DevicePlatform
+  locale     NotificationLocale @default(EN)
+  status     DeviceTokenStatus  @default(ACTIVE)
+  lastSeenAt DateTime           @default(now())
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
+
+  @@unique([gameId, guestId])
+  @@index([gameId, status])
+  @@index([status, lastSeenAt])
+  @@map("guest_device_tokens")
+}
+
+model GuestNotificationState {
+  gameId    GameId
+  guestId   String
+  inTop100  Boolean  @default(false)
+  lastRank  Int?
+  updatedAt DateTime @updatedAt
+
+  guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
+
+  @@id([gameId, guestId])
+  @@map("guest_notification_states")
 }

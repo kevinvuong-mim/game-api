@@ -13,6 +13,7 @@ Server đảm nhiệm:
 - Lưu điểm số.
 - Chống gian lận bằng HMAC (tập trung ở lớp chữ ký kết quả chơi, không phải xác thực người dùng).
 - Cung cấp leaderboard hiệu năng cao (hỗ trợ nhiều game độc lập).
+- Push notification (FCM): Top 100, Saturday rank broadcast.
 - Danh sách game được khai báo trong source code (type-safe, không cần bảng games).
 
 ## Triết lý
@@ -31,6 +32,9 @@ Server đảm nhiệm:
 - PostgreSQL 16
 - Redis 8 (ioredis)
 - `@nestjs/schedule`
+- `@nestjs/bullmq` + `bullmq` (Saturday rank broadcast queue)
+- `@nestjs/event-emitter` (Top 100 notification events)
+- `firebase-admin` (FCM push — optional, graceful disable khi thiếu env)
 - `@nestjs/config`
 - `helmet`, `compression`
 - `class-validator`, `class-transformer`
@@ -192,8 +196,25 @@ src/
       leaderboard.module.ts
       leaderboard.controller.ts
       leaderboard.service.ts
+      leaderboard-rank-tracker.service.ts
       dto/
         leaderboard-query.dto.ts
+
+    notifications/
+      notifications.module.ts
+      controllers/devices.controller.ts
+      services/fcm.service.ts
+      services/device-token.service.ts
+      services/notification-dispatcher.service.ts
+      repositories/device-token.repository.ts
+      listeners/top100-notification.listener.ts
+      jobs/saturday-rank.job.ts
+      jobs/saturday-rank.scheduler.ts
+      dto/
+
+    events/
+      events/player-entered-top100.event.ts
+      events/player-exited-top100.event.ts
 
     results/
       results.module.ts
@@ -213,6 +234,7 @@ documents/
     guest.md
     results.md
     leaderboard.md
+    devices.md
     health-check.md
   schedule/
     game-results-partition.md
@@ -301,8 +323,10 @@ model GuestPlayer {
   secretTokenHash String
   createdAt       DateTime @default(now())
 
-  gameResults  GameResult[]
-  leaderboards Leaderboard?
+  gameResults         GameResult[]
+  leaderboards        Leaderboard?
+  deviceToken         GuestDeviceToken?
+  notificationState   GuestNotificationState?
 
   @@unique([gameId, id])
   @@unique([secretTokenHash])
@@ -351,7 +375,35 @@ model Leaderboard {
   @@index([gameId, bestScore(sort: Desc)])
   @@map("leaderboards")
 }
+
+enum DevicePlatform { IOS ANDROID }
+enum DeviceTokenStatus { ACTIVE INACTIVE INVALID }
+enum NotificationLocale { EN VI }
+
+model GuestDeviceToken {
+  id         String             @id @default(uuid())
+  gameId     GameId
+  guestId    String
+  token      String             @unique
+  platform   DevicePlatform
+  locale     NotificationLocale @default(EN)
+  status     DeviceTokenStatus  @default(ACTIVE)
+  lastSeenAt DateTime           @default(now())
+  // @@unique([gameId, guestId]) — 1 active token per guest per game
+  @@map("guest_device_tokens")
+}
+
+model GuestNotificationState {
+  gameId   GameId
+  guestId  String
+  inTop100 Boolean  @default(false)
+  lastRank Int?
+  @@id([gameId, guestId])
+  @@map("guest_notification_states")
+}
 ```
+
+> Chi tiết schema đầy đủ: `prisma/schema.prisma`. Migration: `20260706033137_add_notification_tables`.
 
 ---
 
@@ -680,6 +732,7 @@ const expected = computeReplaySignature(replaySecret, payload);
 5. Với từng item hợp lệ, dedup + insert **atomic** theo cơ chế advisory lock ở Section 5
 6. Upsert leaderboard: chỉ update `bestScore` nếu score cao hơn hiện tại (`GREATEST`)
 7. Update Redis sorted set nếu best score mới cao hơn trước đó
+8. **Top 100 push** (khi có best score mới): `LeaderboardRankTrackerService` so rank trước/sau → emit event → `NotificationDispatcherService` → FCM (`top_100_entered` / `top_100_exited`)
 
 > Lưu ý: bước 4 **không phải** `INSERT ... ON CONFLICT` (upsert) vì bảng
 > `game_results` không thể có unique index trên `(gameId, guestId, clientResultId)`
@@ -781,6 +834,33 @@ Trigger: khi ZCARD leaderboard:{gameId} = 0
 
 ---
 
+## Devices API (`/api/devices`)
+
+Auth: Bearer token required. Rate limit: `10 / 60s` per guest.
+
+| Method | Path                     | Mô tả                                             |
+| ------ | ------------------------ | ------------------------------------------------- |
+| POST   | `/api/devices`           | Đăng ký FCM token (`token`, `platform`, `locale`) |
+| PATCH  | `/api/devices`           | Cập nhật token / locale                           |
+| DELETE | `/api/devices`           | Unregister → `INACTIVE`                           |
+| PATCH  | `/api/devices/heartbeat` | Cập nhật `lastSeenAt` (app resume)                |
+
+Chi tiết: `documents/apis/devices.md`.
+
+### Push notification types (server → client)
+
+| `type`            | Trigger                                           | FCM `data.route` |
+| ----------------- | ------------------------------------------------- | ---------------- |
+| `top_100_entered` | Vào Top 100 sau submit score                      | `Leaderboard`    |
+| `top_100_exited`  | Rời Top 100 (kể cả bị đẩy)                        | `Leaderboard`    |
+| `saturday_rank`   | Cron `0 9 * * 6` (Asia/Ho_Chi_Minh), BullMQ batch | `Leaderboard`    |
+
+- Saturday broadcast **chỉ gửi** guest có rank trên Redis leaderboard.
+- Thiếu `FIREBASE_*` → FCM disabled; device APIs vẫn hoạt động.
+- Client dùng in-app navigation từ `data.type` + `data.route` (không deeplink URL).
+
+---
+
 # 7. Redis
 
 ```text
@@ -841,12 +921,13 @@ crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(received, 'hex'
 
 Implement bằng Redis counter cố định (`INCR` + `EXPIRE` trên lần hit đầu tiên trong window). Guard: `RateLimitGuard` + decorator `@RateLimit`.
 
-| Endpoint          | Limit | Window | Key source | Redis Key prefix        |
-| ----------------- | ----: | -----: | ---------- | ----------------------- |
-| POST /guest/init  |     5 |    60s | IP         | `rate:init:{ip}`        |
-| PATCH /guest/name |    10 |    60s | guest      | `rate:name:{guestId}`   |
-| POST /results     |    20 |    60s | guest      | `rate:result:{guestId}` |
-| GET /leaderboards |    30 |    60s | IP         | `rate:lb:{ip}`          |
+| Endpoint                                             | Limit | Window | Key source | Redis Key prefix        |
+| ---------------------------------------------------- | ----: | -----: | ---------- | ----------------------- |
+| POST /guest/init                                     |     5 |    60s | IP         | `rate:init:{ip}`        |
+| PATCH /guest/name                                    |    10 |    60s | guest      | `rate:name:{guestId}`   |
+| POST /results                                        |    20 |    60s | guest      | `rate:result:{guestId}` |
+| GET /leaderboards                                    |    30 |    60s | IP         | `rate:lb:{ip}`          |
+| POST/PATCH/DELETE /devices, PATCH /devices/heartbeat |    10 |    60s | guest      | `rate:device:{guestId}` |
 
 > `GET /api/health` **không** có rate limit.
 
@@ -987,9 +1068,16 @@ REDIS_URL=redis://localhost:6379
 PORT=3000
 
 NODE_ENV=development
+
+# Optional — FCM push (thiếu → push disabled, server vẫn chạy)
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
 ```
 
 > **Khi thêm game mới:** Sửa `GameId` enum, `GAME_CONFIG` trong source và sync Prisma schema. Backend **không** đọc `replaySecret` từ biến môi trường — client dùng `VITE_REPLAY_SECRET` khớp với `GAME_CONFIG`.
+
+> Firebase Admin (push): `documents/setup/environment-variables.md`. Client FCM: `game-starter-kit/documents/setup/firebase-native.md`.
 
 ---
 
@@ -1115,17 +1203,20 @@ app.enableCors({
 
 # 21. Đồng bộ với game-starter-kit (frontend)
 
-| Điểm đồng bộ        | Backend                                                                 | Frontend (game-starter-kit)                                 |
-| ------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------- |
-| GameId              | `GameId` enum trong `game.constants.ts`                                 | `VITE_GAME_ID` → `gameConfig.id` trong `src/game/config.ts` |
-| replaySecret        | `GAME_CONFIG[gameId].replaySecret` (hardcoded trong source)             | `VITE_REPLAY_SECRET` env var (phải khớp backend)            |
-| HMAC payload        | `${gameId}\|${guestId}\|${clientResultId}\|${score}\|${playedAt\|\|''}` | Idem (`game-sync` module)                                   |
-| API base URL        | Global prefix `/api`, PORT=3000                                         | `VITE_API_URL` hoặc default trong platform config           |
-| Response envelope   | `{ success, statusCode, message, data, path, timestamp }`               | `ApiClient` envelope type                                   |
-| Auth header         | `Authorization: Bearer <secretToken>`                                   | `ApiClient.setAuthToken(secretToken)`                       |
-| Token persistence   | Không TTL, không rotate, vĩnh viễn                                      | Lưu trong Capacitor Preferences `gsk:guest`                 |
-| deviceId            | Không nhận trong body                                                   | Không gửi lên server                                        |
-| Guest init behavior | Mỗi lần gọi = tạo guest mới                                             | Chỉ gọi khi `gsk:guest` chưa có trong storage               |
-| Batch limits        | 1–50 items per request (`SubmitResultBatchDto`)                         | `MAX_BATCH_SIZE = 50` trong game-sync                       |
-| playedAt format     | ISO8601 strict (`@IsISO8601`)                                           | ISO8601 string                                              |
-| metadata limits     | max 10 keys, 2048 bytes (`@IsValidMetadata`)                            | Documented trong `documents/modules/game-result-sync.md`    |
+| Điểm đồng bộ        | Backend                                                                 | Frontend (game-starter-kit)                                           |
+| ------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| GameId              | `GameId` enum trong `game.constants.ts`                                 | `VITE_GAME_ID` → `gameConfig.id` trong `src/game/config.ts`           |
+| replaySecret        | `GAME_CONFIG[gameId].replaySecret` (hardcoded trong source)             | `VITE_REPLAY_SECRET` env var (phải khớp backend)                      |
+| HMAC payload        | `${gameId}\|${guestId}\|${clientResultId}\|${score}\|${playedAt\|\|''}` | Idem (`game-sync` module)                                             |
+| API base URL        | Global prefix `/api`, PORT=3000                                         | `VITE_API_URL` hoặc default trong platform config                     |
+| Response envelope   | `{ success, statusCode, message, data, path, timestamp }`               | `ApiClient` envelope type                                             |
+| Auth header         | `Authorization: Bearer <secretToken>`                                   | `ApiClient.setAuthToken(secretToken)`                                 |
+| Token persistence   | Không TTL, không rotate, vĩnh viễn                                      | Lưu trong Capacitor Preferences `gsk:guest`                           |
+| deviceId            | Không nhận trong body                                                   | Không gửi lên server                                                  |
+| FCM device token    | `POST/PATCH /api/devices` — `token`, `platform`, `locale`               | `push-notification.service` sau `guest.onReady`                       |
+| Push payload        | FCM `data: { type, route }` — EN/VI từ `locale` trên device record      | In-app navigation (`Leaderboard`, `DailyReward`) — không URL deeplink |
+| Notification flags  | —                                                                       | `notification-env.json`: dev push off, local on                       |
+| Guest init behavior | Mỗi lần gọi = tạo guest mới                                             | Chỉ gọi khi `gsk:guest` chưa có trong storage                         |
+| Batch limits        | 1–50 items per request (`SubmitResultBatchDto`)                         | `MAX_BATCH_SIZE = 50` trong game-sync                                 |
+| playedAt format     | ISO8601 strict (`@IsISO8601`)                                           | ISO8601 string                                                        |
+| metadata limits     | max 10 keys, 2048 bytes (`@IsValidMetadata`)                            | Documented trong `documents/modules/game-result-sync.md`              |
