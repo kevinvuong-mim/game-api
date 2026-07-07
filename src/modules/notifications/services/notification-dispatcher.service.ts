@@ -1,29 +1,41 @@
 import { Injectable } from '@nestjs/common';
 
-import { FcmService } from '@/modules/notifications/services/fcm.service';
 import { type GameId, NOTIFICATION_TYPES, NOTIFICATION_ROUTES } from '@/common/constants';
-import { DeviceTokenService } from '@/modules/notifications/services/device-token.service';
+import { NotificationOutboxService } from '@/modules/notifications/services/notification-outbox.service';
 
 @Injectable()
 export class NotificationDispatcherService {
-  constructor(
-    private readonly fcmService: FcmService,
-    private readonly deviceTokenService: DeviceTokenService,
-  ) {}
+  constructor(private readonly outboxService: NotificationOutboxService) {}
 
   async sendTop100Entered(gameId: GameId, guestId: string, rank: number): Promise<void> {
-    await this.sendToGuest(gameId, guestId, {
+    await this.outboxService.enqueue({
+      gameId,
+      guestId,
       params: { rank },
       route: NOTIFICATION_ROUTES.LEADERBOARD,
       type: NOTIFICATION_TYPES.TOP_100_ENTERED,
+      idempotencyKey: this.outboxService.buildTop100IdempotencyKey(
+        gameId,
+        guestId,
+        NOTIFICATION_TYPES.TOP_100_ENTERED,
+        rank,
+      ),
     });
   }
 
   async sendTop100Exited(gameId: GameId, guestId: string, rank: number): Promise<void> {
-    await this.sendToGuest(gameId, guestId, {
+    await this.outboxService.enqueue({
+      gameId,
+      guestId,
       params: { rank },
       route: NOTIFICATION_ROUTES.LEADERBOARD,
       type: NOTIFICATION_TYPES.TOP_100_EXITED,
+      idempotencyKey: this.outboxService.buildTop100IdempotencyKey(
+        gameId,
+        guestId,
+        NOTIFICATION_TYPES.TOP_100_EXITED,
+        rank,
+      ),
     });
   }
 
@@ -33,44 +45,14 @@ export class NotificationDispatcherService {
     rank: number,
     locale?: string | null,
   ): Promise<void> {
-    await this.sendToGuest(
+    await this.outboxService.enqueue({
+      locale,
       gameId,
       guestId,
-      {
-        locale,
-        params: { rank },
-        type: NOTIFICATION_TYPES.SATURDAY_RANK,
-        route: NOTIFICATION_ROUTES.LEADERBOARD,
-      },
-      locale,
-    );
-  }
-
-  private async sendToGuest(
-    gameId: GameId,
-    guestId: string,
-    payload: {
-      route: string;
-      locale?: string | null;
-      params?: Record<string, string | number>;
-      type: (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
-    },
-    localeOverride?: string | null,
-  ): Promise<void> {
-    const device = await this.deviceTokenService.getActiveToken(gameId, guestId);
-    if (!device) {
-      return;
-    }
-
-    const result = await this.fcmService.sendToToken(device.token, {
-      type: payload.type,
-      route: payload.route,
-      params: payload.params,
-      locale: localeOverride ?? this.deviceTokenService.localeToCode(device.locale),
+      params: { rank },
+      route: NOTIFICATION_ROUTES.LEADERBOARD,
+      type: NOTIFICATION_TYPES.SATURDAY_RANK,
+      idempotencyKey: this.outboxService.buildSaturdayRankIdempotencyKey(gameId, guestId),
     });
-
-    if (result.invalidToken) {
-      await this.deviceTokenService.markTokenInvalid(device.token);
-    }
   }
 }

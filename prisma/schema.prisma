@@ -27,6 +27,14 @@ enum NotificationLocale {
   VI
 }
 
+enum NotificationOutboxStatus {
+  DEAD
+  SENT
+  PENDING
+  SKIPPED
+  PROCESSING
+}
+
 model GuestPlayer {
   id              String   @id @default(uuid())
   gameId          GameId
@@ -108,4 +116,27 @@ model GuestNotificationState {
 
   @@id([gameId, guestId])
   @@map("guest_notification_states")
+}
+
+model NotificationOutbox {
+  id             String                   @id @default(uuid())
+  gameId         GameId
+  guestId        String
+  type           String
+  route          String
+  params         Json?
+  locale         NotificationLocale?
+  status         NotificationOutboxStatus @default(PENDING)
+  attempts       Int                      @default(0)
+  maxAttempts    Int                      @default(5)
+  lastError      String?
+  idempotencyKey String?                  @unique
+  scheduledAt    DateTime                 @default(now())
+  sentAt         DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([gameId, guestId, createdAt])
+  @@map("notification_outbox")
 }
