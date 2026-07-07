@@ -4,6 +4,7 @@ import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 
 import {
   type NotificationType,
+  FCM_ANDROID_CHANNEL_ID,
   getLocalizedNotification,
   resolveNotificationLocale,
 } from '@/common/constants';
@@ -77,6 +78,9 @@ export class FcmService implements OnModuleInit {
         },
         android: {
           priority: 'high',
+          notification: {
+            channelId: FCM_ANDROID_CHANNEL_ID,
+          },
         },
         apns: {
           payload: {

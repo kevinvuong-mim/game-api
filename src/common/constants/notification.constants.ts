@@ -1,5 +1,8 @@
 export const TOP_100_THRESHOLD = 100;
 
+/** Must match Android notification channel created by game-starter-kit client. */
+export const FCM_ANDROID_CHANNEL_ID = 'game_alerts';
+
 export const NOTIFICATION_CRON = {
   FCM_RETRY: '*/5 * * * *',
   SATURDAY_RANK: '0 9 * * 6',
