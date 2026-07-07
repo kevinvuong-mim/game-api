@@ -41,6 +41,11 @@ export class NotificationOutboxService {
   ) {}
 
   async enqueue(input: EnqueueNotificationInput): Promise<string | null> {
+    const muted = await this.deviceTokenService.isNotificationMuted(input.gameId, input.guestId);
+    if (muted) {
+      return null;
+    }
+
     const device = await this.deviceTokenService.getActiveToken(input.gameId, input.guestId);
     if (!device) {
       return null;
@@ -80,6 +85,15 @@ export class NotificationOutboxService {
     }
 
     try {
+      const muted = await this.deviceTokenService.isNotificationMuted(
+        claimed.gameId as GameId,
+        claimed.guestId,
+      );
+      if (muted) {
+        await this.outboxRepository.markSkipped(outboxId, 'notifications_muted');
+        return;
+      }
+
       if (!this.fcmService.isEnabled()) {
         await this.scheduleRetry(claimed, 'fcm_disabled');
         return;
@@ -163,10 +177,6 @@ export class NotificationOutboxService {
   buildSaturdayRankIdempotencyKey(gameId: GameId, guestId: string, now = new Date()): string {
     const week = this.getIsoWeekKey(now);
     return `${gameId}:${guestId}:saturday_rank:${week}`;
-  }
-
-  buildTop100IdempotencyKey(gameId: GameId, guestId: string, type: string, rank: number): string {
-    return `${gameId}:${guestId}:${type}:${rank}`;
   }
 
   private async enqueueDeliveryJob(outboxId: string, jobId = outboxId): Promise<void> {

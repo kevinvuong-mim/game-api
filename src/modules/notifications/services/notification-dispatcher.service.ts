@@ -14,12 +14,6 @@ export class NotificationDispatcherService {
       params: { rank },
       route: NOTIFICATION_ROUTES.LEADERBOARD,
       type: NOTIFICATION_TYPES.TOP_100_ENTERED,
-      idempotencyKey: this.outboxService.buildTop100IdempotencyKey(
-        gameId,
-        guestId,
-        NOTIFICATION_TYPES.TOP_100_ENTERED,
-        rank,
-      ),
     });
   }
 
@@ -30,12 +24,6 @@ export class NotificationDispatcherService {
       params: { rank },
       route: NOTIFICATION_ROUTES.LEADERBOARD,
       type: NOTIFICATION_TYPES.TOP_100_EXITED,
-      idempotencyKey: this.outboxService.buildTop100IdempotencyKey(
-        gameId,
-        guestId,
-        NOTIFICATION_TYPES.TOP_100_EXITED,
-        rank,
-      ),
     });
   }
 

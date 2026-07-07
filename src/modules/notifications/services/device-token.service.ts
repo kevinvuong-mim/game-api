@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { RedisService } from '@/modules/redis/redis.service';
 import type { AuthenticatedGuest } from '@/common/decorators';
 import { UpdateDeviceDto } from '@/modules/notifications/dto/update-device.dto';
 import { RegisterDeviceDto } from '@/modules/notifications/dto/register-device.dto';
@@ -7,9 +8,14 @@ import { DeviceTokenRepository } from '@/modules/notifications/repositories/devi
 
 @Injectable()
 export class DeviceTokenService {
-  constructor(private readonly deviceTokenRepository: DeviceTokenRepository) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly deviceTokenRepository: DeviceTokenRepository,
+  ) {}
 
   async registerDevice(guest: AuthenticatedGuest, dto: RegisterDeviceDto) {
+    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, false);
+
     const device = await this.deviceTokenRepository.registerDevice({
       token: dto.token,
       locale: dto.locale,
@@ -25,6 +31,8 @@ export class DeviceTokenService {
   }
 
   async updateDevice(guest: AuthenticatedGuest, dto: UpdateDeviceDto) {
+    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, false);
+
     const device = await this.deviceTokenRepository.updateDeviceToken(
       guest.gameId,
       guest.guestId,
@@ -39,7 +47,13 @@ export class DeviceTokenService {
   }
 
   async unregisterDevice(guest: AuthenticatedGuest) {
+    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, true);
     await this.deviceTokenRepository.unregisterDevice(guest.gameId, guest.guestId);
+    return { success: true };
+  }
+
+  async setNotificationPreference(guest: AuthenticatedGuest, enabled: boolean) {
+    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, !enabled);
     return { success: true };
   }
 
@@ -50,6 +64,10 @@ export class DeviceTokenService {
 
   async getActiveToken(gameId: AuthenticatedGuest['gameId'], guestId: string) {
     return this.deviceTokenRepository.findActiveToken(gameId, guestId);
+  }
+
+  async isNotificationMuted(gameId: AuthenticatedGuest['gameId'], guestId: string) {
+    return this.redisService.isNotificationMuted(gameId, guestId);
   }
 
   async markTokenInvalid(token: string) {
