@@ -14,7 +14,7 @@ import {
   type RateLimitOptions,
   type AuthenticatedGuest,
 } from '@/common/decorators';
-import { RedisService } from '@/modules/redis/redis.service';
+import { RedisService } from '@/infra/redis/redis.service';
 
 type RateLimitRequest = Request & { user?: AuthenticatedGuest };
 

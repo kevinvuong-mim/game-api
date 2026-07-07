@@ -7,21 +7,19 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppService } from '@/app.service';
 import { AppController } from '@/app.controller';
 import { CommonModule } from '@/common/common.module';
-import { GuestModule } from '@/modules/guest/guest.module';
-import { RedisModule } from '@/modules/redis/redis.module';
-import { PrismaModule } from '@/modules/prisma/prisma.module';
-import { ResultsModule } from '@/modules/results/results.module';
-import { LeaderboardModule } from '@/modules/leaderboard/leaderboard.module';
-import { MaintenanceModule } from '@/modules/maintenance/maintenance.module';
-import { NotificationsModule } from '@/modules/notifications/notifications.module';
+import { GuestModule } from '@/features/guest/guest.module';
+import { PrismaModule } from '@/infra/prisma/prisma.module';
+import { ResultsModule } from '@/features/results/results.module';
+import { MaintenanceModule } from '@/infra/maintenance/maintenance.module';
+import { LeaderboardModule } from '@/features/leaderboard/leaderboard.module';
+import { NotificationsModule } from '@/features/notifications/notifications.module';
 
 @Module({
   providers: [AppService],
   controllers: [AppController],
   imports: [
-    CommonModule,
     GuestModule,
-    RedisModule,
+    CommonModule,
     PrismaModule,
     ResultsModule,
     LeaderboardModule,

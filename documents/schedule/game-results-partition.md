@@ -1,6 +1,6 @@
 # Scheduled Partition Maintenance
 
-Tài liệu này mô tả chi tiết cron job được triển khai trong file `src/modules/maintenance/maintenance.service.ts` của dự án Game API. Tác vụ này tự động tạo partition PostgreSQL cho bảng `game_results` theo năm, đảm bảo hệ thống luôn sẵn sàng ghi dữ liệu kết quả game mà không bị lỗi thiếu partition.
+Tài liệu này mô tả chi tiết cron job được triển khai trong file `src/infra/maintenance/maintenance.service.ts` của dự án Game API. Tác vụ này tự động tạo partition PostgreSQL cho bảng `game_results` theo năm, đảm bảo hệ thống luôn sẵn sàng ghi dữ liệu kết quả game mà không bị lỗi thiếu partition.
 
 ## 1. ensurePartitions
 

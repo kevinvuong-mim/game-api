@@ -4,12 +4,13 @@
 
 API quản lý FCM device token cho push notification trên thiết bị native (iOS/Android). Mỗi guest chỉ có **tối đa một** active token trên mỗi game (`@@unique([gameId, guestId])`). Token được dùng để backend gửi push (Top 100, Saturday rank broadcast, v.v.).
 
-Gồm bốn endpoint:
+Gồm năm endpoint:
 
 1. **Đăng ký device** (`POST /api/devices`): Lưu FCM token lần đầu hoặc sau khi cài lại app.
 2. **Cập nhật device** (`PATCH /api/devices`): Token refresh hoặc đổi ngôn ngữ notification.
 3. **Hủy đăng ký** (`DELETE /api/devices`): Đánh dấu token hiện tại là `INACTIVE`.
 4. **Heartbeat** (`PATCH /api/devices/heartbeat`): Cập nhật `lastSeenAt` khi app resume.
+5. **Preferences** (`PATCH /api/devices/preferences`): Bật/tắt push notification (lưu mute flag trên Redis).
 
 **Base URL**: `/api/devices`
 
@@ -161,6 +162,45 @@ Không có body.
 3. **Return**: `{ success: true }`.
 
 Dùng khi app resume từ background — giúp backend biết thiết bị còn hoạt động. Không cập nhật nếu không có token `ACTIVE`.
+
+---
+
+## Endpoint: Notification Preferences
+
+**Endpoint**: `PATCH /api/devices/preferences`
+
+**Rate Limit**: 10 requests / 60 giây (per guest)
+
+**Authentication**: Required (Bearer Token)
+
+### Request Headers
+
+```
+Authorization: Bearer <secretToken>
+Content-Type: application/json
+```
+
+### Request Body
+
+```json
+{
+  "enabled": false
+}
+```
+
+### Request Body Schema
+
+| Field   | Type    | Required | Validation     | Description                                       |
+| ------- | ------- | -------- | -------------- | ------------------------------------------------- |
+| enabled | boolean | Yes      | `@IsBoolean()` | `true` = nhận push; `false` = mute push cho guest |
+
+### Business Logic
+
+1. **Authenticate** + **Rate limit**.
+2. **Set mute flag** trên Redis (`setNotificationMuted`) — `enabled: false` → muted.
+3. **Return**: `{ success: true }`.
+
+Không thay đổi `status` của device token. Dispatcher kiểm tra mute flag trước khi gửi FCM.
 
 ---
 
@@ -517,8 +557,8 @@ curl -X DELETE http://localhost:3000/api/devices \
 - Bảng DB: `guest_device_tokens` — quan hệ 1:1 với `GuestPlayer` (`@@unique([gameId, guestId])`).
 - `locale` trên device record quyết định ngôn ngữ push (`EN` → en, `VI` → vi) qua `getLocalizedNotification()`.
 - Push chỉ gửi tới token `ACTIVE`; `findActiveToken()` dùng khi dispatch notification.
-- Saturday rank broadcast quét batch token `ACTIVE` qua BullMQ (`SATURDAY_RANK_BATCH_SIZE = 500`). Cron: `0 9 * * 6`, timezone `Asia/Ho_Chi_Minh`. **Chỉ gửi** cho guest có entry trên Redis leaderboard (bỏ qua nếu không có rank).
+- Saturday rank broadcast quét batch token `ACTIVE` qua BullMQ (`SATURDAY_RANK_BATCH_SIZE = 500`). Cron: `0 9 * * 6`, timezone `Asia/Ho_Chi_Minh`. Chỉ gửi cho guest **có rank** (ưu tiên Redis, fallback DB khi cache miss).
 - FCM `data` payload: `{ type, route }` — client map sang Phaser scene (`Leaderboard`, `DailyReward`, `Home`).
-- Client reference: `game-starter-kit/src/platform/modules/notifications/push-notification.service.ts`.
+- Client reference: `game-starter-kit/src/platform/modules/notifications/services/push-notification.service.ts`.
 - Rate limit: `10/60s` per guest (`rate:device:{guestId}`).
 - Web platform không hỗ trợ push — client skip gracefully khi không phải native.

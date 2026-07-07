@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 
-import { RedisModule } from '@/modules/redis/redis.module';
+import { RedisModule } from '@/infra/redis/redis.module';
 import { RateLimitGuard } from '@/common/guards/rate-limit.guard';
 
 @Global()

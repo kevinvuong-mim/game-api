@@ -3,8 +3,8 @@ import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from
 
 import { hashSecretToken } from '@/common/utils';
 import { validateGameId } from '@/common/constants';
-import { RedisService } from '@/modules/redis/redis.service';
-import { GuestRepository } from '@/modules/guest/guest.repository';
+import { RedisService } from '@/infra/redis/redis.service';
+import { GuestRepository } from '@/features/guest/guest.repository';
 import type { AuthenticatedGuest } from '@/common/decorators/guest.decorator';
 
 type GuestRequest = Request & { user?: AuthenticatedGuest };

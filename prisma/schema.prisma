@@ -40,12 +40,13 @@ model GuestPlayer {
   gameId          GameId
   name            String?
   secretTokenHash String
+  inTop100        Boolean  @default(false)
+  lastRank        Int?
   createdAt       DateTime @default(now())
 
-  gameResults       GameResult[]
-  leaderboards      Leaderboard?
-  deviceToken       GuestDeviceToken?
-  notificationState GuestNotificationState?
+  gameResults  GameResult[]
+  leaderboards Leaderboard?
+  deviceToken  GuestDeviceToken?
 
   @@unique([gameId, id])
   @@unique([secretTokenHash])
@@ -103,19 +104,6 @@ model GuestDeviceToken {
   @@index([gameId, status])
   @@index([status, lastSeenAt])
   @@map("guest_device_tokens")
-}
-
-model GuestNotificationState {
-  gameId    GameId
-  guestId   String
-  inTop100  Boolean  @default(false)
-  lastRank  Int?
-  updatedAt DateTime @updatedAt
-
-  guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
-
-  @@id([gameId, guestId])
-  @@map("guest_notification_states")
 }
 
 model NotificationOutbox {

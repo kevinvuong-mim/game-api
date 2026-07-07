@@ -312,6 +312,6 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 - Response envelope qua `ResponseInterceptor`.
 - Redis key: `leaderboard:{gameId}` (sorted set, score = bestScore, member = guestId).
 - Cold start: Khi `ZCARD leaderboard:{gameId} = 0`, server rebuild top 1000 entries từ DB.
-- Xếp hạng theo `bestScore` giảm dần; tie-break không được document (cùng score → thứ tự DB).
+- Xếp hạng theo `bestScore` giảm dần; tie-break: `guestId ASC` (cùng score → guestId nhỏ hơn xếp trước).
 - `name` resolve từ bảng `GuestPlayer` — có thể `null` nếu chưa gọi `PATCH /api/guest/name`.
 - Rate limit: `30/60s` per IP.

@@ -1,0 +1,84 @@
+import { Injectable } from '@nestjs/common';
+
+import { RedisService } from '@/infra/redis/redis.service';
+import type { AuthenticatedGuest } from '@/common/decorators';
+import { UpdateDeviceDto } from '@/features/notifications/dto/update-device.dto';
+import { RegisterDeviceDto } from '@/features/notifications/dto/register-device.dto';
+import { DeviceTokenRepository } from '@/features/notifications/device-token.repository';
+import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
+
+@Injectable()
+export class DeviceTokenService {
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly deviceTokenRepository: DeviceTokenRepository,
+    private readonly rankTracker: LeaderboardRankTrackerService,
+  ) {}
+
+  async registerDevice(guest: AuthenticatedGuest, dto: RegisterDeviceDto) {
+    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, false);
+
+    const device = await this.deviceTokenRepository.registerDevice({
+      token: dto.token,
+      locale: dto.locale,
+      gameId: guest.gameId,
+      guestId: guest.guestId,
+      platform: dto.platform,
+    });
+
+    await this.rankTracker.maybeNotifyTop100OnDeviceRegister(guest.gameId, guest.guestId);
+
+    return {
+      deviceId: device.id,
+      status: device.status,
+    };
+  }
+
+  async updateDevice(guest: AuthenticatedGuest, dto: UpdateDeviceDto) {
+    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, false);
+
+    const device = await this.deviceTokenRepository.updateDeviceToken(
+      guest.gameId,
+      guest.guestId,
+      dto.token,
+      dto.locale,
+    );
+
+    return {
+      deviceId: device.id,
+      status: device.status,
+    };
+  }
+
+  async unregisterDevice(guest: AuthenticatedGuest) {
+    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, true);
+    await this.deviceTokenRepository.unregisterDevice(guest.gameId, guest.guestId);
+    return { success: true };
+  }
+
+  async setNotificationPreference(guest: AuthenticatedGuest, enabled: boolean) {
+    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, !enabled);
+    return { success: true };
+  }
+
+  async heartbeat(guest: AuthenticatedGuest) {
+    await this.deviceTokenRepository.touchHeartbeat(guest.gameId, guest.guestId);
+    return { success: true };
+  }
+
+  async getActiveToken(gameId: AuthenticatedGuest['gameId'], guestId: string) {
+    return this.deviceTokenRepository.findActiveToken(gameId, guestId);
+  }
+
+  async isNotificationMuted(gameId: AuthenticatedGuest['gameId'], guestId: string) {
+    return this.redisService.isNotificationMuted(gameId, guestId);
+  }
+
+  async markTokenInvalid(token: string) {
+    await this.deviceTokenRepository.markTokenInvalid(token);
+  }
+
+  localeToCode(locale: { toString(): string }): 'en' | 'vi' {
+    return locale.toString() === 'VI' ? 'vi' : 'en';
+  }
+}

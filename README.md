@@ -80,17 +80,18 @@ curl http://localhost:3000/api/health
 
 Global prefix: `/api`
 
-| Method | Path                 | Auth   | Description                     |
-| ------ | -------------------- | ------ | ------------------------------- |
-| GET    | `/health`            | Public | Health check (Postgres + Redis) |
-| POST   | `/guest/init`        | Public | Create guest, receive token     |
-| PATCH  | `/guest/name`        | Bearer | Update display name             |
-| POST   | `/results`           | Bearer | Submit game results (batch)     |
-| GET    | `/leaderboards`      | Public | Paginated leaderboard           |
-| POST   | `/devices`           | Bearer | Register FCM device token       |
-| PATCH  | `/devices`           | Bearer | Update FCM token / locale       |
-| DELETE | `/devices`           | Bearer | Unregister device token         |
-| PATCH  | `/devices/heartbeat` | Bearer | Touch `lastSeenAt` on resume    |
+| Method | Path                   | Auth   | Description                       |
+| ------ | ---------------------- | ------ | --------------------------------- |
+| GET    | `/health`              | Public | Health check (Postgres + Redis)   |
+| POST   | `/guest/init`          | Public | Create guest, receive token       |
+| PATCH  | `/guest/name`          | Bearer | Update display name               |
+| POST   | `/results`             | Bearer | Submit game results (batch)       |
+| GET    | `/leaderboards`        | Public | Paginated leaderboard             |
+| POST   | `/devices`             | Bearer | Register FCM device token         |
+| PATCH  | `/devices`             | Bearer | Update FCM token / locale         |
+| DELETE | `/devices`             | Bearer | Unregister device token           |
+| PATCH  | `/devices/heartbeat`   | Bearer | Touch `lastSeenAt` on resume      |
+| PATCH  | `/devices/preferences` | Bearer | Enable/disable push notifications |
 
 Detailed API docs:
 
@@ -118,14 +119,17 @@ game-api/
 │   │   ├── interceptors/          # ResponseInterceptor (standard envelope)
 │   │   ├── utils/                 # HMAC, token hashing
 │   │   └── validators/
-│   └── modules/
-│       ├── guest/                 # Guest init + name
-│       ├── results/               # Result submission + dedup
-│       ├── leaderboard/           # Leaderboard query (Redis + DB fallback)
-│       ├── notifications/         # FCM push, device tokens, Saturday cron
-│       ├── maintenance/           # Partition cron job
-│       ├── redis/
-│       └── prisma/
+│   ├── features/
+│   │   ├── guest/                 # Guest init + name
+│   │   ├── results/               # Result submission + dedup
+│   │   ├── leaderboard/           # Leaderboard query + rank tracker
+│   │   └── notifications/         # FCM push, device tokens, Saturday cron
+│   ├── infra/
+│   │   ├── prisma/
+│   │   ├── redis/
+│   │   └── maintenance/           # Partition cron job
+│   └── domain/
+│       └── events/                # Top 100 domain events
 ├── prisma/
 │   ├── schema.prisma
 │   └── migrations/
@@ -182,7 +186,7 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 - Device tokens: `guest_device_tokens` (1 active token per guest per game)
 - `POST /api/devices` — client registers FCM token after guest init
 - **Top 100**: `ResultsService` → `LeaderboardRankTrackerService` emits events → FCM push (`top_100_entered` / `top_100_exited`)
-- **Saturday rank**: Cron `0 9 * * 6` (Asia/Ho_Chi_Minh) → BullMQ batch broadcast; chỉ gửi cho guest **có rank** trên Redis leaderboard
+- **Saturday rank**: Cron `0 9 * * 6` (Asia/Ho_Chi_Minh) → BullMQ batch broadcast; chỉ gửi cho guest **có rank** (Redis, fallback DB)
 - FCM payload `data`: `{ type, route }` — client dùng in-app navigation, không phải deeplink URL
 - Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động
 

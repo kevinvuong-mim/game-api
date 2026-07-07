@@ -415,7 +415,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 - Dedup dùng advisory lock, **không** dùng `ON CONFLICT` — bảng `game_results` partition theo `createdAt`.
 - Leaderboard upsert: chỉ update khi `newScore > currentBestScore`.
 - Redis leaderboard cache cập nhật khi có best score mới (không update nếu score thấp hơn).
-- Top 100 push: state lưu trong `guest_notification_states` (`inTop100`, `lastRank`) để tránh notify trùng và xử lý guest bị đẩy khỏi Top 100.
+- Top 100 push: state lưu trên `guest_players` (`inTop100`, `lastRank`) — `LeaderboardRankTrackerService` trong `features/leaderboard/` so rank trước/sau submit để tránh notify trùng và xử lý guest bị đẩy khỏi Top 100.
 - `playedAt` optional — nếu không gửi, payload HMAC dùng chuỗi rỗng cho phần playedAt.
 - Rate limit: `20/60s` per guest.
 - Batch size: 1–50 items per request.
