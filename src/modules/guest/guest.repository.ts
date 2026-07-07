@@ -7,12 +7,6 @@ import { PrismaService } from '@/modules/prisma/prisma.service';
 export class GuestRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findById(gameId: GameId, id: string) {
-    return this.prisma.guestPlayer.findUnique({
-      where: { gameId_id: { gameId, id } },
-    });
-  }
-
   findBySecretTokenHash(secretTokenHash: string) {
     return this.prisma.guestPlayer.findUnique({
       where: { secretTokenHash },

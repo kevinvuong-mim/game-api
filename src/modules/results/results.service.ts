@@ -1,11 +1,11 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 
-import { RedisService } from '@/modules/redis/redis.service';
 import type { AuthenticatedGuest } from '@/common/decorators';
 import { getGameConfig, validateGameId } from '@/common/constants';
 import { ResultsRepository } from '@/modules/results/results.repository';
 import { buildReplayPayload, verifyReplaySignature } from '@/common/utils';
 import { SubmitResultBatchDto } from '@/modules/results/dto/submit-result-batch.dto';
+import { LeaderboardRankTrackerService } from '@/modules/results/leaderboard-rank-tracker.service';
 
 export interface RejectedResultItem {
   clientResultId: string;
@@ -15,8 +15,8 @@ export interface RejectedResultItem {
 @Injectable()
 export class ResultsService {
   constructor(
-    private readonly redisService: RedisService,
     private readonly resultsRepository: ResultsRepository,
+    private readonly leaderboardRankTracker: LeaderboardRankTrackerService,
   ) {}
 
   async submitResults(guest: AuthenticatedGuest, dto: SubmitResultBatchDto) {
@@ -26,9 +26,9 @@ export class ResultsService {
       throw new ForbiddenException('Guest does not belong to this game');
     }
 
-    const replaySecret = getGameConfig(gameId).replaySecret;
-    const validItems: SubmitResultBatchDto['items'] = [];
     const rejected: RejectedResultItem[] = [];
+    const validItems: SubmitResultBatchDto['items'] = [];
+    const replaySecret = getGameConfig(gameId).replaySecret;
 
     for (const item of dto.items) {
       const payload = buildReplayPayload({
@@ -56,19 +56,19 @@ export class ResultsService {
     );
 
     if (
-      batchResult.insertedCount > 0 &&
       batchResult.newBest !== null &&
+      batchResult.insertedCount > 0 &&
       batchResult.newBest > (batchResult.previousBest ?? -Infinity)
     ) {
-      await this.redisService.updateLeaderboardScore(gameId, guest.guestId, batchResult.newBest);
+      await this.leaderboardRankTracker.onScoreUpdated(gameId, guest.guestId, batchResult.newBest);
     }
 
     return {
-      insertedCount: batchResult.insertedCount,
-      rejectedCount: rejected.length,
-      rejected: rejected.length > 0 ? rejected : undefined,
       success: true,
       message: 'Results submitted',
+      rejectedCount: rejected.length,
+      insertedCount: batchResult.insertedCount,
+      rejected: rejected.length > 0 ? rejected : undefined,
     };
   }
 }

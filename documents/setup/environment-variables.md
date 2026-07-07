@@ -82,6 +82,114 @@ NODE_ENV="development"
 
 ---
 
+## 4. Firebase Admin SDK (Push Notifications)
+
+Backend dùng **Firebase Admin SDK** để gửi FCM push notification tới thiết bị native. Ba biến sau lấy từ **Service Account** của cùng Firebase project mà client dùng (`google-services.json` / `GoogleService-Info.plist`).
+
+> Hướng dẫn cấu hình phía client: `game-starter-kit/documents/setup/firebase-native.md`
+
+### Cách lấy credentials
+
+1. Mở [Firebase Console](https://console.firebase.google.com/) → chọn project (cùng project với app mobile)
+2. Vào **Project settings** (biểu tượng bánh răng) → tab **Service accounts**
+3. Chọn **Firebase Admin SDK** → nhấn **Generate new private key** → **Generate key**
+4. Tải file JSON (ví dụ: `game-starter-kit-firebase-adminsdk-xxxxx.json`)
+
+File JSON có dạng:
+
+```json
+{
+  "type": "service_account",
+  "project_id": "your-project-id",
+  "private_key_id": "...",
+  "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com",
+  "client_id": "...",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "...",
+  "universe_domain": "googleapis.com"
+}
+```
+
+Map các field JSON sang biến môi trường:
+
+| Biến `.env`             | Field trong JSON |
+| ----------------------- | ---------------- |
+| `FIREBASE_PROJECT_ID`   | `project_id`     |
+| `FIREBASE_CLIENT_EMAIL` | `client_email`   |
+| `FIREBASE_PRIVATE_KEY`  | `private_key`    |
+
+### FIREBASE_PROJECT_ID
+
+ID của Firebase project.
+
+**Lấy từ:**
+
+- Field `project_id` trong file Service Account JSON, hoặc
+- Firebase Console → **Project settings** → **General** → **Project ID**
+
+**Ví dụ:**
+
+```env
+FIREBASE_PROJECT_ID=game-starter-kit-prod
+```
+
+**Lưu ý:** Phải trùng `project_id` với client (`VITE_FIREBASE_PROJECT_ID` và native config files).
+
+### FIREBASE_CLIENT_EMAIL
+
+Email của Service Account dùng để xác thực Admin SDK.
+
+**Lấy từ:** field `client_email` trong file JSON.
+
+**Ví dụ:**
+
+```env
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-abc12@game-starter-kit-prod.iam.gserviceaccount.com
+```
+
+### FIREBASE_PRIVATE_KEY
+
+Private key của Service Account (dạng PEM).
+
+**Lấy từ:** field `private_key` trong file JSON.
+
+**Cách ghi vào `.env`:**
+
+Trong file JSON, private key có ký tự xuống dòng `\n`. Khi copy vào `.env`, giữ nguyên dạng **một dòng** và thay mỗi xuống dòng thật bằng chuỗi `\n`:
+
+```env
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n"
+```
+
+**Lưu ý:**
+
+- Luôn bọc trong dấu ngoặc kép `"..."` vì giá trị chứa ký tự đặc biệt
+- Backend tự chuyển `\\n` thành xuống dòng thật khi khởi tạo Firebase Admin SDK
+- **Không commit** file JSON gốc hoặc private key lên Git
+- Mỗi môi trường (dev/staging/production) nên dùng Service Account riêng hoặc project Firebase riêng
+
+### Hành vi khi thiếu cấu hình
+
+Nếu **thiếu bất kỳ** biến nào trong ba biến trên, backend vẫn chạy bình thường nhưng **tắt push notification**. Log sẽ có:
+
+```
+Firebase is not configured — push notifications are disabled
+```
+
+Các API device token (`POST /api/devices`, v.v.) vẫn hoạt động; chỉ bước gửi FCM bị bỏ qua.
+
+### Kiểm tra sau khi cấu hình
+
+1. Khởi động lại server: `npm run start:dev`
+2. Xác nhận log: `Firebase Admin SDK initialized`
+3. Đăng ký device token từ app native (xem `documents/apis/devices.md`)
+4. Trigger notification (ví dụ: vào/ra Top 100) hoặc đợi cron Saturday 9:00 (Asia/Ho_Chi_Minh) — chỉ guest có rank trên leaderboard
+
+---
+
 ## Tổng hợp - File .env hoàn chỉnh
 
 Sau khi lấy được tất cả các biến, thêm chúng vào file `.env` của dự án:
@@ -96,6 +204,11 @@ REDIS_URL="redis://localhost:6379"
 # Server
 PORT=3000
 NODE_ENV="development"
+
+# Firebase Admin SDK
+FIREBASE_PROJECT_ID=
+FIREBASE_PRIVATE_KEY=
+FIREBASE_CLIENT_EMAIL=
 ```
 
 **Lưu ý quan trọng:**
@@ -212,5 +325,38 @@ npx prisma migrate reset
 - [ ] Tất cả env variables đã set trên production server
 - [ ] NODE_ENV="production"
 - [ ] Database accessible từ production server
+
+### 6. Firebase / Push notification không gửi được
+
+**Triệu chứng:** Log `Firebase is not configured — push notifications are disabled` hoặc push không tới thiết bị
+
+**Nguyên nhân thường gặp:**
+
+- Thiếu hoặc sai một trong ba biến `FIREBASE_*`
+- `FIREBASE_PRIVATE_KEY` bị mất xuống dòng / thiếu dấu ngoặc kép trong `.env`
+- Backend dùng Firebase project khác với client
+- Device token chưa đăng ký (`POST /api/devices`)
+- iOS: chưa upload APNs key (.p8) lên Firebase Console
+
+**Giải pháp:**
+
+```bash
+# Kiểm tra biến đã load (không log private key ra production)
+npm run start:dev
+# Tìm log: "Firebase Admin SDK initialized"
+
+# Kiểm tra device token trên DB
+# Bảng GuestDeviceToken — status = ACTIVE
+
+# Test gửi thủ công từ Firebase Console → Messaging → Send test message
+```
+
+**Lỗi private key:**
+
+```
+Error: Failed to parse private key
+```
+
+→ Kiểm tra `FIREBASE_PRIVATE_KEY` có bọc `"..."` và dùng `\n` thay xuống dòng thật.
 
 ---

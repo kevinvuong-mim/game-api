@@ -86,7 +86,8 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 6. **Update leaderboard** (cùng transaction với insert):
    - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
 7. **Update Redis cache** (sau transaction): Cập nhật sorted set nếu best score mới cao hơn trước đó.
-8. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`.
+8. **Top 100 notification** (sau transaction, khi có best score mới): `LeaderboardRankTrackerService` so sánh rank trước/sau, emit `PlayerEnteredTop100Event` / `PlayerExitedTop100Event` → FCM push tới device token `ACTIVE` (xem [devices.md](./devices.md)).
+9. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`.
 
 ---
 
@@ -402,6 +403,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 - **POST /api/guest/init**: Khởi tạo guest và lấy Bearer token
 - **PATCH /api/guest/name**: Đặt tên hiển thị trên leaderboard
 - **GET /api/leaderboards**: Xem bảng xếp hạng sau khi submit kết quả
+- **POST /api/devices**: Đăng ký FCM token để nhận push (Top 100, Saturday rank)
 - **GET /api/health**: Kiểm tra server và dependencies
 
 ---
@@ -413,6 +415,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 - Dedup dùng advisory lock, **không** dùng `ON CONFLICT` — bảng `game_results` partition theo `createdAt`.
 - Leaderboard upsert: chỉ update khi `newScore > currentBestScore`.
 - Redis leaderboard cache cập nhật khi có best score mới (không update nếu score thấp hơn).
+- Top 100 push: state lưu trong `guest_notification_states` (`inTop100`, `lastRank`) để tránh notify trùng và xử lý guest bị đẩy khỏi Top 100.
 - `playedAt` optional — nếu không gửi, payload HMAC dùng chuỗi rỗng cho phần playedAt.
 - Rate limit: `20/60s` per guest.
 - Batch size: 1–50 items per request.

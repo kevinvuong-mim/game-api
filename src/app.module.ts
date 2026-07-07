@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { AppService } from '@/app.service';
 import { AppController } from '@/app.controller';
@@ -11,6 +13,7 @@ import { PrismaModule } from '@/modules/prisma/prisma.module';
 import { ResultsModule } from '@/modules/results/results.module';
 import { LeaderboardModule } from '@/modules/leaderboard/leaderboard.module';
 import { MaintenanceModule } from '@/modules/maintenance/maintenance.module';
+import { NotificationsModule } from '@/modules/notifications/notifications.module';
 
 @Module({
   providers: [AppService],
@@ -23,8 +26,19 @@ import { MaintenanceModule } from '@/modules/maintenance/maintenance.module';
     ResultsModule,
     LeaderboardModule,
     MaintenanceModule,
+    NotificationsModule,
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          url: configService.get<string>('REDIS_URL'),
+        },
+      }),
+    }),
   ],
 })
 export class AppModule {}

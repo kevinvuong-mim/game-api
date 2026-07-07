@@ -1,7 +1,7 @@
 {
   "sourceRoot": "src",
   "generateOptions": {
-    "spec": true,
+    "spec": false,
     "flat": false
   },
   "collection": "@nestjs/schematics",

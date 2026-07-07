@@ -7,9 +7,16 @@ interface ErrorResponse {
   timestamp: string;
   statusCode: number;
   errors?: ValidationError[];
+  /** Health check degraded payload (503 only) */
+  status?: string;
+  uptime?: number;
+  services?: {
+    db: string;
+    redis: string;
+  };
 }
 
-interface SuccessResponse<T = any> {
+interface SuccessResponse<T = unknown> {
   data?: T;
   path: string;
   message: string;
@@ -19,8 +26,8 @@ interface SuccessResponse<T = any> {
 }
 
 interface ValidationError {
-  value?: any;
   field: string;
+  value?: unknown;
   message: string;
 }
 
