@@ -1,20 +1,9 @@
 {
-  "exclude": [
-    "dist",
-    "test",
-    "prisma",
-    "documents",
-    "**/*spec.ts",
-    "**/*.test.ts",
-    "node_modules",
-    "nest-cli.json",
-    "**/*e2e-spec.ts",
-    "eslint.config.mjs"
-  ],
   "compilerOptions": {
     "sourceMap": false,
     "declaration": false
   },
   "include": ["src/**/*"],
-  "extends": "./tsconfig.json"
+  "extends": "./tsconfig.json",
+  "exclude": ["dist", "prisma", "documents", "node_modules", "nest-cli.json", "eslint.config.mjs"]
 }

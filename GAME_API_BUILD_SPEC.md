@@ -196,7 +196,6 @@ src/
       leaderboard.module.ts
       leaderboard.controller.ts
       leaderboard.service.ts
-      leaderboard-rank-tracker.service.ts
       dto/
         leaderboard-query.dto.ts
 
@@ -221,6 +220,7 @@ src/
       results.controller.ts
       results.service.ts
       results.repository.ts
+      leaderboard-rank-tracker.service.ts
       dto/
         submit-result.dto.ts
         submit-result-batch.dto.ts
@@ -1042,7 +1042,6 @@ Decorator:
 ```ts
 generateSecretToken(): string          // URL-safe base64, 32 bytes entropy
 hashSecretToken(token: string): string // SHA256 hex
-timingSafeCompare(a: string, b: string): boolean
 computeReplaySignature(secret: string, payload: string): string
 verifyReplaySignature(secret: string, payload: string, received: string): boolean
 isValidSha256Hex(value: string): boolean

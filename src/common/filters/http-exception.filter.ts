@@ -10,6 +10,8 @@ import { Request, Response } from 'express';
 
 import { ErrorResponse } from '@/common/interfaces';
 
+const HEALTH_DETAIL_KEYS = ['status', 'services', 'uptime', 'timestamp'] as const;
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -26,6 +28,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let error = 'Internal Server Error';
     let message = 'Internal server error';
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    const healthDetails: Partial<
+      Pick<ErrorResponse, 'status' | 'services' | 'uptime' | 'timestamp'>
+    > = {};
 
     // Handle HttpException
     if (exception instanceof HttpException) {
@@ -35,15 +40,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
         error = exception.name;
-      } else if (typeof exceptionResponse === 'object') {
-        const res = exceptionResponse as any;
-        message = res.message || exception.message;
-        error = res.error || exception.name;
+      } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+        const res = exceptionResponse as Record<string, unknown>;
+        message = (typeof res.message === 'string' ? res.message : undefined) || exception.message;
+        error = (typeof res.error === 'string' ? res.error : undefined) || exception.name;
 
         // Handle validation errors from class-validator
         if (Array.isArray(res.message)) {
           validationErrors = res.message;
           message = 'Validation failed';
+        }
+
+        if (status === HttpStatus.SERVICE_UNAVAILABLE) {
+          for (const key of HEALTH_DETAIL_KEYS) {
+            if (key in res) {
+              healthDetails[key] = res[key] as never;
+            }
+          }
         }
       }
     } else if (exception instanceof Error) {
@@ -64,6 +77,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       path: request.url,
       statusCode: status,
       timestamp: new Date().toISOString(),
+      ...healthDetails,
     };
 
     if (validationErrors) errorResponse.errors = validationErrors;

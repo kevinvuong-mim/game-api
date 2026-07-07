@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { type DevicePlatform, DeviceTokenStatus, NotificationLocale } from '@prisma/client';
 
 import type { GameId } from '@/common/constants';
@@ -75,7 +75,7 @@ export class DeviceTokenRepository {
     });
 
     if (!existing) {
-      throw new Error('Device token not found for guest');
+      throw new NotFoundException('Device token not found');
     }
 
     const tokenOwner = await this.prisma.guestDeviceToken.findUnique({

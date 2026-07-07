@@ -5,7 +5,7 @@ import { RedisModule } from '@/modules/redis/redis.module';
 import { ResultsService } from '@/modules/results/results.service';
 import { ResultsController } from '@/modules/results/results.controller';
 import { ResultsRepository } from '@/modules/results/results.repository';
-import { LeaderboardRankTrackerService } from '@/modules/leaderboard/leaderboard-rank-tracker.service';
+import { LeaderboardRankTrackerService } from '@/modules/results/leaderboard-rank-tracker.service';
 
 @Module({
   controllers: [ResultsController],

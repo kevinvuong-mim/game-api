@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import type { AuthenticatedGuest } from '@/common/decorators';
 import { UpdateDeviceDto } from '@/modules/notifications/dto/update-device.dto';
@@ -25,21 +25,17 @@ export class DeviceTokenService {
   }
 
   async updateDevice(guest: AuthenticatedGuest, dto: UpdateDeviceDto) {
-    try {
-      const device = await this.deviceTokenRepository.updateDeviceToken(
-        guest.gameId,
-        guest.guestId,
-        dto.token,
-        dto.locale,
-      );
+    const device = await this.deviceTokenRepository.updateDeviceToken(
+      guest.gameId,
+      guest.guestId,
+      dto.token,
+      dto.locale,
+    );
 
-      return {
-        deviceId: device.id,
-        status: device.status,
-      };
-    } catch {
-      throw new NotFoundException('Device token not found');
-    }
+    return {
+      deviceId: device.id,
+      status: device.status,
+    };
   }
 
   async unregisterDevice(guest: AuthenticatedGuest) {

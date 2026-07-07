@@ -5,7 +5,7 @@ import { getGameConfig, validateGameId } from '@/common/constants';
 import { ResultsRepository } from '@/modules/results/results.repository';
 import { buildReplayPayload, verifyReplaySignature } from '@/common/utils';
 import { SubmitResultBatchDto } from '@/modules/results/dto/submit-result-batch.dto';
-import { LeaderboardRankTrackerService } from '@/modules/leaderboard/leaderboard-rank-tracker.service';
+import { LeaderboardRankTrackerService } from '@/modules/results/leaderboard-rank-tracker.service';
 
 export interface RejectedResultItem {
   clientResultId: string;
