@@ -531,7 +531,7 @@ curl -X DELETE http://localhost:3000/api/devices \
 
 **Cause**: Quá 10 requests/phút per guest
 
-**Solution**: Debounce heartbeat; chỉ gọi register một lần khi token thay đổi; cache `lastRegisteredToken` phía client
+**Solution**: Debounce heartbeat; chỉ gọi register một lần khi token thay đổi; cache `lastSyncedToken` / `pendingToken` phía client (`notification-state-v1`)
 
 ### Error: Notification sai ngôn ngữ
 

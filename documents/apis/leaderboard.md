@@ -315,3 +315,4 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 - Xếp hạng theo `bestScore` giảm dần; tie-break: `guestId ASC` (cùng score → guestId nhỏ hơn xếp trước).
 - `name` resolve từ bảng `GuestPlayer` — có thể `null` nếu chưa gọi `PATCH /api/guest/name`.
 - Rate limit: `30/60s` per IP.
+- API default `limit` = 20 (max 100). Client `game-starter-kit` gọi với `limit=10` (`LEADERBOARD_LIMIT`).

@@ -86,7 +86,7 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 6. **Update leaderboard** (cùng transaction với insert):
    - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
 7. **Update Redis cache** (sau transaction): Cập nhật sorted set nếu best score mới cao hơn trước đó.
-8. **Top 100 notification** (sau transaction, khi có best score mới): `LeaderboardRankTrackerService` so sánh rank trước/sau, emit `PlayerEnteredTop100Event` / `PlayerExitedTop100Event` → FCM push tới device token `ACTIVE` (xem [devices.md](./devices.md)).
+8. **Top 100 notification** (sau transaction, khi có best score mới): `LeaderboardRankTrackerService` + `LeaderboardRankResolverService` so sánh rank trước/sau, emit `PlayerEnteredTop100Event` / `PlayerExitedTop100Event` → FCM push tới device token `ACTIVE` (xem [devices.md](./devices.md)).
 9. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`.
 
 ---
@@ -95,22 +95,18 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 ### Success Response (201 Created)
 
+`POST /results` trả **flat JSON** (không bọc envelope) vì payload service đã có field `success`:
+
 ```json
 {
   "success": true,
-  "statusCode": 201,
-  "message": "Resource created successfully",
-  "data": {
-    "insertedCount": 2,
-    "success": true,
-    "message": "Results submitted"
-  },
-  "timestamp": "2026-06-27T12:00:00.000Z",
-  "path": "/api/results"
+  "message": "Results submitted",
+  "insertedCount": 2,
+  "rejectedCount": 0
 }
 ```
 
-### Response Data Schema (`data`)
+### Response fields
 
 | Field         | Type    | Description                                                                            |
 | ------------- | ------- | -------------------------------------------------------------------------------------- |
@@ -234,15 +230,9 @@ curl -X POST http://localhost:3000/api/results \
 ```json
 {
   "success": true,
-  "statusCode": 201,
-  "message": "Resource created successfully",
-  "data": {
-    "insertedCount": 1,
-    "success": true,
-    "message": "Results submitted"
-  },
-  "timestamp": "2026-06-27T12:00:00.000Z",
-  "path": "/api/results"
+  "message": "Results submitted",
+  "insertedCount": 1,
+  "rejectedCount": 0
 }
 ```
 
@@ -272,15 +262,9 @@ curl -X POST http://localhost:3000/api/results \
 ```json
 {
   "success": true,
-  "statusCode": 201,
-  "message": "Resource created successfully",
-  "data": {
-    "insertedCount": 2,
-    "success": true,
-    "message": "Results submitted"
-  },
-  "timestamp": "2026-06-27T12:00:00.000Z",
-  "path": "/api/results"
+  "message": "Results submitted",
+  "insertedCount": 2,
+  "rejectedCount": 0
 }
 ```
 
@@ -313,15 +297,9 @@ curl -X POST http://localhost:3000/api/results \
 ```json
 {
   "success": true,
-  "statusCode": 201,
-  "message": "Resource created successfully",
-  "data": {
-    "insertedCount": 0,
-    "success": true,
-    "message": "Results submitted"
-  },
-  "timestamp": "2026-06-27T12:00:00.000Z",
-  "path": "/api/results"
+  "message": "Results submitted",
+  "insertedCount": 0,
+  "rejectedCount": 0
 }
 ```
 
@@ -411,11 +389,11 @@ Client tính sai HMAC — item bị skip, không fail request.
 ## Notes
 
 - Global prefix `/api` (cấu hình `main.ts`).
-- Response envelope qua `ResponseInterceptor`.
+- Response envelope qua `ResponseInterceptor` (các endpoint khác). **`POST /results` trả flat body** vì service payload đã có `success`.
 - Dedup dùng advisory lock, **không** dùng `ON CONFLICT` — bảng `game_results` partition theo `createdAt`.
 - Leaderboard upsert: chỉ update khi `newScore > currentBestScore`.
 - Redis leaderboard cache cập nhật khi có best score mới (không update nếu score thấp hơn).
-- Top 100 push: state lưu trên `guest_players` (`inTop100`, `lastRank`) — `LeaderboardRankTrackerService` trong `features/leaderboard/` so rank trước/sau submit để tránh notify trùng và xử lý guest bị đẩy khỏi Top 100.
+- Top 100 push: state `inTop100` trên `guest_players`; rank resolve qua `LeaderboardRankResolverService` (Redis → DB fallback). `LeaderboardRankTrackerService` so rank trước/sau submit để tránh notify trùng và xử lý guest bị đẩy khỏi Top 100.
 - `playedAt` optional — nếu không gửi, payload HMAC dùng chuỗi rỗng cho phần playedAt.
 - Rate limit: `20/60s` per guest.
 - Batch size: 1–50 items per request.

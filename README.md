@@ -185,7 +185,7 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 - Device tokens: `guest_device_tokens` (1 active token per guest per game)
 - `POST /api/devices` — client registers FCM token after guest init
-- **Top 100**: `ResultsService` → `LeaderboardRankTrackerService` emits events → FCM push (`top_100_entered` / `top_100_exited`)
+- **Top 100**: `ResultsService` → `LeaderboardRankTrackerService` + `LeaderboardRankResolverService` → events → FCM push (`top_100_entered` / `top_100_exited`)
 - **Saturday rank**: Cron `0 9 * * 6` (Asia/Ho_Chi_Minh) → BullMQ batch broadcast; chỉ gửi cho guest **có rank** (Redis, fallback DB)
 - FCM payload `data`: `{ type, route }` — client dùng in-app navigation, không phải deeplink URL
 - Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động

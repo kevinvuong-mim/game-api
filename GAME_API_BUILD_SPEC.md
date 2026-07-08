@@ -198,6 +198,7 @@ src/
       leaderboard.controller.ts
       leaderboard.service.ts
       leaderboard-rank-tracker.service.ts
+      leaderboard-rank.resolver.ts
       dto/
         leaderboard-query.dto.ts
 
@@ -330,7 +331,6 @@ model GuestPlayer {
   name            String?
   secretTokenHash String
   inTop100        Boolean  @default(false)
-  lastRank        Int?
   createdAt       DateTime @default(now())
 
   gameResults  GameResult[]
@@ -569,7 +569,7 @@ CREATE TABLE game_results_<YYYY>
 
 > Chi tiết từng endpoint (request/response schema, use cases, lỗi thường gặp) nằm trong `documents/apis/`.
 
-Tất cả response thành công được bọc qua `ResponseInterceptor` (xem Section 1). Ví dụ dưới đây hiển thị phần `data` hoặc envelope đầy đủ tùy ngữ cảnh.
+Tất cả response thành công được bọc qua `ResponseInterceptor` (xem Section 1), **trừ** các payload service đã có field `success` (ví dụ `POST /results`, `PATCH /devices/heartbeat`, `PATCH /devices/preferences`, `DELETE /devices`) — interceptor trả nguyên body. Ví dụ dưới đây hiển thị phần `data` hoặc envelope đầy đủ tùy ngữ cảnh.
 
 ## Auth (Bearer token)
 
@@ -744,7 +744,7 @@ const expected = computeReplaySignature(replaySecret, payload);
 5. Với từng item hợp lệ, dedup + insert **atomic** theo cơ chế advisory lock ở Section 5
 6. Upsert leaderboard: chỉ update `bestScore` nếu score cao hơn hiện tại (`GREATEST`)
 7. Update Redis sorted set nếu best score mới cao hơn trước đó
-8. **Top 100 push** (khi có best score mới): `LeaderboardRankTrackerService` (`features/leaderboard/`) so rank trước/sau → emit event → outbox/dispatcher → FCM (`top_100_entered` / `top_100_exited`). State `inTop100`/`lastRank` lưu trên `guest_players`.
+8. **Top 100 push** (khi có best score mới): `LeaderboardRankTrackerService` dùng `LeaderboardRankResolverService` so rank trước/sau → emit event → outbox/dispatcher → FCM (`top_100_entered` / `top_100_exited`). State `inTop100` lưu trên `guest_players`.
 
 > Lưu ý: bước 4 **không phải** `INSERT ... ON CONFLICT` (upsert) vì bảng
 > `game_results` không thể có unique index trên `(gameId, guestId, clientResultId)`
@@ -763,21 +763,14 @@ DO UPDATE SET
 WHERE EXCLUDED."bestScore" > leaderboards."bestScore";
 ```
 
-Response (201 Created, bọc envelope):
+Response (201 Created, **flat body** — `ResultsService` trả object có field `success` nên `ResponseInterceptor` không bọc envelope):
 
 ```json
 {
   "success": true,
-  "statusCode": 201,
-  "message": "Resource created successfully",
-  "data": {
-    "success": true,
-    "insertedCount": 2,
-    "rejectedCount": 0,
-    "message": "Results submitted"
-  },
-  "path": "/api/results",
-  "timestamp": "2026-01-15T10:00:00.000Z"
+  "message": "Results submitted",
+  "insertedCount": 2,
+  "rejectedCount": 0
 }
 ```
 
