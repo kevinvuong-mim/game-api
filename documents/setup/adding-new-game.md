@@ -86,7 +86,7 @@ File `src/game/config.ts` đọc các biến trên.
 HMAC payload phải khớp backend:
 
 ```ts
-`${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}`
+`${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}`;
 ```
 
 ## 5. Rotate `replaySecret`

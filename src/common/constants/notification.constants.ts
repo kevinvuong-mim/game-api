@@ -4,7 +4,6 @@ export const TOP_100_THRESHOLD = 100;
 export const FCM_ANDROID_CHANNEL_ID = 'game_alerts';
 
 export const NOTIFICATION_CRON = {
-  FCM_RETRY: '*/5 * * * *',
   SATURDAY_RANK: '0 9 * * 6',
   TIMEZONE: 'Asia/Ho_Chi_Minh',
 } as const;
@@ -20,16 +19,10 @@ export const NOTIFICATION_JOB = {
   START_SATURDAY_BROADCAST: 'start-saturday-broadcast',
 } as const;
 
-export const FCM_RETRY_BATCH_SIZE = 100;
-export const FCM_DELIVERY_MAX_ATTEMPTS = 5;
 export const SATURDAY_RANK_BATCH_SIZE = 500;
-export const FCM_PROCESSING_STALE_MS = 10 * 60 * 1000;
-export const FCM_DELIVERY_BACKOFF_MS = [30_000, 60_000, 300_000, 900_000, 3_600_000] as const;
 
 export const NOTIFICATION_ROUTES = {
-  HOME: 'Home',
   LEADERBOARD: 'Leaderboard',
-  DAILY_REWARD: 'DailyReward',
 } as const;
 
 export type NotificationRoute = (typeof NOTIFICATION_ROUTES)[keyof typeof NOTIFICATION_ROUTES];

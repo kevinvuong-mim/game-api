@@ -67,16 +67,16 @@ export class SaturdayRankProcessor extends WorkerHost {
     }
 
     for (const device of devices) {
-      const rankInfo = await this.rankResolver.resolveRank(device.gameId as GameId, device.guestId);
+      const rankInfo = await this.rankResolver.resolveRank(device.gameId as GameId, device.id);
       if (!rankInfo) {
         continue;
       }
 
       await this.notificationDispatcher.sendSaturdayRank(
         device.gameId as GameId,
-        device.guestId,
+        device.id,
         rankInfo.rank,
-        device.locale === 'VI' ? 'vi' : 'en',
+        device.notificationLocale === 'VI' ? 'vi' : 'en',
       );
     }
 

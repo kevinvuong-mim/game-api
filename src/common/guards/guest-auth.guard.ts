@@ -32,7 +32,7 @@ export class GuestAuthGuard implements CanActivate {
       return true;
     }
 
-    const guest = await this.guestRepository.findBySecretTokenHash(tokenHash);
+    const guest = await this.guestRepository.findByAuthTokenHash(tokenHash);
     if (!guest) {
       throw new UnauthorizedException('Invalid token');
     }

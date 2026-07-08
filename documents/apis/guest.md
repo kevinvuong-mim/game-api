@@ -45,7 +45,7 @@ Content-Type: application/json
 2. **Rate limit check**: Giới hạn theo IP (`rate:init:{ip}`).
 3. **Generate token**: `generateSecretToken()` — random 32 bytes, base64url.
 4. **Hash token**: `hashSecretToken()` — SHA-256 hex, chỉ lưu hash vào DB.
-5. **Create guest**: Insert `GuestPlayer` với `gameId` và `secretTokenHash`.
+5. **Create guest**: Insert `GuestPlayer` với `gameId` và `authTokenHash`.
 6. **Return token**: Trả `secretToken` dạng plain text cho client (chỉ trả một lần duy nhất).
 
 ---

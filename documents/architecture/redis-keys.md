@@ -6,12 +6,12 @@ Connection: biến môi trường `REDIS_URL`.
 
 ## Auth token cache
 
-| Thuộc tính | Giá trị |
-| ---------- | ------- |
-| Key pattern | `auth:token:{sha256Hash}` |
-| Value | JSON `{"guestId":"...","gameId":"FRULOOP"}` |
-| TTL | 300 giây (`AUTH_TOKEN_CACHE_TTL_SECONDS`) |
-| Set khi | Guest auth cache miss → lookup DB thành công |
+| Thuộc tính  | Giá trị                                      |
+| ----------- | -------------------------------------------- |
+| Key pattern | `auth:token:{sha256Hash}`                    |
+| Value       | JSON `{"guestId":"...","gameId":"FRULOOP"}`  |
+| TTL         | 300 giây (`AUTH_TOKEN_CACHE_TTL_SECONDS`)    |
+| Set khi     | Guest auth cache miss → lookup DB thành công |
 
 `sha256Hash` = SHA-256 hex của `secretToken` plain text.
 
@@ -19,13 +19,13 @@ Connection: biến môi trường `REDIS_URL`.
 
 ## Leaderboard cache
 
-| Thuộc tính | Giá trị |
-| ---------- | ------- |
-| Key pattern | `leaderboard:{gameId}` |
-| Type | Sorted set (ZSET) |
-| Member | `guestId` |
-| Score | `bestScore` |
-| TTL | Không đặt (persistent) |
+| Thuộc tính  | Giá trị                        |
+| ----------- | ------------------------------ |
+| Key pattern | `leaderboard:{gameId}`         |
+| Type        | Sorted set (ZSET)              |
+| Member      | `guestId`                      |
+| Score       | `bestScore`                    |
+| TTL         | Không đặt (persistent)         |
 | Max entries | 1000 (`LEADERBOARD_CACHE_MAX`) |
 
 **Operations:**
@@ -41,11 +41,11 @@ Connection: biến môi trường `REDIS_URL`.
 
 ## Notification mute flag
 
-| Thuộc tính | Giá trị |
-| ---------- | ------- |
+| Thuộc tính  | Giá trị                                 |
+| ----------- | --------------------------------------- |
 | Key pattern | `notification:muted:{gameId}:{guestId}` |
-| Value | `"1"` khi muted |
-| TTL | Không đặt |
+| Value       | `"1"` khi muted                         |
+| TTL         | Không đặt                               |
 
 Set khi:
 
@@ -62,13 +62,13 @@ Xóa khi:
 
 Pattern: `{prefix}{suffix}` — suffix là IP hoặc `guestId`.
 
-| Prefix | Suffix | Limit / 60s | Endpoint |
-| ------ | ------ | ----------- | -------- |
-| `rate:init:` | client IP | 5 | `POST /guest/init` |
-| `rate:name:` | guestId | 10 | `PATCH /guest/name` |
-| `rate:result:` | guestId | 20 | `POST /results` |
-| `rate:lb:` | client IP | 30 | `GET /leaderboards` |
-| `rate:device:` | guestId | 10 | `/devices/*` |
+| Prefix         | Suffix    | Limit / 60s | Endpoint            |
+| -------------- | --------- | ----------- | ------------------- |
+| `rate:init:`   | client IP | 5           | `POST /guest/init`  |
+| `rate:name:`   | guestId   | 10          | `PATCH /guest/name` |
+| `rate:result:` | guestId   | 20          | `POST /results`     |
+| `rate:lb:`     | client IP | 30          | `GET /leaderboards` |
+| `rate:device:` | guestId   | 10          | `/devices/*`        |
 
 Implementation: `INCR` + `EXPIRE` trên lần INCR đầu tiên (fixed window 60 giây).
 
@@ -78,10 +78,10 @@ IP lấy từ `X-Forwarded-For` (phần tử đầu) hoặc `request.ip`.
 
 BullMQ dùng Redis riêng cho job metadata (prefix mặc định `bull:`). Hai queue chính:
 
-| Queue name | Mục đích |
-| ---------- | -------- |
-| `fcm-delivery` | Gửi từng notification outbox row |
-| `saturday-rank-notification` | Batch broadcast Saturday rank |
+| Queue name                   | Mục đích                         |
+| ---------------------------- | -------------------------------- |
+| `fcm-delivery`               | Gửi từng notification outbox row |
+| `saturday-rank-notification` | Batch broadcast Saturday rank    |
 
 Chi tiết job: [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).
 
@@ -110,7 +110,7 @@ GET notification:muted:FRULOOP:<guestId>
 File: `src/common/constants/runtime.constants.ts`
 
 ```ts
-RATE_LIMITS = { init: 5, name: 10, device: 10, result: 20, leaderboard: 30 }
-LEADERBOARD_CACHE_MAX = 1000
-AUTH_TOKEN_CACHE_TTL_SECONDS = 300
+RATE_LIMITS = { init: 5, name: 10, device: 10, result: 20, leaderboard: 30 };
+LEADERBOARD_CACHE_MAX = 1000;
+AUTH_TOKEN_CACHE_TTL_SECONDS = 300;
 ```

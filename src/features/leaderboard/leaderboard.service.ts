@@ -1,11 +1,6 @@
-import { GameId } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 
-import {
-  validateGameId,
-  LEADERBOARD_CACHE_MAX,
-  type GameId as AppGameId,
-} from '@/common/constants';
+import { GameId, validateGameId, LEADERBOARD_CACHE_MAX } from '@/common/constants';
 import { RedisService } from '@/infra/redis/redis.service';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { ResultsRepository } from '@/features/results/results.repository';
@@ -22,7 +17,7 @@ export class LeaderboardService {
   ) {}
 
   async getLeaderboard(query: LeaderboardQueryDto) {
-    const gameId = validateGameId(query.gameId) as GameId;
+    const gameId = validateGameId(query.gameId);
     const page = query.page;
     const limit = Math.min(query.limit, 100);
     const offset = (page - 1) * limit;
@@ -68,7 +63,7 @@ export class LeaderboardService {
   }
 
   private async resolveSelfRank(gameId: GameId, guestId: string) {
-    const rank = await this.rankResolver.resolveRank(gameId as AppGameId, guestId);
+    const rank = await this.rankResolver.resolveRank(gameId, guestId);
     if (!rank) {
       return null;
     }

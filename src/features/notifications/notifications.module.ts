@@ -13,33 +13,29 @@ import { LeaderboardModule } from '@/features/leaderboard/leaderboard.module';
 import { DevicesController } from '@/features/notifications/devices.controller';
 import { DeviceTokenService } from '@/features/notifications/device-token.service';
 import { FcmDeliveryProcessor } from '@/features/notifications/jobs/fcm-delivery.job';
-import { FcmRetryScheduler } from '@/features/notifications/jobs/fcm-retry.scheduler';
 import { DeviceTokenRepository } from '@/features/notifications/device-token.repository';
 import { SaturdayRankScheduler } from '@/features/notifications/jobs/saturday-rank.scheduler';
-import { NotificationOutboxService } from '@/features/notifications/notification-outbox.service';
+import { NotificationQueueService } from '@/features/notifications/notification-queue.service';
 import { Top100NotificationListener } from '@/features/notifications/top100-notification.listener';
-import { NotificationOutboxRepository } from '@/features/notifications/notification-outbox.repository';
 import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
 
 @Module({
   exports: [
     FcmService,
     DeviceTokenService,
-    NotificationOutboxService,
+    NotificationQueueService,
     NotificationDispatcherService,
   ],
   providers: [
     FcmService,
-    FcmRetryScheduler,
     DeviceTokenService,
     FcmDeliveryProcessor,
     DeviceTokenRepository,
     SaturdayRankProcessor,
     SaturdayRankScheduler,
     SaturdayRankCronService,
-    NotificationOutboxService,
+    NotificationQueueService,
     Top100NotificationListener,
-    NotificationOutboxRepository,
     NotificationDispatcherService,
   ],
   controllers: [DevicesController],
