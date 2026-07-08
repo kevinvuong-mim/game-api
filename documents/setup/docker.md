@@ -112,7 +112,7 @@ docker-compose exec postgres psql -U kwong2000 -d game-api
 
 ```sql
 \dt
-SELECT * FROM games;
+SELECT "gameId", COUNT(*) FROM leaderboards GROUP BY "gameId";
 \q
 ```
 
@@ -122,8 +122,8 @@ SELECT * FROM games;
 
 ```bash
 docker-compose exec redis redis-cli
-KEYS lb:global:*
-ZREVRANGE lb:global:puzzle-quest 0 9 WITHSCORES
+KEYS leaderboard:*
+ZREVRANGE leaderboard:FRULOOP 0 9 WITHSCORES
 ```
 
 ---

@@ -239,17 +239,27 @@ src/
       maintenance.service.ts
 
 documents/
+  README.md
   apis/
     guest.md
     results.md
     leaderboard.md
     devices.md
     health-check.md
+  architecture/
+    overview.md
+    database-schema.md
+    redis-keys.md
+    notifications.md
   schedule/
     game-results-partition.md
+    fcm-notification-jobs.md
   setup/
+    local-development.md
     docker.md
     environment-variables.md
+    adding-new-game.md
+    production-deployment.md
 
 README.md
 GAME_API_BUILD_SPEC.md

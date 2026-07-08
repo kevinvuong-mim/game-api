@@ -237,10 +237,17 @@ Errors use `HttpExceptionFilter` with `success: false`.
 | Topic                 | Path                                                                                           |
 | --------------------- | ---------------------------------------------------------------------------------------------- |
 | Full build spec       | [GAME_API_BUILD_SPEC.md](./GAME_API_BUILD_SPEC.md)                                             |
+| Architecture overview | [documents/architecture/overview.md](./documents/architecture/overview.md)                     |
+| Database schema       | [documents/architecture/database-schema.md](./documents/architecture/database-schema.md)       |
+| Push notifications    | [documents/architecture/notifications.md](./documents/architecture/notifications.md)           |
+| Local development     | [documents/setup/local-development.md](./documents/setup/local-development.md)                 |
+| Production deployment | [documents/setup/production-deployment.md](./documents/setup/production-deployment.md)         |
+| Adding a new game     | [documents/setup/adding-new-game.md](./documents/setup/adding-new-game.md)                     |
 | Docker setup          | [documents/setup/docker.md](./documents/setup/docker.md)                                       |
 | Environment variables | [documents/setup/environment-variables.md](./documents/setup/environment-variables.md)         |
 | Devices / push tokens | [documents/apis/devices.md](./documents/apis/devices.md)                                       |
 | Partition maintenance | [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md) |
+| FCM scheduled jobs    | [documents/schedule/fcm-notification-jobs.md](./documents/schedule/fcm-notification-jobs.md)   |
 
 ## Related Projects
 
