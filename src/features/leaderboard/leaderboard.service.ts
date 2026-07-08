@@ -1,11 +1,16 @@
 import { GameId } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 
+import {
+  validateGameId,
+  LEADERBOARD_CACHE_MAX,
+  type GameId as AppGameId,
+} from '@/common/constants';
 import { RedisService } from '@/infra/redis/redis.service';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { ResultsRepository } from '@/features/results/results.repository';
-import { validateGameId, LEADERBOARD_CACHE_MAX } from '@/common/constants';
 import { LeaderboardQueryDto } from '@/features/leaderboard/dto/leaderboard-query.dto';
+import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 
 @Injectable()
 export class LeaderboardService {
@@ -13,6 +18,7 @@ export class LeaderboardService {
     private readonly prisma: PrismaService,
     private readonly redisService: RedisService,
     private readonly resultsRepository: ResultsRepository,
+    private readonly rankResolver: LeaderboardRankResolverService,
   ) {}
 
   async getLeaderboard(query: LeaderboardQueryDto) {
@@ -62,16 +68,12 @@ export class LeaderboardService {
   }
 
   private async resolveSelfRank(gameId: GameId, guestId: string) {
-    try {
-      const cached = await this.redisService.getLeaderboardRank(gameId, guestId);
-      if (cached) {
-        return { rank: cached.rank, bestScore: cached.bestScore };
-      }
-    } catch {
-      // Redis miss or down — fall back to PostgreSQL.
+    const rank = await this.rankResolver.resolveRank(gameId as AppGameId, guestId);
+    if (!rank) {
+      return null;
     }
 
-    return this.getSelfRankFromDb(gameId, guestId);
+    return { rank: rank.rank, bestScore: rank.bestScore };
   }
 
   private async ensureLeaderboardCache(gameId: GameId) {
@@ -101,19 +103,6 @@ export class LeaderboardService {
       bestScore: row.bestScore,
       rank: offset + index + 1,
     }));
-  }
-
-  private async getSelfRankFromDb(gameId: GameId, guestId: string) {
-    const row = await this.resultsRepository.getGuestBestScore(gameId, guestId);
-    if (!row) {
-      return null;
-    }
-
-    const betterCount = await this.resultsRepository.countBetterScores(gameId, row.bestScore);
-    return {
-      rank: betterCount + 1,
-      bestScore: row.bestScore,
-    };
   }
 
   private async resolveGuestNames(guestIds: string[]) {

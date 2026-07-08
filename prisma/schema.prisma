@@ -41,7 +41,6 @@ model GuestPlayer {
   name            String?
   secretTokenHash String
   inTop100        Boolean  @default(false)
-  lastRank        Int?
   createdAt       DateTime @default(now())
 
   gameResults  GameResult[]

@@ -8,9 +8,8 @@ import {
   NOTIFICATION_QUEUE,
   SATURDAY_RANK_BATCH_SIZE,
 } from '@/common/constants';
-import { RedisService } from '@/infra/redis/redis.service';
-import { ResultsRepository } from '@/features/results/results.repository';
 import { DeviceTokenRepository } from '@/features/notifications/device-token.repository';
+import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
 
 interface SaturdayRankBatchPayload {
@@ -40,8 +39,7 @@ export class SaturdayRankProcessor extends WorkerHost {
     @InjectQueue(NOTIFICATION_QUEUE.SATURDAY_RANK)
     private readonly saturdayRankQueue: Queue,
     private readonly deviceTokenRepository: DeviceTokenRepository,
-    private readonly redisService: RedisService,
-    private readonly resultsRepository: ResultsRepository,
+    private readonly rankResolver: LeaderboardRankResolverService,
     private readonly notificationDispatcher: NotificationDispatcherService,
   ) {
     super();
@@ -69,7 +67,7 @@ export class SaturdayRankProcessor extends WorkerHost {
     }
 
     for (const device of devices) {
-      const rankInfo = await this.resolveRank(device.gameId as GameId, device.guestId);
+      const rankInfo = await this.rankResolver.resolveRank(device.gameId as GameId, device.guestId);
       if (!rankInfo) {
         continue;
       }
@@ -88,27 +86,5 @@ export class SaturdayRankProcessor extends WorkerHost {
     });
 
     this.logger.log(`Saturday rank batch processed: ${devices.length} devices`);
-  }
-
-  private async resolveRank(gameId: GameId, guestId: string) {
-    try {
-      const cached = await this.redisService.getLeaderboardRank(gameId, guestId);
-      if (cached) {
-        return cached;
-      }
-    } catch {
-      // Fall back to PostgreSQL when Redis is unavailable.
-    }
-
-    const row = await this.resultsRepository.getGuestBestScore(gameId, guestId);
-    if (!row) {
-      return null;
-    }
-
-    const betterCount = await this.resultsRepository.countBetterScores(gameId, row.bestScore);
-    return {
-      rank: betterCount + 1,
-      bestScore: row.bestScore,
-    };
   }
 }
