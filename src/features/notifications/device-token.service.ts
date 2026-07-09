@@ -49,7 +49,6 @@ export class DeviceTokenService {
   }
 
   async unregisterDevice(guest: AuthenticatedGuest) {
-    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, true);
     await this.deviceTokenRepository.unregisterDevice(guest.gameId, guest.guestId);
     return { success: true };
   }

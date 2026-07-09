@@ -15,17 +15,17 @@ Database: PostgreSQL 16
 
 ### `guest_players`
 
-| Column               | Type                  | Notes                  |
-| -------------------- | --------------------- | ---------------------- |
-| `id`                 | `TEXT`                | PK                     |
-| `gameId`             | `GameId`              | scope by game          |
-| `name`               | `TEXT?`               | display name           |
-| `authTokenHash`      | `TEXT`                | unique auth token hash |
-| `fcmToken`           | `TEXT?`               | unique FCM token       |
-| `devicePlatform`     | `DevicePlatform?`     | IOS/ANDROID            |
-| `notificationLocale` | `NotificationLocale?` | EN/VI                  |
-| `inTop100`           | `BOOLEAN`             | cached top100 state    |
-| `createdAt`          | `TIMESTAMP`           | creation timestamp     |
+| Column                | Type                  | Notes                                                   |
+| --------------------- | --------------------- | ------------------------------------------------------- |
+| `id`                  | `TEXT`                | PK                                                      |
+| `gameId`              | `GameId`              | scope by game                                           |
+| `name`                | `TEXT?`               | display name                                            |
+| `authTokenHash`       | `TEXT`                | unique auth token hash                                  |
+| `fcmToken`            | `TEXT?`               | unique FCM token                                        |
+| `devicePlatform`      | `DevicePlatform?`     | IOS/ANDROID                                             |
+| `notificationLocale`  | `NotificationLocale?` | EN/VI                                                   |
+| `top100EnterNotified` | `BOOLEAN`             | cached: `true` chỉ sau FCM `top_100_entered` thành công |
+| `createdAt`           | `TIMESTAMP`           | creation timestamp                                      |
 
 Constraints:
 
@@ -43,7 +43,7 @@ Constraints:
 | `guestId`        | `TEXT`       | FK -> `guest_players(gameId,id)` |
 | `clientResultId` | `TEXT`       | client dedup key                 |
 | `score`          | `INTEGER`    |                                  |
-| `replayHash`     | `TEXT`       | HMAC verified hash               |
+| `signature`      | `TEXT`       | HMAC verified hash               |
 | `metadata`       | `JSONB?`     | optional                         |
 | `playedAt`       | `TIMESTAMP?` | optional                         |
 

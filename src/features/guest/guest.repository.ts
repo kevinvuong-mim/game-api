@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
 import { GameId } from '@/common/constants';
-
 import { PrismaService } from '@/infra/prisma/prisma.service';
 
 @Injectable()
@@ -25,8 +24,8 @@ export class GuestRepository {
 
   updateName(gameId: GameId, id: string, name: string) {
     return this.prisma.guestPlayer.update({
-      where: { gameId_id: { gameId, id } },
       data: { name },
+      where: { gameId_id: { gameId, id } },
     });
   }
 }

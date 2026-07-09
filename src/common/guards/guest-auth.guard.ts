@@ -1,5 +1,11 @@
 import { Request } from 'express';
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Logger,
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { hashSecretToken } from '@/common/utils';
 import { validateGameId } from '@/common/constants';
@@ -11,6 +17,8 @@ type GuestRequest = Request & { user?: AuthenticatedGuest };
 
 @Injectable()
 export class GuestAuthGuard implements CanActivate {
+  private readonly logger = new Logger(GuestAuthGuard.name);
+
   constructor(
     private readonly redisService: RedisService,
     private readonly guestRepository: GuestRepository,
@@ -25,7 +33,7 @@ export class GuestAuthGuard implements CanActivate {
     }
 
     const tokenHash = hashSecretToken(token);
-    const cached = await this.redisService.getAuthTokenGuestId(tokenHash);
+    const cached = await this.getCachedGuest(tokenHash);
 
     if (cached) {
       request.user = cached;
@@ -42,9 +50,26 @@ export class GuestAuthGuard implements CanActivate {
       gameId: validateGameId(guest.gameId),
     };
 
-    await this.redisService.setAuthTokenGuestId(tokenHash, user);
+    await this.cacheGuest(tokenHash, user);
     request.user = user;
     return true;
+  }
+
+  private async getCachedGuest(tokenHash: string): Promise<AuthenticatedGuest | null> {
+    try {
+      return await this.redisService.getAuthTokenGuestId(tokenHash);
+    } catch {
+      this.logger.warn('Auth cache read skipped — Redis unavailable');
+      return null;
+    }
+  }
+
+  private async cacheGuest(tokenHash: string, user: AuthenticatedGuest): Promise<void> {
+    try {
+      await this.redisService.setAuthTokenGuestId(tokenHash, user);
+    } catch {
+      this.logger.warn('Auth cache write skipped — Redis unavailable');
+    }
   }
 
   private extractBearerToken(request: Request): string | undefined {

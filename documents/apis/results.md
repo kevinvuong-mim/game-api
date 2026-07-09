@@ -2,7 +2,7 @@
 
 ## Overview
 
-API gửi kết quả game (batch submit). Mỗi kết quả được xác thực bằng HMAC signature để chống giả mạo điểm. Hỗ trợ dedup theo `clientResultId`, cập nhật leaderboard best score và Redis cache.
+API gửi kết quả game (batch submit). Mỗi kết quả được xác thực bằng HMAC signature để chống giả mạo điểm. Hỗ trợ dedup theo `clientResultId`, cập nhật leaderboard best score và Top 100 push.
 
 **Base URL**: `/api/results`
 
@@ -84,10 +84,10 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
    - Check duplicate → skip nếu `clientResultId` đã tồn tại.
    - Insert vào `game_results` nếu chưa có.
 6. **Update leaderboard** (cùng transaction với insert):
+   - Snapshot `previousRank` và guest tại rank 100 **trước** upsert.
    - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
-7. **Update Redis cache** (sau transaction): Cập nhật sorted set nếu best score mới cao hơn trước đó.
-8. **Top 100 notification** (sau transaction, khi có best score mới): `LeaderboardRankTrackerService` + `LeaderboardRankResolverService` so sánh rank trước/sau, emit `PlayerEnteredTop100Event` / `PlayerExitedTop100Event` → FCM push tới device token `ACTIVE` (xem [devices.md](./devices.md)).
-9. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`.
+7. **Top 100 notification** (sau transaction, khi có best score mới): `LeaderboardRankTrackerService` dùng snapshot + rank hiện tại, emit `PlayerEnteredTop100Event` / `PlayerExitedTop100Event` → FCM inline (xem [devices.md](./devices.md)).
+8. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`.
 
 ---
 
@@ -381,7 +381,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 - **POST /api/guest/init**: Khởi tạo guest và lấy Bearer token
 - **PATCH /api/guest/name**: Đặt tên hiển thị trên leaderboard
 - **GET /api/leaderboards**: Xem bảng xếp hạng sau khi submit kết quả
-- **POST /api/devices**: Đăng ký FCM token để nhận push (Top 100, Saturday rank)
+- **POST /api/devices**: Đăng ký FCM token để nhận push (Top 100, scheduled rank push)
 - **GET /api/health**: Kiểm tra server và dependencies
 
 ---
@@ -392,8 +392,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 - Response envelope qua `ResponseInterceptor` (các endpoint khác). **`POST /results` trả flat body** vì service payload đã có `success`.
 - Dedup dùng advisory lock, **không** dùng `ON CONFLICT` — bảng `game_results` partition theo `createdAt`.
 - Leaderboard upsert: chỉ update khi `newScore > currentBestScore`.
-- Redis leaderboard cache cập nhật khi có best score mới (không update nếu score thấp hơn).
-- Top 100 push: state `inTop100` trên `guest_players`; rank resolve qua `LeaderboardRankResolverService` (Redis → DB fallback). `LeaderboardRankTrackerService` so rank trước/sau submit để tránh notify trùng và xử lý guest bị đẩy khỏi Top 100.
+- Top 100 push: `top100EnterNotified` trên `guest_players` — chỉ set `true` sau FCM `top_100_entered` thành công (`confirmTop100Entered`). Rank resolve qua PostgreSQL `leaderboards`. `LeaderboardRankTrackerService` snapshot rank trước upsert để xử lý guest bị đẩy khỏi Top 100.
 - `playedAt` optional — nếu không gửi, payload HMAC dùng chuỗi rỗng cho phần playedAt.
 - Rate limit: `20/60s` per guest.
 - Batch size: 1–50 items per request.

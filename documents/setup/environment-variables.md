@@ -186,7 +186,7 @@ Các API device token (`POST /api/devices`, v.v.) vẫn hoạt động; chỉ b�
 1. Khởi động lại server: `npm run start:dev`
 2. Xác nhận log: `Firebase Admin SDK initialized`
 3. Đăng ký device token từ app native (xem `documents/apis/devices.md`)
-4. Trigger notification (ví dụ: vào/ra Top 100) hoặc đợi cron Saturday 9:00 (Asia/Ho_Chi_Minh) — chỉ guest có rank trên leaderboard
+4. Trigger notification (ví dụ: vào/ra Top 100) hoặc đợi cron theo `GAME_CONFIG.rankPushCron` (FRULOOP mặc định: 9:00 Thứ 7 VN) — chỉ game có field và guest có rank
 
 ---
 
@@ -346,7 +346,7 @@ npm run start:dev
 # Tìm log: "Firebase Admin SDK initialized"
 
 # Kiểm tra device token trên DB
-# Bảng GuestDeviceToken — status = ACTIVE
+# Bảng guest_players — cột fcmToken IS NOT NULL
 
 # Test gửi thủ công từ Firebase Console → Messaging → Send test message
 ```

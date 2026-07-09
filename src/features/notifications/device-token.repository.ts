@@ -129,9 +129,10 @@ export class DeviceTokenRepository {
     });
   }
 
-  async findActiveTokenBatch(cursor?: string, take = 500) {
+  async findActiveTokenBatch(gameId: GameId, cursor?: string, take = 500) {
     return this.prisma.guestPlayer.findMany({
       where: {
+        gameId,
         fcmToken: { not: null },
       },
       orderBy: { id: 'asc' },

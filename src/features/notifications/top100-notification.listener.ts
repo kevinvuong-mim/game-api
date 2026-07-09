@@ -2,8 +2,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Logger, Injectable } from '@nestjs/common';
 
 import { PlayerExitedTop100Event, PlayerEnteredTop100Event } from '@/domain/events';
-import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
 import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
+import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
 
 @Injectable()
 export class Top100NotificationListener {

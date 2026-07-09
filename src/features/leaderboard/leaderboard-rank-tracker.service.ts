@@ -1,51 +1,49 @@
 import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-import { RedisService } from '@/infra/redis/redis.service';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { type GameId, TOP_100_THRESHOLD } from '@/common/constants';
-import { ResultsRepository } from '@/features/results/results.repository';
 import { PlayerEnteredTop100Event, PlayerExitedTop100Event } from '@/domain/events';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
+
+export interface ScoreUpdateContext {
+  previousRank: number | null;
+  guestAtRank100BeforeGuestId: string | null;
+}
 
 @Injectable()
 export class LeaderboardRankTrackerService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly redisService: RedisService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly resultsRepository: ResultsRepository,
     private readonly rankResolver: LeaderboardRankResolverService,
   ) {}
 
-  async onScoreUpdated(gameId: GameId, guestId: string, newBestScore: number): Promise<void> {
-    const previousRank = await this.rankResolver.resolveRank(gameId, guestId);
-    const guestAtRank100Before =
-      (await this.redisService.getLeaderboardEntryAtRank(gameId, TOP_100_THRESHOLD)) ??
-      (await this.resultsRepository.getGuestAtRank(gameId, TOP_100_THRESHOLD));
-
-    await this.redisService.updateLeaderboardScore(gameId, guestId, newBestScore);
-
+  async onScoreUpdated(
+    gameId: GameId,
+    guestId: string,
+    context: ScoreUpdateContext,
+  ): Promise<void> {
     const currentRank = await this.rankResolver.resolveRank(gameId, guestId);
     if (!currentRank) {
       return;
     }
 
-    await this.handleSubmittingGuest(gameId, guestId, previousRank?.rank ?? null, currentRank);
-    await this.handleDisplacedGuest(gameId, guestId, guestAtRank100Before?.guestId ?? null);
+    await this.handleSubmittingGuest(gameId, guestId, context.previousRank, currentRank);
+    await this.handleDisplacedGuest(gameId, guestId, context.guestAtRank100BeforeGuestId);
   }
 
   async confirmTop100Entered(gameId: GameId, guestId: string, _rank: number): Promise<void> {
-    await this.markTop100State(gameId, guestId, true);
+    await this.markTop100EnterNotified(gameId, guestId, true);
   }
 
   async maybeNotifyTop100OnDeviceRegister(gameId: GameId, guestId: string): Promise<void> {
     const guest = await this.prisma.guestPlayer.findUnique({
       where: { gameId_id: { gameId, id: guestId } },
-      select: { inTop100: true },
+      select: { top100EnterNotified: true },
     });
 
-    if (guest?.inTop100) {
+    if (guest?.top100EnterNotified) {
       return;
     }
 
@@ -68,15 +66,14 @@ export class LeaderboardRankTrackerService {
   ): Promise<void> {
     const guest = await this.prisma.guestPlayer.findUnique({
       where: { gameId_id: { gameId, id: guestId } },
-      select: { inTop100: true },
+      select: { top100EnterNotified: true },
     });
 
-    const wasInTop100 =
-      guest?.inTop100 === true || (previousRank !== null && previousRank <= TOP_100_THRESHOLD);
     const isInTop100 = currentRank.rank <= TOP_100_THRESHOLD;
+    const rankCrossedIntoTop100 =
+      isInTop100 && (previousRank === null || previousRank > TOP_100_THRESHOLD);
 
-    if (!wasInTop100 && isInTop100) {
-      await this.markTop100State(gameId, guestId, true);
+    if (rankCrossedIntoTop100) {
       this.eventEmitter.emit(
         PlayerEnteredTop100Event.name,
         new PlayerEnteredTop100Event(gameId, guestId, currentRank.rank, currentRank.bestScore),
@@ -84,8 +81,11 @@ export class LeaderboardRankTrackerService {
       return;
     }
 
-    if (wasInTop100 && !isInTop100) {
-      await this.markTop100State(gameId, guestId, false);
+    const wasRankedInTop100 = previousRank !== null && previousRank <= TOP_100_THRESHOLD;
+    const wasNotifiedInTop100 = guest?.top100EnterNotified === true;
+
+    if ((wasRankedInTop100 || wasNotifiedInTop100) && !isInTop100) {
+      await this.markTop100EnterNotified(gameId, guestId, false);
       this.eventEmitter.emit(
         PlayerExitedTop100Event.name,
         new PlayerExitedTop100Event(gameId, guestId, currentRank.rank, currentRank.bestScore),
@@ -93,7 +93,9 @@ export class LeaderboardRankTrackerService {
       return;
     }
 
-    await this.markTop100State(gameId, guestId, isInTop100);
+    if (!isInTop100 && wasNotifiedInTop100) {
+      await this.markTop100EnterNotified(gameId, guestId, false);
+    }
   }
 
   private async handleDisplacedGuest(
@@ -119,11 +121,11 @@ export class LeaderboardRankTrackerService {
       },
     });
 
-    if (!guest?.inTop100) {
+    if (!guest?.top100EnterNotified) {
       return;
     }
 
-    await this.markTop100State(gameId, guestAtRank100BeforeId, false);
+    await this.markTop100EnterNotified(gameId, guestAtRank100BeforeId, false);
 
     this.eventEmitter.emit(
       PlayerExitedTop100Event.name,
@@ -136,7 +138,11 @@ export class LeaderboardRankTrackerService {
     );
   }
 
-  private async markTop100State(gameId: GameId, guestId: string, inTop100: boolean): Promise<void> {
+  private async markTop100EnterNotified(
+    gameId: GameId,
+    guestId: string,
+    top100EnterNotified: boolean,
+  ): Promise<void> {
     await this.prisma.guestPlayer.update({
       where: {
         gameId_id: {
@@ -144,7 +150,7 @@ export class LeaderboardRankTrackerService {
           id: guestId,
         },
       },
-      data: { inTop100 },
+      data: { top100EnterNotified },
     });
   }
 }

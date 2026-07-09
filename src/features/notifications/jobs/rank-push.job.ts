@@ -6,38 +6,39 @@ import {
   type GameId,
   NOTIFICATION_JOB,
   NOTIFICATION_QUEUE,
-  SATURDAY_RANK_BATCH_SIZE,
+  RANK_PUSH_BATCH_SIZE,
 } from '@/common/constants';
 import { DeviceTokenRepository } from '@/features/notifications/device-token.repository';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
 
-interface SaturdayRankBatchPayload {
+interface RankPushBatchPayload {
+  gameId: GameId;
   cursor?: string;
 }
 
 @Injectable()
-export class SaturdayRankCronService {
-  private readonly logger = new Logger(SaturdayRankCronService.name);
+export class RankPushCronService {
+  private readonly logger = new Logger(RankPushCronService.name);
 
   constructor(
-    @InjectQueue(NOTIFICATION_QUEUE.SATURDAY_RANK)
-    private readonly saturdayRankQueue: Queue,
+    @InjectQueue(NOTIFICATION_QUEUE.RANK_PUSH)
+    private readonly rankPushQueue: Queue,
   ) {}
 
-  async enqueueSaturdayBroadcast(): Promise<void> {
-    await this.saturdayRankQueue.add(NOTIFICATION_JOB.START_SATURDAY_BROADCAST, {});
-    this.logger.log('Saturday rank broadcast enqueued');
+  async enqueueRankPushBroadcast(gameId: GameId): Promise<void> {
+    await this.rankPushQueue.add(NOTIFICATION_JOB.START_RANK_PUSH_BROADCAST, { gameId });
+    this.logger.log(`Rank push broadcast enqueued for ${gameId}`);
   }
 }
 
-@Processor(NOTIFICATION_QUEUE.SATURDAY_RANK)
-export class SaturdayRankProcessor extends WorkerHost {
-  private readonly logger = new Logger(SaturdayRankProcessor.name);
+@Processor(NOTIFICATION_QUEUE.RANK_PUSH)
+export class RankPushProcessor extends WorkerHost {
+  private readonly logger = new Logger(RankPushProcessor.name);
 
   constructor(
-    @InjectQueue(NOTIFICATION_QUEUE.SATURDAY_RANK)
-    private readonly saturdayRankQueue: Queue,
+    @InjectQueue(NOTIFICATION_QUEUE.RANK_PUSH)
+    private readonly rankPushQueue: Queue,
     private readonly deviceTokenRepository: DeviceTokenRepository,
     private readonly rankResolver: LeaderboardRankResolverService,
     private readonly notificationDispatcher: NotificationDispatcherService,
@@ -45,24 +46,27 @@ export class SaturdayRankProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<SaturdayRankBatchPayload | Record<string, never>>): Promise<void> {
-    if (job.name === NOTIFICATION_JOB.START_SATURDAY_BROADCAST) {
-      await this.saturdayRankQueue.add(NOTIFICATION_JOB.SEND_SATURDAY_RANK_BATCH, {});
+  async process(job: Job<RankPushBatchPayload>): Promise<void> {
+    if (job.name === NOTIFICATION_JOB.START_RANK_PUSH_BROADCAST) {
+      await this.rankPushQueue.add(NOTIFICATION_JOB.SEND_RANK_PUSH_BATCH, {
+        gameId: job.data.gameId,
+      });
       return;
     }
 
-    if (job.name !== NOTIFICATION_JOB.SEND_SATURDAY_RANK_BATCH) {
+    if (job.name !== NOTIFICATION_JOB.SEND_RANK_PUSH_BATCH) {
       return;
     }
 
-    const cursor = job.data.cursor;
+    const { gameId, cursor } = job.data;
     const devices = await this.deviceTokenRepository.findActiveTokenBatch(
+      gameId,
       cursor,
-      SATURDAY_RANK_BATCH_SIZE,
+      RANK_PUSH_BATCH_SIZE,
     );
 
     if (devices.length === 0) {
-      this.logger.log('Saturday rank broadcast completed');
+      this.logger.log(`Rank push broadcast completed for ${gameId}`);
       return;
     }
 
@@ -72,7 +76,7 @@ export class SaturdayRankProcessor extends WorkerHost {
         continue;
       }
 
-      await this.notificationDispatcher.sendSaturdayRank(
+      await this.notificationDispatcher.sendRankPush(
         device.gameId as GameId,
         device.id,
         rankInfo.rank,
@@ -81,10 +85,11 @@ export class SaturdayRankProcessor extends WorkerHost {
     }
 
     const lastDevice = devices[devices.length - 1];
-    await this.saturdayRankQueue.add(NOTIFICATION_JOB.SEND_SATURDAY_RANK_BATCH, {
+    await this.rankPushQueue.add(NOTIFICATION_JOB.SEND_RANK_PUSH_BATCH, {
+      gameId,
       cursor: lastDevice.id,
     });
 
-    this.logger.log(`Saturday rank batch processed: ${devices.length} devices`);
+    this.logger.log(`Rank push batch processed for ${gameId}: ${devices.length} devices`);
   }
 }

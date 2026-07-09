@@ -20,7 +20,7 @@ CREATE TABLE "game_results" (
   "guestId" TEXT NOT NULL,
   "clientResultId" TEXT NOT NULL,
   "score" INTEGER NOT NULL,
-  "replayHash" TEXT NOT NULL,
+  "signature" TEXT NOT NULL,
   "metadata" JSONB,
   "playedAt" TIMESTAMP(3),
   CONSTRAINT "game_results_pkey" PRIMARY KEY ("id", "createdAt"),
@@ -78,7 +78,7 @@ INSERT INTO "game_results" (
   "guestId",
   "clientResultId",
   "score",
-  "replayHash",
+  "signature",
   "metadata",
   "playedAt"
 )
@@ -89,7 +89,7 @@ SELECT
   "guestId",
   "clientResultId",
   "score",
-  "replayHash",
+  "signature",
   "metadata",
   "playedAt"
 FROM "game_results_old";

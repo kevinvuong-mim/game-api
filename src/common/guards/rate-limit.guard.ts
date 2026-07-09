@@ -1,5 +1,6 @@
 import {
   HttpStatus,
+  Logger,
   Injectable,
   CanActivate,
   HttpException,
@@ -20,6 +21,8 @@ type RateLimitRequest = Request & { user?: AuthenticatedGuest };
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
+  private readonly logger = new Logger(RateLimitGuard.name);
+
   constructor(
     private readonly reflector: Reflector,
     private readonly redisService: RedisService,
@@ -47,11 +50,17 @@ export class RateLimitGuard implements CanActivate {
       throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
     }
 
-    const allowed = await this.redisService.consumeRateLimit(
-      `${options.keyPrefix}${keySuffix}`,
-      options.limit,
-      options.windowSeconds,
-    );
+    let allowed: boolean;
+    try {
+      allowed = await this.redisService.consumeRateLimit(
+        `${options.keyPrefix}${keySuffix}`,
+        options.limit,
+        options.windowSeconds,
+      );
+    } catch {
+      this.logger.warn(`Rate limit skipped — Redis unavailable (${options.keyPrefix}${keySuffix})`);
+      return true;
+    }
 
     if (!allowed) {
       throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);

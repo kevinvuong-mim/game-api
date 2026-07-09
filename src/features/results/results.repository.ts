@@ -6,13 +6,15 @@ import { PrismaService } from '@/infra/prisma/prisma.service';
 import type { SubmitResultDto } from '@/features/results/dto/submit-result.dto';
 
 export interface ValidatedResultItem extends SubmitResultDto {
-  replayHash: string;
+  signature: string;
 }
 
 export interface BatchSubmitResult {
   insertedCount: number;
   newBest: number | null;
   previousBest: number | null;
+  previousRank: number | null;
+  guestAtRank100BeforeGuestId: string | null;
 }
 
 @Injectable()
@@ -25,7 +27,13 @@ export class ResultsRepository {
     items: ValidatedResultItem[],
   ): Promise<BatchSubmitResult> {
     if (items.length === 0) {
-      return { insertedCount: 0, newBest: null, previousBest: null };
+      return {
+        insertedCount: 0,
+        newBest: null,
+        previousBest: null,
+        previousRank: null,
+        guestAtRank100BeforeGuestId: null,
+      };
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -54,7 +62,7 @@ export class ResultsRepository {
             gameId,
             guestId,
             score: item.score,
-            replayHash: item.replayHash,
+            signature: item.signature,
             clientResultId: item.clientResultId,
             metadata: item.metadata as Prisma.InputJsonValue | undefined,
             playedAt: item.playedAt ? new Date(item.playedAt) : undefined,
@@ -66,7 +74,13 @@ export class ResultsRepository {
       }
 
       if (insertedCount === 0) {
-        return { insertedCount: 0, newBest: null, previousBest: null };
+        return {
+          newBest: null,
+          insertedCount: 0,
+          previousBest: null,
+          previousRank: null,
+          guestAtRank100BeforeGuestId: null,
+        };
       }
 
       const previousRow = await tx.leaderboard.findUnique({
@@ -74,6 +88,20 @@ export class ResultsRepository {
         select: { bestScore: true },
       });
       const previousBest = previousRow?.bestScore ?? null;
+      const previousRank =
+        previousBest !== null
+          ? (await tx.leaderboard.count({
+              where: { gameId, bestScore: { gt: previousBest } },
+            })) + 1
+          : null;
+      const guestAtRank100 = await tx.leaderboard.findMany({
+        take: 1,
+        skip: 99,
+        where: { gameId },
+        select: { guestId: true },
+        orderBy: [{ bestScore: 'desc' }, { guestId: 'asc' }],
+      });
+      const guestAtRank100BeforeGuestId = guestAtRank100[0]?.guestId ?? null;
 
       const maxScore = Math.max(...insertedScores);
 
@@ -93,8 +121,10 @@ export class ResultsRepository {
       });
 
       return {
-        insertedCount,
         previousBest,
+        previousRank,
+        insertedCount,
+        guestAtRank100BeforeGuestId,
         newBest: row?.bestScore ?? maxScore,
       };
     });

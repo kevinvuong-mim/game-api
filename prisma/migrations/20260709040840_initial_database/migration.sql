@@ -16,7 +16,7 @@ CREATE TABLE "guest_players" (
     "fcmToken" TEXT,
     "devicePlatform" "DevicePlatform",
     "notificationLocale" "NotificationLocale",
-    "inTop100" BOOLEAN NOT NULL DEFAULT false,
+    "top100EnterNotified" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "guest_players_pkey" PRIMARY KEY ("id")
@@ -30,7 +30,7 @@ CREATE TABLE "game_results" (
     "guestId" TEXT NOT NULL,
     "clientResultId" TEXT NOT NULL,
     "score" INTEGER NOT NULL,
-    "replayHash" TEXT NOT NULL,
+    "signature" TEXT NOT NULL,
     "metadata" JSONB,
     "playedAt" TIMESTAMP(3),
 

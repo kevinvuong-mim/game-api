@@ -62,11 +62,13 @@ Nếu guest chưa từng register token: `404 Device token not found`.
 
 ### DELETE `/api/devices`
 
-Hủy đăng ký device:
+Hủy đăng ký device (chỉ clear token fields, **không** set Redis mute):
 
 - set `fcmToken = null`
 - set `devicePlatform = null`
 - set `notificationLocale = null`
+
+Client tắt push qua `PATCH /api/devices/preferences` trước/sau unregister.
 
 Response `data`:
 

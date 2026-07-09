@@ -38,7 +38,7 @@ model GuestPlayer {
   notificationLocale NotificationLocale?
 
   // Notification State
-  inTop100 Boolean @default(false)
+  top100EnterNotified Boolean @default(false)
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -64,8 +64,8 @@ model GameResult {
   clientResultId String
 
   // Score & Verification
-  score      Int
-  replayHash String
+  score     Int
+  signature String
 
   // Optional Metadata
   metadata Json?
