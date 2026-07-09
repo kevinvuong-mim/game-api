@@ -15,17 +15,16 @@ Database: PostgreSQL 16
 
 ### `guest_players`
 
-| Column                | Type                  | Notes                                                   |
-| --------------------- | --------------------- | ------------------------------------------------------- |
-| `id`                  | `TEXT`                | PK                                                      |
-| `gameId`              | `GameId`              | scope by game                                           |
-| `name`                | `TEXT?`               | display name                                            |
-| `authTokenHash`       | `TEXT`                | unique auth token hash                                  |
-| `fcmToken`            | `TEXT?`               | unique FCM token                                        |
-| `devicePlatform`      | `DevicePlatform?`     | IOS/ANDROID                                             |
-| `notificationLocale`  | `NotificationLocale?` | EN/VI                                                   |
-| `top100EnterNotified` | `BOOLEAN`             | cached: `true` chỉ sau FCM `top_100_entered` thành công |
-| `createdAt`           | `TIMESTAMP`           | creation timestamp                                      |
+| Column               | Type                  | Notes                  |
+| -------------------- | --------------------- | ---------------------- |
+| `id`                 | `TEXT`                | PK                     |
+| `gameId`             | `GameId`              | scope by game          |
+| `name`               | `TEXT?`               | display name           |
+| `authTokenHash`      | `TEXT`                | unique auth token hash |
+| `fcmToken`           | `TEXT?`               | unique FCM token       |
+| `devicePlatform`     | `DevicePlatform?`     | IOS/ANDROID            |
+| `notificationLocale` | `NotificationLocale?` | EN/VI                  |
+| `createdAt`          | `TIMESTAMP`           | creation timestamp     |
 
 Constraints:
 

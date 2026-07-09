@@ -37,9 +37,6 @@ model GuestPlayer {
   devicePlatform     DevicePlatform?
   notificationLocale NotificationLocale?
 
-  // Notification State
-  top100EnterNotified Boolean @default(false)
-
   // Timestamps
   createdAt DateTime @default(now())
 

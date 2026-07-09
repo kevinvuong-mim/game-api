@@ -13,9 +13,9 @@ import { DevicesController } from '@/features/notifications/devices.controller';
 import { DeviceTokenService } from '@/features/notifications/device-token.service';
 import { RankPushScheduler } from '@/features/notifications/jobs/rank-push.scheduler';
 import { DeviceTokenRepository } from '@/features/notifications/device-token.repository';
-import { Top100NotificationListener } from '@/features/notifications/top100-notification.listener';
 import { NotificationDeliveryService } from '@/features/notifications/notification-delivery.service';
 import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
+import { Top100ExitNotificationListener } from '@/features/notifications/top100-exit-notification.listener';
 
 @Module({
   providers: [
@@ -25,9 +25,9 @@ import { NotificationDispatcherService } from '@/features/notifications/notifica
     DeviceTokenService,
     RankPushCronService,
     DeviceTokenRepository,
-    Top100NotificationListener,
     NotificationDeliveryService,
     NotificationDispatcherService,
+    Top100ExitNotificationListener,
   ],
   controllers: [DevicesController],
   imports: [

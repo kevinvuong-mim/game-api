@@ -7,16 +7,6 @@ import { NotificationDeliveryService } from '@/features/notifications/notificati
 export class NotificationDispatcherService {
   constructor(private readonly notificationDeliveryService: NotificationDeliveryService) {}
 
-  async sendTop100Entered(gameId: GameId, guestId: string, rank: number): Promise<boolean> {
-    return this.notificationDeliveryService.deliver({
-      gameId,
-      guestId,
-      params: { rank },
-      route: NOTIFICATION_ROUTES.LEADERBOARD,
-      type: NOTIFICATION_TYPES.TOP_100_ENTERED,
-    });
-  }
-
   async sendTop100Exited(gameId: GameId, guestId: string, rank: number): Promise<boolean> {
     return this.notificationDeliveryService.deliver({
       gameId,
@@ -38,8 +28,8 @@ export class NotificationDispatcherService {
       gameId,
       guestId,
       params: { rank },
-      route: NOTIFICATION_ROUTES.LEADERBOARD,
       type: NOTIFICATION_TYPES.RANK_PUSH,
+      route: NOTIFICATION_ROUTES.LEADERBOARD,
     });
   }
 }

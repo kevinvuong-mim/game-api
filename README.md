@@ -19,7 +19,6 @@ Players are identified by anonymous guest tokens. The server handles score stora
 | Validation | class-validator, class-transformer                      |
 | Security   | helmet, compression                                     |
 | Scheduler  | @nestjs/schedule                                        |
-| Events     | @nestjs/event-emitter                                   |
 
 ## Quick Start
 
@@ -122,14 +121,12 @@ game-api/
 │   │   ├── guest/                 # Guest init + name
 │   │   ├── results/               # Result submission + dedup
 │   │   │   └── results-data.module.ts  # Shared ResultsRepository
-│   │   ├── leaderboard/           # Leaderboard query + rank tracker
-│   │   └── notifications/         # FCM inline + Saturday BullMQ batch
+│   │   ├── leaderboard/           # Leaderboard query + rank resolver
+│   │   └── notifications/         # FCM + Saturday BullMQ batch
 │   ├── infra/
 │   │   ├── prisma/
 │   │   ├── redis/
 │   │   └── maintenance/           # Partition cron job
-│   └── domain/
-│       └── events/                # Top 100 domain events
 ├── prisma/
 │   ├── schema.prisma
 │   └── migrations/
@@ -184,8 +181,9 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 - Device fields are stored on `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`)
 - `POST /api/devices` — client registers FCM token after guest init
-- **Top 100**: Rank tracker events → `NotificationDeliveryService` gửi FCM **inline** (`top_100_entered` / `top_100_exited`)
+- **Top 100 exit**: Rank tracker events → FCM inline (`top_100_exited`) khi player rời Top 100
 - **Scheduled rank push**: Cron per-game `GAME_CONFIG.rankPushCron` → BullMQ batch → FCM inline (`rank_push`); chỉ guest có token và có rank
+- **Rank sau submit**: `POST /api/results` trả `rank`, `bestScore` khi guest có entry trên leaderboard
 - FCM payload `data`: `{ type, route }` — client dùng in-app navigation, không phải deeplink URL
 - Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động
 

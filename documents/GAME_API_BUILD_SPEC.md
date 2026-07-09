@@ -15,7 +15,7 @@ Server đảm nhiệm:
 - Lưu điểm số.
 - Chống gian lận bằng HMAC (tập trung ở lớp chữ ký kết quả chơi, không phải xác thực người dùng).
 - Cung cấp leaderboard hiệu năng cao (hỗ trợ nhiều game độc lập).
-- Push notification (FCM): Top 100, scheduled rank push (`rank_push` via `rankPushCron`).
+- Push notification (FCM): scheduled rank push (`rank_push` via `rankPushCron`). Rank sau submit trả trong `POST /api/results`.
 - Danh sách game được khai báo trong source code (type-safe, không cần bảng games).
 
 ## Triết lý
@@ -35,7 +35,7 @@ Server đảm nhiệm:
 - Redis 8 (ioredis)
 - `@nestjs/schedule`
 - `@nestjs/bullmq` + `bullmq` (scheduled rank push batch — queue `rank-push-notification`)
-- `@nestjs/event-emitter` (Top 100 notification events)
+- BullMQ (`rank-push-notification` — scheduled rank push)
 - `firebase-admin` (FCM push — optional, graceful disable khi thiếu env)
 - `@nestjs/config`
 - `helmet`, `compression`
@@ -175,14 +175,11 @@ src/
       device-token.repository.ts
       notification-dispatcher.service.ts
       notification-delivery.service.ts
-      top100-notification.listener.ts
       jobs/
         rank-push.job.ts
         rank-push.scheduler.ts
       dto/
 
-  domain/
-    events/
 
   infra/
     prisma/
@@ -287,8 +284,6 @@ model GuestPlayer {
   devicePlatform     DevicePlatform?
   notificationLocale NotificationLocale?
 
-  // Notification State — true chỉ sau FCM top_100_entered thành công
-  top100EnterNotified Boolean @default(false)
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -472,7 +467,7 @@ const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || '
 2. Verify HMAC từng item (skip invalid, không fail cả batch)
 3. Dedup + insert qua advisory lock (Section 5)
 4. Upsert `leaderboards` với `GREATEST(bestScore, newScore)`
-5. Top 100 detection (snapshot rank trước upsert) → domain events → FCM inline
+5. Resolve rank → trả `rank`, `bestScore` trong response khi guest có entry leaderboard
 
 Response (flat body, không bọc envelope):
 
@@ -524,26 +519,19 @@ Chi tiết: `documents/apis/devices.md`.
 
 ### Push notification types
 
-| `type`            | Trigger                        | FCM `data.route` |
-| ----------------- | ------------------------------ | ---------------- |
-| `top_100_entered` | Vào Top 100 sau submit score   | `Leaderboard`    |
-| `top_100_exited`  | Rời Top 100                    | `Leaderboard`    |
-| `rank_push`       | Cron per-game (`rankPushCron`) | `Leaderboard`    |
+| `type`      | Trigger                        | FCM `data.route` |
+| ----------- | ------------------------------ | ---------------- |
+| `rank_push` | Cron per-game (`rankPushCron`) | `Leaderboard`    |
+
+Rank sau submit score trả trong `POST /api/results` (`rank`, `bestScore`).
 
 ---
 
 # 7. Push Notifications
 
-Kiến trúc: **không DB outbox**. Top 100 gửi FCM inline; scheduled rank push (`rankPushCron`) batch qua BullMQ.
+Kiến trúc: **không DB outbox**. Scheduled rank push (`rankPushCron`) batch qua BullMQ.
 
 ```text
-Top 100 (event)
-  → Top100NotificationListener
-  → NotificationDispatcherService
-  → NotificationDeliveryService.deliver()  // returns result.success
-  → FcmService.sendToToken()
-  → on enter success: confirmTop100Entered() → top100EnterNotified = true
-
 Scheduled rank cron (per game có rankPushCron)
   → RankPushScheduler (đăng ký cron động từ GAME_CONFIG)
   → BullMQ rank-push-notification (batch 500)
@@ -557,12 +545,6 @@ Scheduled rank cron (per game có rankPushCron)
 1. Guest không mute (`notification:muted:{gameId}:{guestId}` không tồn tại trên Redis)
 2. Guest có `fcmToken` trong `guest_players`
 3. Scheduled rank push: game có `rankPushCron` trong `GAME_CONFIG` và guest có rank trên leaderboard
-
-## Top 100 state (`top100EnterNotified`)
-
-- Vào Top 100: emit event trước; `top100EnterNotified = true` chỉ sau FCM `top_100_entered` thành công.
-- Rời Top 100: `top100EnterNotified = false` trước khi emit exit event.
-- Device register khi đang trong Top 100 nhưng chưa nhận push: `maybeNotifyTop100OnDeviceRegister()` retry nếu `top100EnterNotified` vẫn `false`.
 
 ## Invalid token
 
@@ -761,19 +743,19 @@ Production nên hạn chế origin qua reverse proxy.
 
 # 21. Đồng bộ với game-starter-kit (frontend)
 
-| Điểm đồng bộ        | Backend                                                                                                        | Frontend (game-starter-kit)                                                                                                                                                                          |
-| ------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GameId              | `GameId` enum trong Prisma + `GAME_CONFIG`                                                                     | `VITE_GAME_ID`                                                                                                                                                                                       |
-| replaySecret        | `GAME_CONFIG[gameId].replaySecret`                                                                             | `VITE_REPLAY_SECRET`                                                                                                                                                                                 |
-| HMAC payload        | `${gameId}\|${guestId}\|${clientResultId}\|${score}\|${playedAt\|\|''}`                                        | Idem (`game-sync` module)                                                                                                                                                                            |
-| API base URL        | Prefix `/api`, PORT=3000                                                                                       | `VITE_APP_ENV` → map trong `src/platform/core/config/index.ts` (`dev`: `http://localhost:3000/api`, `staging`: `https://staging-api.studio.games/api`, `production`: `https://api.studio.games/api`) |
-| Response envelope   | `{ success, statusCode, message, data, path, timestamp }`                                                      | `ApiClient` envelope                                                                                                                                                                                 |
-| Auth header         | `Authorization: Bearer <secretToken>`                                                                          | `ApiClient.setAuthToken(secretToken)`                                                                                                                                                                |
-| Token persistence   | Không TTL                                                                                                      | Capacitor Preferences `gsk:guest`                                                                                                                                                                    |
-| FCM device          | `POST/PATCH/DELETE /api/devices`, `PATCH /api/devices/preferences`                                             | `notifications` module                                                                                                                                                                               |
-| Device API response | `{ guestId }` (register/update)                                                                                | Không dùng `deviceId`                                                                                                                                                                                |
-| Push payload        | FCM `data: { type, route }` — `type`: `top_100_entered`, `top_100_exited`, `rank_push`; `route`: `Leaderboard` | In-app navigation + foreground toast; local daily reward chỉ dùng `route: DailyReward`                                                                                                               |
-| Scheduled rank push | `GAME_CONFIG.rankPushCron` per-game (optional)                                                                 | Client handle `rank_push` → Leaderboard                                                                                                                                                              |
-| Batch limits        | 1–50 items per request                                                                                         | `MAX_BATCH_SIZE = 50`                                                                                                                                                                                |
-| playedAt format     | ISO8601 strict                                                                                                 | ISO8601 string                                                                                                                                                                                       |
-| metadata limits     | max 10 keys, 2048 bytes                                                                                        | Documented trong game-starter-kit                                                                                                                                                                    |
+| Điểm đồng bộ        | Backend                                                                   | Frontend (game-starter-kit)                                                                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GameId              | `GameId` enum trong Prisma + `GAME_CONFIG`                                | `VITE_GAME_ID`                                                                                                                                                                                       |
+| replaySecret        | `GAME_CONFIG[gameId].replaySecret`                                        | `VITE_REPLAY_SECRET`                                                                                                                                                                                 |
+| HMAC payload        | `${gameId}\|${guestId}\|${clientResultId}\|${score}\|${playedAt\|\|''}`   | Idem (`game-sync` module)                                                                                                                                                                            |
+| API base URL        | Prefix `/api`, PORT=3000                                                  | `VITE_APP_ENV` → map trong `src/platform/core/config/index.ts` (`dev`: `http://localhost:3000/api`, `staging`: `https://staging-api.studio.games/api`, `production`: `https://api.studio.games/api`) |
+| Response envelope   | `{ success, statusCode, message, data, path, timestamp }`                 | `ApiClient` envelope                                                                                                                                                                                 |
+| Auth header         | `Authorization: Bearer <secretToken>`                                     | `ApiClient.setAuthToken(secretToken)`                                                                                                                                                                |
+| Token persistence   | Không TTL                                                                 | Capacitor Preferences `gsk:guest`                                                                                                                                                                    |
+| FCM device          | `POST/PATCH/DELETE /api/devices`, `PATCH /api/devices/preferences`        | `notifications` module                                                                                                                                                                               |
+| Device API response | `{ guestId }` (register/update)                                           | Không dùng `deviceId`                                                                                                                                                                                |
+| Push payload        | FCM `data: { type, route }` — `type`: `rank_push`; `route`: `Leaderboard` | In-app navigation + foreground toast; local daily reward chỉ dùng `route: DailyReward`                                                                                                               |
+| Scheduled rank push | `GAME_CONFIG.rankPushCron` per-game (optional)                            | Client handle `rank_push` → Leaderboard                                                                                                                                                              |
+| Batch limits        | 1–50 items per request                                                    | `MAX_BATCH_SIZE = 50`                                                                                                                                                                                |
+| playedAt format     | ISO8601 strict                                                            | ISO8601 string                                                                                                                                                                                       |
+| metadata limits     | max 10 keys, 2048 bytes                                                   | Documented trong game-starter-kit                                                                                                                                                                    |

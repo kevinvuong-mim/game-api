@@ -84,10 +84,9 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
    - Check duplicate → skip nếu `clientResultId` đã tồn tại.
    - Insert vào `game_results` nếu chưa có.
 6. **Update leaderboard** (cùng transaction với insert):
-   - Snapshot `previousRank` và guest tại rank 100 **trước** upsert.
    - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
-7. **Top 100 notification** (sau transaction, khi có best score mới): `LeaderboardRankTrackerService` dùng snapshot + rank hiện tại, emit `PlayerEnteredTop100Event` / `PlayerExitedTop100Event` → FCM inline (xem [devices.md](./devices.md)).
-8. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`.
+7. **Resolve rank**: Trả `rank` và `bestScore` trong response khi guest có entry trên leaderboard.
+8. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`, `rank?`, `bestScore?`.
 
 ---
 
@@ -102,7 +101,9 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
   "success": true,
   "message": "Results submitted",
   "insertedCount": 2,
-  "rejectedCount": 0
+  "rejectedCount": 0,
+  "rank": 42,
+  "bestScore": 1500
 }
 ```
 
@@ -115,6 +116,8 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 | rejected      | array?  | Chi tiết item bị từ chối (`clientResultId`, `reason`) — chỉ có khi `rejectedCount > 0` |
 | success       | boolean | Luôn `true` khi request thành công                                                     |
 | message       | string  | `"Results submitted"`                                                                  |
+| rank          | number? | Thứ hạng hiện tại trên leaderboard (khi guest có entry)                                |
+| bestScore     | number? | Best score hiện tại trên leaderboard (khi guest có entry)                              |
 
 **Note**: `insertedCount` có thể là `0` nếu tất cả items đều duplicate hoặc signature invalid — vẫn trả HTTP 201. Kiểm tra `rejectedCount` để biết số item bị từ chối do chữ ký sai.
 
@@ -381,7 +384,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 - **POST /api/guest/init**: Khởi tạo guest và lấy Bearer token
 - **PATCH /api/guest/name**: Đặt tên hiển thị trên leaderboard
 - **GET /api/leaderboards**: Xem bảng xếp hạng sau khi submit kết quả
-- **POST /api/devices**: Đăng ký FCM token để nhận push (Top 100, scheduled rank push)
+- **POST /api/devices**: Đăng ký FCM token để nhận scheduled rank push
 - **GET /api/health**: Kiểm tra server và dependencies
 
 ---
@@ -392,7 +395,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 - Response envelope qua `ResponseInterceptor` (các endpoint khác). **`POST /results` trả flat body** vì service payload đã có `success`.
 - Dedup dùng advisory lock, **không** dùng `ON CONFLICT` — bảng `game_results` partition theo `createdAt`.
 - Leaderboard upsert: chỉ update khi `newScore > currentBestScore`.
-- Top 100 push: `top100EnterNotified` trên `guest_players` — chỉ set `true` sau FCM `top_100_entered` thành công (`confirmTop100Entered`). Rank resolve qua PostgreSQL `leaderboards`. `LeaderboardRankTrackerService` snapshot rank trước upsert để xử lý guest bị đẩy khỏi Top 100.
+- Response có thể gồm `rank`, `bestScore` khi guest đã có entry trên leaderboard.
 - `playedAt` optional — nếu không gửi, payload HMAC dùng chuỗi rỗng cho phần playedAt.
 - Rate limit: `20/60s` per guest.
 - Batch size: 1–50 items per request.

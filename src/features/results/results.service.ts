@@ -5,6 +5,7 @@ import { getGameConfig, validateGameId } from '@/common/constants';
 import { ResultsRepository } from '@/features/results/results.repository';
 import { buildReplayPayload, verifyReplaySignature } from '@/common/utils';
 import { SubmitResultBatchDto } from '@/features/results/dto/submit-result-batch.dto';
+import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
 
 export interface RejectedResultItem {
@@ -16,7 +17,8 @@ export interface RejectedResultItem {
 export class ResultsService {
   constructor(
     private readonly resultsRepository: ResultsRepository,
-    private readonly leaderboardRankTracker: LeaderboardRankTrackerService,
+    private readonly rankResolver: LeaderboardRankResolverService,
+    private readonly rankTracker: LeaderboardRankTrackerService,
   ) {}
 
   async submitResults(guest: AuthenticatedGuest, dto: SubmitResultBatchDto) {
@@ -60,11 +62,13 @@ export class ResultsService {
       batchResult.insertedCount > 0 &&
       batchResult.newBest > (batchResult.previousBest ?? -Infinity)
     ) {
-      await this.leaderboardRankTracker.onScoreUpdated(gameId, guest.guestId, {
+      await this.rankTracker.onScoreUpdated(gameId, guest.guestId, {
         previousRank: batchResult.previousRank,
         guestAtRank100BeforeGuestId: batchResult.guestAtRank100BeforeGuestId,
       });
     }
+
+    const rankInfo = await this.rankResolver.resolveRank(gameId, guest.guestId);
 
     return {
       success: true,
@@ -72,6 +76,12 @@ export class ResultsService {
       rejectedCount: rejected.length,
       insertedCount: batchResult.insertedCount,
       rejected: rejected.length > 0 ? rejected : undefined,
+      ...(rankInfo
+        ? {
+            rank: rankInfo.rank,
+            bestScore: rankInfo.bestScore,
+          }
+        : {}),
     };
   }
 }

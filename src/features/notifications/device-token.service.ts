@@ -5,14 +5,11 @@ import type { AuthenticatedGuest } from '@/common/decorators';
 import { UpdateDeviceDto } from '@/features/notifications/dto/update-device.dto';
 import { RegisterDeviceDto } from '@/features/notifications/dto/register-device.dto';
 import { DeviceTokenRepository } from '@/features/notifications/device-token.repository';
-import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
-
 @Injectable()
 export class DeviceTokenService {
   constructor(
     private readonly redisService: RedisService,
     private readonly deviceTokenRepository: DeviceTokenRepository,
-    private readonly rankTracker: LeaderboardRankTrackerService,
   ) {}
 
   async registerDevice(guest: AuthenticatedGuest, dto: RegisterDeviceDto) {
@@ -25,8 +22,6 @@ export class DeviceTokenService {
       guestId: guest.guestId,
       platform: dto.platform,
     });
-
-    await this.rankTracker.maybeNotifyTop100OnDeviceRegister(guest.gameId, guest.guestId);
 
     return {
       guestId: device.id,

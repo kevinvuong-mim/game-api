@@ -1,7 +1,7 @@
-export const TOP_100_THRESHOLD = 100;
-
 /** Must match Android notification channel created by game-starter-kit client. */
 export const FCM_ANDROID_CHANNEL_ID = 'game_alerts';
+
+export const TOP_100_THRESHOLD = 100;
 
 export const NOTIFICATION_CRON = {
   TIMEZONE: 'Asia/Ho_Chi_Minh',
@@ -27,7 +27,6 @@ export type NotificationRoute = (typeof NOTIFICATION_ROUTES)[keyof typeof NOTIFI
 export const NOTIFICATION_TYPES = {
   RANK_PUSH: 'rank_push',
   TOP_100_EXITED: 'top_100_exited',
-  TOP_100_ENTERED: 'top_100_entered',
 } as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
@@ -43,16 +42,6 @@ export const NOTIFICATION_I18N: Record<
   string,
   Record<NotificationLocaleCode, LocalizedNotificationContent>
 > = {
-  [NOTIFICATION_TYPES.TOP_100_ENTERED]: {
-    en: {
-      title: 'Congratulations!',
-      body: 'You made it to Top 100!',
-    },
-    vi: {
-      title: 'Chúc mừng!',
-      body: 'Bạn đã lọt Top 100.',
-    },
-  },
   [NOTIFICATION_TYPES.TOP_100_EXITED]: {
     en: {
       title: 'Top 100',

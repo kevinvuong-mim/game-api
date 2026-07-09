@@ -13,7 +13,6 @@ Game API là backend **Leaderboard-as-a-Service** cho game casual/hyper-casual. 
 | Queue              | BullMQ (`@nestjs/bullmq`)                   |
 | Push               | firebase-admin (FCM, optional)              |
 | Scheduler          | `@nestjs/schedule`                          |
-| Events             | `@nestjs/event-emitter`                     |
 
 Global prefix: `/api`. Path alias: `@/*` → `src/*`.
 
@@ -113,11 +112,9 @@ flowchart LR
 
 Ba loại push:
 
-| Type              | Trigger                                         |
-| ----------------- | ----------------------------------------------- |
-| `top_100_entered` | Guest vào Top 100 sau submit score (FCM inline) |
-| `top_100_exited`  | Guest rời Top 100 (kể cả bị đẩy)                |
-| `rank_push`       | Cron per-game `GAME_CONFIG.rankPushCron`        |
+| Type        | Trigger                                  |
+| ----------- | ---------------------------------------- |
+| `rank_push` | Cron per-game `GAME_CONFIG.rankPushCron` |
 
 Chi tiết: [notifications.md](./notifications.md), [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).
 

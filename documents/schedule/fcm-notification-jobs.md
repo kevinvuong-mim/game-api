@@ -19,7 +19,7 @@ Ví dụ FRULOOP: `rankPushCron: '0 9 * * 6'` (9:00 Thứ 7).
 | ------------------------ | ------------------- |
 | `rank-push-notification` | `RankPushProcessor` |
 
-Top 100 push **không** dùng BullMQ — gửi FCM inline qua `NotificationDeliveryService` (`deliver()` trả `result.success`; enter chỉ set `top100EnterNotified` sau push thành công).
+Top 100 push **không** còn dùng — rank sau submit trả trong `POST /api/results`.
 
 ## Scheduled rank push flow (`rankPushCron`)
 
