@@ -2,48 +2,33 @@ import { Cron } from '@nestjs/schedule';
 import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 
 import { PARTITION_CRON } from '@/common/constants';
-import { PrismaService } from '@/infra/prisma/prisma.service';
+import { PartitionService } from '@/infra/maintenance/partition.service';
 
 @Injectable()
 export class MaintenanceService implements OnModuleInit {
   private readonly logger = new Logger(MaintenanceService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly partitionService: PartitionService) {}
 
   onModuleInit() {
-    void this.ensurePartitions();
+    void this.partitionService.ensurePartitionsForUpcomingPeriod();
   }
 
+  /** Runs at 23:59 on the 28th–31st; only acts on the last day of the month. */
   @Cron(PARTITION_CRON)
-  async ensurePartitions() {
-    const currentYear = new Date().getFullYear();
-    await this.ensurePartitionForYear(currentYear);
-    await this.ensurePartitionForYear(currentYear + 1);
-  }
-
-  private async ensurePartitionForYear(year: number) {
-    const tableName = `game_results_${year}`;
-
-    const exists = await this.prisma.$queryRaw<Array<{ exists: boolean }>>`
-      SELECT EXISTS (
-        SELECT 1 FROM pg_class WHERE relname = ${tableName}
-      ) AS exists
-    `;
-
-    if (exists[0]?.exists) {
-      this.logger.log(`Partition ${tableName} already exists`);
+  async ensurePartitionsBeforeMonthBoundary() {
+    const now = new Date();
+    if (!this.isLastDayOfMonth(now)) {
       return;
     }
 
-    const from = `${year}-01-01`;
-    const to = `${year + 1}-01-01`;
+    this.logger.log('Pre-creating game_results partitions before month boundary');
+    await this.partitionService.ensurePartitionsForUpcomingPeriod(now);
+  }
 
-    await this.prisma.$executeRawUnsafe(`
-      CREATE TABLE ${tableName}
-      PARTITION OF game_results
-      FOR VALUES FROM ('${from}') TO ('${to}')
-    `);
-
-    this.logger.log(`Created partition ${tableName}`);
+  private isLastDayOfMonth(date: Date): boolean {
+    const tomorrow = new Date(date);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.getDate() === 1;
   }
 }

@@ -3,6 +3,7 @@ import { GameId, Prisma } from '@prisma/client';
 
 import { dedupLockKey } from '@/common/utils';
 import { PrismaService } from '@/infra/prisma/prisma.service';
+import { PartitionService } from '@/infra/maintenance/partition.service';
 import type { SubmitResultDto } from '@/features/results/dto/submit-result.dto';
 
 export interface ValidatedResultItem extends SubmitResultDto {
@@ -19,7 +20,10 @@ export interface BatchSubmitResult {
 
 @Injectable()
 export class ResultsRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly partitionService: PartitionService,
+  ) {}
 
   async submitValidatedBatch(
     gameId: GameId,
@@ -37,6 +41,8 @@ export class ResultsRepository {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      await this.partitionService.ensurePartitionForInsertDate(new Date(), tx);
+
       let insertedCount = 0;
       const insertedScores: number[] = [];
 

@@ -4,7 +4,7 @@ Tài liệu này mô tả chi tiết cron job được triển khai trong file `
 
 ## 1. ensurePartitions
 
-**Schedule:** Ngày 1 mỗi tháng lúc 3:00 sáng (`0 3 1 * *`)
+**Schedule:** 23:59 ngày cuối tháng (`59 23 28-31 * *`, chỉ chạy khi ngày hôm sau là mùng 1)
 
 **Purpose:**
 
@@ -34,7 +34,8 @@ Tài liệu này mô tả chi tiết cron job được triển khai trong file `
 - `game_results`: bảng cha, partition theo `RANGE (createdAt)`.
 - `game_results_<YYYY>`: partition con theo từng năm dương lịch.
 - `createdAt`: partition key — mỗi row được route vào partition theo năm của timestamp này.
-- `PARTITION_CRON`: hằng số cron `0 3 1 * *` trong `src/common/constants/runtime.constants.ts`.
+- `PARTITION_CRON`: hằng số cron `59 23 28-31 * *` trong `src/common/constants/runtime.constants.ts`.
+- `ResultsRepository` gọi `PartitionService.ensurePartitionForInsertDate()` trong transaction trước khi insert — lớp bảo vệ cuối nếu cron bị lỡ.
 
 **General Notes:**
 
