@@ -40,8 +40,8 @@ export class DeviceTokenRepository {
         },
         data: {
           fcmToken: input.token,
-          notificationLocale: input.locale,
           devicePlatform: input.platform,
+          notificationLocale: input.locale,
         },
       });
     });
@@ -131,19 +131,11 @@ export class DeviceTokenRepository {
 
   async findActiveTokenBatch(gameId: GameId, cursor?: string, take = 500) {
     return this.prisma.guestPlayer.findMany({
-      where: {
-        gameId,
-        fcmToken: { not: null },
-      },
-      orderBy: { id: 'asc' },
       take,
+      orderBy: { id: 'asc' },
+      where: { gameId, fcmToken: { not: null } },
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       select: { id: true, gameId: true, fcmToken: true, notificationLocale: true },
-      ...(cursor
-        ? {
-            skip: 1,
-            cursor: { id: cursor },
-          }
-        : {}),
     });
   }
 }
