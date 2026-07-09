@@ -1,6 +1,6 @@
 import { CronJob } from 'cron';
-import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
+import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 
 import {
   type GameId,

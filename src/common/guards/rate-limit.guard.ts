@@ -1,6 +1,6 @@
 import {
-  HttpStatus,
   Logger,
+  HttpStatus,
   Injectable,
   CanActivate,
   HttpException,
