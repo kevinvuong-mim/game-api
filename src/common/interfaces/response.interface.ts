@@ -10,10 +10,7 @@ interface ErrorResponse {
   /** Health check degraded payload (503 only) */
   status?: string;
   uptime?: number;
-  services?: {
-    db: string;
-    redis: string;
-  };
+  services?: { db: string; redis: string };
 }
 
 interface SuccessResponse<T = unknown> {

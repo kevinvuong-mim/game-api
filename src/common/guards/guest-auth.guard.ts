@@ -1,4 +1,3 @@
-import { Request } from 'express';
 import {
   Logger,
   Injectable,
@@ -6,6 +5,7 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Request } from 'express';
 
 import { hashSecretToken } from '@/common/utils';
 import { validateGameId } from '@/common/constants';
