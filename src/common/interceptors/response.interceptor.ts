@@ -15,10 +15,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, SuccessRespons
 
     return next.handle().pipe(
       map((data) => {
-        // If data is already formatted (has success field), return as is
-        if (data && typeof data === 'object' && 'success' in data) return data;
-
-        // Transform response to standard format
         return {
           success: true,
           path: request.url,

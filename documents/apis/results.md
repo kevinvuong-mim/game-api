@@ -86,7 +86,7 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 6. **Update leaderboard** (cùng transaction với insert):
    - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
 7. **Resolve rank**: Trả `rank` và `bestScore` trong response khi guest có entry trên leaderboard.
-8. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `success`, `message`, `rank?`, `bestScore?`.
+8. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `rank?`, `bestScore?` trong `data` envelope.
 
 ---
 
@@ -94,28 +94,31 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 ### Success Response (201 Created)
 
-`POST /results` trả **flat JSON** (không bọc envelope) vì payload service đã có field `success`:
+Response envelope qua `ResponseInterceptor`:
 
 ```json
 {
   "success": true,
-  "message": "Results submitted",
-  "insertedCount": 2,
-  "rejectedCount": 0,
-  "rank": 42,
-  "bestScore": 1500
+  "statusCode": 201,
+  "message": "Resource created successfully",
+  "path": "/api/results",
+  "timestamp": "2026-07-09T12:00:00.000Z",
+  "data": {
+    "insertedCount": 2,
+    "rejectedCount": 0,
+    "rank": 42,
+    "bestScore": 1500
+  }
 }
 ```
 
-### Response fields
+### Response fields (`data`)
 
 | Field         | Type    | Description                                                                            |
 | ------------- | ------- | -------------------------------------------------------------------------------------- |
 | insertedCount | number  | Số item mới được insert (bỏ qua duplicate)                                             |
 | rejectedCount | number  | Số item bị từ chối do signature không hợp lệ                                           |
 | rejected      | array?  | Chi tiết item bị từ chối (`clientResultId`, `reason`) — chỉ có khi `rejectedCount > 0` |
-| success       | boolean | Luôn `true` khi request thành công                                                     |
-| message       | string  | `"Results submitted"`                                                                  |
 | rank          | number? | Thứ hạng hiện tại trên leaderboard (khi guest có entry)                                |
 | bestScore     | number? | Best score hiện tại trên leaderboard (khi guest có entry)                              |
 
@@ -233,9 +236,14 @@ curl -X POST http://localhost:3000/api/results \
 ```json
 {
   "success": true,
-  "message": "Results submitted",
-  "insertedCount": 1,
-  "rejectedCount": 0
+  "statusCode": 201,
+  "message": "Resource created successfully",
+  "path": "/api/results",
+  "timestamp": "2026-07-09T12:00:00.000Z",
+  "data": {
+    "insertedCount": 1,
+    "rejectedCount": 0
+  }
 }
 ```
 
@@ -265,9 +273,14 @@ curl -X POST http://localhost:3000/api/results \
 ```json
 {
   "success": true,
-  "message": "Results submitted",
-  "insertedCount": 2,
-  "rejectedCount": 0
+  "statusCode": 201,
+  "message": "Resource created successfully",
+  "path": "/api/results",
+  "timestamp": "2026-07-09T12:00:00.000Z",
+  "data": {
+    "insertedCount": 2,
+    "rejectedCount": 0
+  }
 }
 ```
 
@@ -300,9 +313,14 @@ curl -X POST http://localhost:3000/api/results \
 ```json
 {
   "success": true,
-  "message": "Results submitted",
-  "insertedCount": 0,
-  "rejectedCount": 0
+  "statusCode": 201,
+  "message": "Resource created successfully",
+  "path": "/api/results",
+  "timestamp": "2026-07-09T12:00:00.000Z",
+  "data": {
+    "insertedCount": 0,
+    "rejectedCount": 0
+  }
 }
 ```
 
@@ -392,7 +410,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 ## Notes
 
 - Global prefix `/api` (cấu hình `main.ts`).
-- Response envelope qua `ResponseInterceptor` (các endpoint khác). **`POST /results` trả flat body** vì service payload đã có `success`.
+- Response envelope qua `ResponseInterceptor` (tất cả endpoint thành công).
 - Dedup dùng advisory lock, **không** dùng `ON CONFLICT` — bảng `game_results` partition theo `createdAt`.
 - Leaderboard upsert: chỉ update khi `newScore > currentBestScore`.
 - Response có thể gồm `rank`, `bestScore` khi guest đã có entry trên leaderboard.

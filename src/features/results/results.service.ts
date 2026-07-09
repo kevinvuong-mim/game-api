@@ -71,17 +71,10 @@ export class ResultsService {
     const rankInfo = await this.rankResolver.resolveRank(gameId, guest.guestId);
 
     return {
-      success: true,
-      message: 'Results submitted',
       rejectedCount: rejected.length,
       insertedCount: batchResult.insertedCount,
       rejected: rejected.length > 0 ? rejected : undefined,
-      ...(rankInfo
-        ? {
-            rank: rankInfo.rank,
-            bestScore: rankInfo.bestScore,
-          }
-        : {}),
+      ...(rankInfo ? { rank: rankInfo.rank, bestScore: rankInfo.bestScore } : {}),
     };
   }
 }

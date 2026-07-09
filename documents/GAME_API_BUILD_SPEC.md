@@ -415,7 +415,7 @@ LIMIT 1;
 
 > Chi tiết request/response: `documents/apis/`.
 
-Tất cả response thành công được bọc qua `ResponseInterceptor`, **trừ** payload service đã có field `success` (`POST /results`, `DELETE /devices`, `PATCH /devices/preferences`).
+Tất cả response thành công được bọc qua `ResponseInterceptor`.
 
 ## Auth (Bearer token)
 
@@ -469,14 +469,19 @@ const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || '
 4. Upsert `leaderboards` với `GREATEST(bestScore, newScore)`
 5. Resolve rank → trả `rank`, `bestScore` trong response khi guest có entry leaderboard
 
-Response (flat body, không bọc envelope):
+Response envelope:
 
 ```json
 {
   "success": true,
-  "message": "Results submitted",
-  "insertedCount": 2,
-  "rejectedCount": 0
+  "statusCode": 201,
+  "message": "Resource created successfully",
+  "path": "/api/results",
+  "timestamp": "2026-07-09T12:00:00.000Z",
+  "data": {
+    "insertedCount": 2,
+    "rejectedCount": 0
+  }
 }
 ```
 

@@ -120,7 +120,7 @@ Chi tiết: [notifications.md](./notifications.md), [schedule/fcm-notification-j
 
 ## Response envelope
 
-**Thành công** — `ResponseInterceptor` bọc hầu hết response:
+**Thành công** — `ResponseInterceptor` bọc tất cả response:
 
 ```json
 {
@@ -132,12 +132,6 @@ Chi tiết: [notifications.md](./notifications.md), [schedule/fcm-notification-j
   "path": "/api/..."
 }
 ```
-
-**Ngoại lệ** — một số endpoint trả body đã có `success` (interceptor không bọc lại):
-
-- `POST /api/results`
-- `DELETE /api/devices`
-- `PATCH /api/devices/preferences`
 
 **Lỗi** — `HttpExceptionFilter`:
 
