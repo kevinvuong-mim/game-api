@@ -2,8 +2,8 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Logger, Injectable } from '@nestjs/common';
 
 import { PlayerExitedTop100Event, PlayerEnteredTop100Event } from '@/domain/events';
-import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
 import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
+import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
 
 @Injectable()
 export class Top100NotificationListener {
@@ -20,13 +20,13 @@ export class Top100NotificationListener {
       `Player entered Top 100: game=${event.gameId} guest=${event.guestId} rank=${event.rank}`,
     );
 
-    const outboxId = await this.notificationDispatcher.sendTop100Entered(
+    const queued = await this.notificationDispatcher.sendTop100Entered(
       event.gameId,
       event.guestId,
       event.rank,
     );
 
-    if (outboxId) {
+    if (queued) {
       await this.rankTracker.confirmTop100Entered(event.gameId, event.guestId, event.rank);
     }
   }
@@ -37,13 +37,13 @@ export class Top100NotificationListener {
       `Player exited Top 100: game=${event.gameId} guest=${event.guestId} rank=${event.rank}`,
     );
 
-    const outboxId = await this.notificationDispatcher.sendTop100Exited(
+    const queued = await this.notificationDispatcher.sendTop100Exited(
       event.gameId,
       event.guestId,
       event.rank,
     );
 
-    if (!outboxId) {
+    if (!queued) {
       this.logger.warn(
         `Top 100 exit notification skipped: game=${event.gameId} guest=${event.guestId}`,
       );

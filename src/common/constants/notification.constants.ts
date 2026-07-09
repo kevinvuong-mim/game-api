@@ -4,38 +4,28 @@ export const TOP_100_THRESHOLD = 100;
 export const FCM_ANDROID_CHANNEL_ID = 'game_alerts';
 
 export const NOTIFICATION_CRON = {
-  FCM_RETRY: '*/5 * * * *',
-  SATURDAY_RANK: '0 9 * * 6',
   TIMEZONE: 'Asia/Ho_Chi_Minh',
 } as const;
 
 export const NOTIFICATION_QUEUE = {
-  FCM_DELIVERY: 'fcm-delivery',
-  SATURDAY_RANK: 'saturday-rank-notification',
+  RANK_PUSH: 'rank-push-notification',
 } as const;
 
 export const NOTIFICATION_JOB = {
-  DELIVER_FCM: 'deliver-fcm',
-  SEND_SATURDAY_RANK_BATCH: 'send-saturday-rank-batch',
-  START_SATURDAY_BROADCAST: 'start-saturday-broadcast',
+  SEND_RANK_PUSH_BATCH: 'send-rank-push-batch',
+  START_RANK_PUSH_BROADCAST: 'start-rank-push-broadcast',
 } as const;
 
-export const FCM_RETRY_BATCH_SIZE = 100;
-export const FCM_DELIVERY_MAX_ATTEMPTS = 5;
-export const SATURDAY_RANK_BATCH_SIZE = 500;
-export const FCM_PROCESSING_STALE_MS = 10 * 60 * 1000;
-export const FCM_DELIVERY_BACKOFF_MS = [30_000, 60_000, 300_000, 900_000, 3_600_000] as const;
+export const RANK_PUSH_BATCH_SIZE = 500;
 
 export const NOTIFICATION_ROUTES = {
-  HOME: 'Home',
   LEADERBOARD: 'Leaderboard',
-  DAILY_REWARD: 'DailyReward',
 } as const;
 
 export type NotificationRoute = (typeof NOTIFICATION_ROUTES)[keyof typeof NOTIFICATION_ROUTES];
 
 export const NOTIFICATION_TYPES = {
-  SATURDAY_RANK: 'saturday_rank',
+  RANK_PUSH: 'rank_push',
   TOP_100_EXITED: 'top_100_exited',
   TOP_100_ENTERED: 'top_100_entered',
 } as const;
@@ -73,7 +63,7 @@ export const NOTIFICATION_I18N: Record<
       body: 'Bạn đã rời Top 100. Hãy quay lại để cải thiện thứ hạng.',
     },
   },
-  [NOTIFICATION_TYPES.SATURDAY_RANK]: {
+  [NOTIFICATION_TYPES.RANK_PUSH]: {
     en: {
       title: 'Weekly Rank Update',
       body: 'You are currently ranked #{{rank}}.',

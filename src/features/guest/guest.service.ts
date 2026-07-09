@@ -1,4 +1,3 @@
-import { GameId } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 
 import { validateGameId } from '@/common/constants';
@@ -13,9 +12,9 @@ export class GuestService {
   async initializeGuest(dto: InitGuestDto) {
     const gameId = validateGameId(dto.gameId);
     const secretToken = generateSecretToken();
-    const secretTokenHash = hashSecretToken(secretToken);
+    const authTokenHash = hashSecretToken(secretToken);
 
-    const guest = await this.guestRepository.create(gameId, secretTokenHash);
+    const guest = await this.guestRepository.create(gameId, authTokenHash);
 
     return {
       secretToken,
@@ -25,7 +24,7 @@ export class GuestService {
   }
 
   async updateName(guestId: string, gameId: string, name: string) {
-    const validatedGameId = validateGameId(gameId) as GameId;
+    const validatedGameId = validateGameId(gameId);
     const updated = await this.guestRepository.updateName(validatedGameId, guestId, name);
     return {
       name: updated.name,

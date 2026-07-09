@@ -122,8 +122,9 @@ SELECT "gameId", COUNT(*) FROM leaderboards GROUP BY "gameId";
 
 ```bash
 docker-compose exec redis redis-cli
-KEYS leaderboard:*
-ZREVRANGE leaderboard:FRULOOP 0 9 WITHSCORES
+KEYS auth:token:*
+KEYS rate:*
+GET notification:muted:FRULOOP:<guestId>
 ```
 
 ---

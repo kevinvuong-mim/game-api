@@ -2,7 +2,7 @@
 
 ## Overview
 
-API lấy bảng xếp hạng (leaderboard) theo game. Hỗ trợ phân trang và tùy chọn lấy thứ hạng của guest hiện tại (`self`). Dữ liệu được cache trên Redis sorted set, fallback PostgreSQL khi Redis miss hoặc down.
+API lấy bảng xếp hạng (leaderboard) theo game. Hỗ trợ phân trang và tùy chọn lấy thứ hạng của guest hiện tại (`self`). Dữ liệu đọc trực tiếp từ PostgreSQL `leaderboards`.
 
 **Base URL**: `/api/leaderboards`
 
@@ -41,14 +41,11 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 2. **Rate limit check**: Giới hạn theo IP (`rate:lb:{ip}`).
 3. **Pagination**: Tính `offset = (page - 1) * limit`, cap `limit` tối đa 100.
 4. **Count total**: Đếm tổng entry trong bảng `leaderboards` theo `gameId`.
-5. **Fetch items**:
-   - Thử Redis sorted set `leaderboard:{gameId}` (ZREVRANGE với offset/limit).
-   - Nếu cache miss → rebuild top `LEADERBOARD_CACHE_MAX` (1000) từ DB → ZADD vào Redis.
-   - Nếu Redis down/miss → fallback query PostgreSQL trực tiếp.
+5. **Fetch items**: Query PostgreSQL `leaderboards` với `ORDER BY bestScore DESC, guestId ASC`, `SKIP`/`TAKE` theo pagination.
 6. **Resolve names**: Batch query `GuestPlayer.name` cho các `guestId` trong trang hiện tại.
 7. **Resolve self rank** (nếu có `guestId`):
-   - Thử `ZREVRANK` trên Redis.
-   - Fallback DB: lấy `bestScore` của guest, đếm số player có score cao hơn.
+   - Lấy `bestScore` của guest từ `leaderboards`.
+   - Đếm số player có `bestScore` cao hơn → `rank = count + 1`.
 8. **Return response**: `gameId`, `total`, `page`, `limit`, `items`, `self`.
 
 ---
@@ -282,11 +279,11 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 
 **Solution**: Gọi `POST /api/results` trước để tạo best score
 
-### Error: Redis down nhưng vẫn có data
+### Error: Slow response under load
 
-**Cause**: Server tự động fallback PostgreSQL
+**Cause**: Leaderboard đọc trực tiếp PostgreSQL (không có Redis cache)
 
-**Solution**: Không cần xử lý phía client — response vẫn trả về bình thường, có thể chậm hơn
+**Solution**: Client cache response (game-starter-kit dùng stale-while-revalidate 60s); giảm polling frequency
 
 ### Error: Rate limit exceeded
 
@@ -310,8 +307,6 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 
 - Global prefix `/api` (cấu hình `main.ts`).
 - Response envelope qua `ResponseInterceptor`.
-- Redis key: `leaderboard:{gameId}` (sorted set, score = bestScore, member = guestId).
-- Cold start: Khi `ZCARD leaderboard:{gameId} = 0`, server rebuild top 1000 entries từ DB.
 - Xếp hạng theo `bestScore` giảm dần; tie-break: `guestId ASC` (cùng score → guestId nhỏ hơn xếp trước).
 - `name` resolve từ bảng `GuestPlayer` — có thể `null` nếu chưa gọi `PATCH /api/guest/name`.
 - Rate limit: `30/60s` per IP.

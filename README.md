@@ -8,18 +8,18 @@ Players are identified by anonymous guest tokens. The server handles score stora
 
 ## Tech Stack
 
-| Layer      | Technology                          |
-| ---------- | ----------------------------------- |
-| Framework  | NestJS 11                           |
-| ORM        | Prisma 6                            |
-| Database   | PostgreSQL 16 (partitioned results) |
-| Cache      | Redis 8 (ioredis)                   |
-| Queue      | BullMQ (Saturday rank broadcast)    |
-| Push       | firebase-admin (FCM)                |
-| Validation | class-validator, class-transformer  |
-| Security   | helmet, compression                 |
-| Scheduler  | @nestjs/schedule                    |
-| Events     | @nestjs/event-emitter               |
+| Layer      | Technology                                              |
+| ---------- | ------------------------------------------------------- |
+| Framework  | NestJS 11                                               |
+| ORM        | Prisma 6                                                |
+| Database   | PostgreSQL 16 (partitioned results)                     |
+| Cache      | Redis 8 (ioredis)                                       |
+| Queue      | BullMQ (`rank-push-notification` — scheduled rank push) |
+| Push       | firebase-admin (FCM)                                    |
+| Validation | class-validator, class-transformer                      |
+| Security   | helmet, compression                                     |
+| Scheduler  | @nestjs/schedule                                        |
+| Events     | @nestjs/event-emitter                                   |
 
 ## Quick Start
 
@@ -90,7 +90,6 @@ Global prefix: `/api`
 | POST   | `/devices`             | Bearer | Register FCM device token         |
 | PATCH  | `/devices`             | Bearer | Update FCM token / locale         |
 | DELETE | `/devices`             | Bearer | Unregister device token           |
-| PATCH  | `/devices/heartbeat`   | Bearer | Touch `lastSeenAt` on resume      |
 | PATCH  | `/devices/preferences` | Bearer | Enable/disable push notifications |
 
 Detailed API docs:
@@ -122,8 +121,9 @@ game-api/
 │   ├── features/
 │   │   ├── guest/                 # Guest init + name
 │   │   ├── results/               # Result submission + dedup
+│   │   │   └── results-data.module.ts  # Shared ResultsRepository
 │   │   ├── leaderboard/           # Leaderboard query + rank tracker
-│   │   └── notifications/         # FCM push, device tokens, Saturday cron
+│   │   └── notifications/         # FCM inline + Saturday BullMQ batch
 │   ├── infra/
 │   │   ├── prisma/
 │   │   ├── redis/
@@ -163,11 +163,10 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 `replaySecret` is configured per game in `src/common/constants/game.constants.ts`.
 
-### Leaderboard cache
+### Leaderboard
 
-- Redis sorted set: `leaderboard:{gameId}`
-- Cold start rebuilds top 1000 entries from PostgreSQL
-- Falls back to DB when Redis is unavailable
+- Đọc trực tiếp PostgreSQL `leaderboards` (ORDER BY `bestScore` DESC)
+- Không cache Redis sorted set
 
 ### Result deduplication
 
@@ -183,10 +182,10 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 ### Push notifications
 
-- Device tokens: `guest_device_tokens` (1 active token per guest per game)
+- Device fields are stored on `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`)
 - `POST /api/devices` — client registers FCM token after guest init
-- **Top 100**: `ResultsService` → `LeaderboardRankTrackerService` + `LeaderboardRankResolverService` → events → FCM push (`top_100_entered` / `top_100_exited`)
-- **Saturday rank**: Cron `0 9 * * 6` (Asia/Ho_Chi_Minh) → BullMQ batch broadcast; chỉ gửi cho guest **có rank** (Redis, fallback DB)
+- **Top 100**: Rank tracker events → `NotificationDeliveryService` gửi FCM **inline** (`top_100_entered` / `top_100_exited`)
+- **Scheduled rank push**: Cron per-game `GAME_CONFIG.rankPushCron` → BullMQ batch → FCM inline (`rank_push`); chỉ guest có token và có rank
 - FCM payload `data`: `{ type, route }` — client dùng in-app navigation, không phải deeplink URL
 - Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động
 
@@ -196,11 +195,11 @@ Client setup: [game-starter-kit/documents/setup/firebase-native.md](../game-star
 
 Games are declared in source code (`GameId` enum), not in a database table.
 
-| Game ID   | Name    |
-| --------- | ------- |
-| `FRULOOP` | Fruloop |
+| Game ID   | Rank push cron (`rankPushCron`) |
+| --------- | ------------------------------- |
+| `FRULOOP` | `0 9 * * 6` (9:00 Thứ 7, VN TZ) |
 
-To add a new game, update `GAME_CONFIG` in `src/common/constants/game.constants.ts` and add a matching `replaySecret` (64-char hex). See [GAME_API_BUILD_SPEC.md](./GAME_API_BUILD_SPEC.md).
+To add a new game, update `GAME_CONFIG` in `src/common/constants/game.constants.ts`. See [GAME_API_BUILD_SPEC.md](./documents/GAME_API_BUILD_SPEC.md).
 
 ## Response Envelope
 

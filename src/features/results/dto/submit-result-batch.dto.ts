@@ -11,7 +11,7 @@ export class SubmitResultBatchDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(50)
-  @ValidateNested({ each: true })
   @Type(() => SubmitResultDto)
+  @ValidateNested({ each: true })
   items!: SubmitResultDto[];
 }

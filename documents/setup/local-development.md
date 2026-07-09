@@ -110,16 +110,16 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=1&limit=10"
 
 ## Scripts hữu ích
 
-| Command | Mô tả |
-| ------- | ----- |
-| `npm run start:dev` | Dev server + hot reload |
-| `npm run start:debug` | Dev + Node inspector |
-| `npm run build` | Compile TypeScript |
-| `npm run start:prod` | Chạy `dist/main` |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier |
+| Command                  | Mô tả                     |
+| ------------------------ | ------------------------- |
+| `npm run start:dev`      | Dev server + hot reload   |
+| `npm run start:debug`    | Dev + Node inspector      |
+| `npm run build`          | Compile TypeScript        |
+| `npm run start:prod`     | Chạy `dist/main`          |
+| `npm run lint`           | ESLint                    |
+| `npm run format`         | Prettier                  |
 | `npm run prisma:migrate` | Tạo/apply migration (dev) |
-| `npm run prisma:reset` | Reset DB (dev only) |
+| `npm run prisma:reset`   | Reset DB (dev only)       |
 
 ## Prisma Studio (optional)
 
@@ -143,12 +143,12 @@ Chạy client trên emulator/device cùng mạng LAN nếu không dùng localhos
 
 ## Troubleshooting
 
-| Vấn đề | Giải pháp |
-| ------ | --------- |
-| `EADDRINUSE :3000` | Đổi `PORT` hoặc kill process: `lsof -i :3000` |
-| Health 503 | `docker-compose up -d`, kiểm tra `DATABASE_URL` / `REDIS_URL` |
-| `Game "X" not supported` | Dùng `FRULOOP` hoặc thêm game — [adding-new-game.md](./adding-new-game.md) |
-| HMAC invalid | Đảm bảo `replaySecret` client = backend `GAME_CONFIG` |
-| Push không gửi | Kiểm tra `FIREBASE_*`, device token `ACTIVE`, không bị mute |
+| Vấn đề                   | Giải pháp                                                                           |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| `EADDRINUSE :3000`       | Đổi `PORT` hoặc kill process: `lsof -i :3000`                                       |
+| Health 503               | Kiểm tra Postgres (`DATABASE_URL`, `docker-compose`); Redis down chỉ → 200 degraded |
+| `Game "X" not supported` | Dùng `FRULOOP` hoặc thêm game — [adding-new-game.md](./adding-new-game.md)          |
+| HMAC invalid             | Đảm bảo `replaySecret` client = backend `GAME_CONFIG`                               |
+| Push không gửi           | Kiểm tra `FIREBASE_*`, device token `ACTIVE`, không bị mute                         |
 
 Xem thêm troubleshooting env: [environment-variables.md](./environment-variables.md).

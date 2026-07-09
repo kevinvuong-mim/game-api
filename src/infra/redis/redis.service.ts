@@ -2,13 +2,12 @@ import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { Inject, Injectable, OnModuleDestroy } from '@nestjs/common';
 
+import { AUTH_TOKEN_CACHE_TTL_SECONDS } from '@/common/constants';
 import type { AuthenticatedGuest } from '@/common/decorators/guest.decorator';
-import { LEADERBOARD_CACHE_MAX, AUTH_TOKEN_CACHE_TTL_SECONDS } from '@/common/constants';
 
 export const REDIS_CLIENT = 'REDIS_CLIENT';
 
 export const REDIS_KEYS = {
-  leaderboard: (gameId: string) => `leaderboard:${gameId}`,
   authToken: (tokenHash: string) => `auth:token:${tokenHash}`,
   notificationMuted: (gameId: string, guestId: string) => `notification:muted:${gameId}:${guestId}`,
 } as const;
@@ -73,95 +72,6 @@ export class RedisService implements OnModuleDestroy {
     }
 
     return count <= limit;
-  }
-
-  async getLeaderboardCount(gameId: string): Promise<number> {
-    return this.redis.zcard(REDIS_KEYS.leaderboard(gameId));
-  }
-
-  async getLeaderboardTop(gameId: string, offset: number, limit: number) {
-    const key = REDIS_KEYS.leaderboard(gameId);
-    const results = await this.redis.zrevrange(key, offset, offset + limit - 1, 'WITHSCORES');
-
-    const entries: Array<{ guestId: string; bestScore: number; rank: number }> = [];
-    for (let i = 0; i < results.length; i += 2) {
-      entries.push({
-        guestId: results[i],
-        rank: offset + i / 2 + 1,
-        bestScore: Number(results[i + 1]),
-      });
-    }
-
-    return entries;
-  }
-
-  async getLeaderboardRank(gameId: string, guestId: string) {
-    const key = REDIS_KEYS.leaderboard(gameId);
-    const score = await this.redis.zscore(key, guestId);
-
-    if (score === null) {
-      return null;
-    }
-
-    const rank = await this.redis.zrevrank(key, guestId);
-    if (rank === null) {
-      return null;
-    }
-
-    return {
-      rank: rank + 1,
-      bestScore: Number(score),
-    };
-  }
-
-  async getLeaderboardEntryAtRank(gameId: string, rank: number) {
-    if (rank < 1) {
-      return null;
-    }
-
-    const key = REDIS_KEYS.leaderboard(gameId);
-    const results = await this.redis.zrevrange(key, rank - 1, rank - 1, 'WITHSCORES');
-
-    if (results.length < 2) {
-      return null;
-    }
-
-    return {
-      rank,
-      guestId: results[0],
-      bestScore: Number(results[1]),
-    };
-  }
-
-  async updateLeaderboardScore(gameId: string, guestId: string, bestScore: number): Promise<void> {
-    const key = REDIS_KEYS.leaderboard(gameId);
-
-    await this.redis.zadd(key, bestScore, guestId);
-
-    const count = await this.redis.zcard(key);
-    if (count > LEADERBOARD_CACHE_MAX) {
-      await this.redis.zremrangebyrank(key, 0, count - LEADERBOARD_CACHE_MAX - 1);
-    }
-  }
-
-  async rebuildLeaderboard(
-    gameId: string,
-    entries: Array<{ guestId: string; bestScore: number }>,
-  ): Promise<void> {
-    const key = REDIS_KEYS.leaderboard(gameId);
-    await this.redis.del(key);
-
-    if (entries.length === 0) {
-      return;
-    }
-
-    const capped = entries.slice(0, LEADERBOARD_CACHE_MAX);
-    const cappedArgs: Array<string | number> = [];
-    for (const entry of capped) {
-      cappedArgs.push(entry.bestScore, entry.guestId);
-    }
-
-    await this.redis.zadd(key, ...cappedArgs);
   }
 }
 

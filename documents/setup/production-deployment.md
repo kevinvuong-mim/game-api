@@ -4,12 +4,12 @@ Hướng dẫn build và deploy `game-api` lên production. Dockerfile multi-sta
 
 ## Yêu cầu production
 
-| Thành phần | Ghi chú |
-| ---------- | ------- |
-| Node.js | ≥ 20 (image `node:20-alpine`) |
-| PostgreSQL | 16+, managed service khuyến nghị |
-| Redis | 8+, có auth/TLS trên production |
-| Env vars | Xem [environment-variables.md](./environment-variables.md) |
+| Thành phần | Ghi chú                                                    |
+| ---------- | ---------------------------------------------------------- |
+| Node.js    | ≥ 20 (image `node:20-alpine`)                              |
+| PostgreSQL | 16+, managed service khuyến nghị                           |
+| Redis      | 8+, có auth/TLS trên production                            |
+| Env vars   | Xem [environment-variables.md](./environment-variables.md) |
 
 ## Docker build
 
@@ -59,10 +59,10 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 GET /api/health
 ```
 
-| HTTP | Ý nghĩa |
-| ---- | ------- |
-| 200 | Postgres + Redis connected |
-| 503 | Một hoặc cả hai dependency down |
+| HTTP | Ý nghĩa                                   |
+| ---- | ----------------------------------------- |
+| 200  | Postgres connected (`ok` hoặc `degraded`) |
+| 503  | Postgres disconnected                     |
 
 Kubernetes example:
 
@@ -107,9 +107,9 @@ Xem: [schedule/game-results-partition.md](../schedule/game-results-partition.md)
 
 ## Scheduled jobs trên production
 
-Notification cron (`Saturday rank`, `FCM retry`) chạy trong process NestJS (`@nestjs/schedule`).
+Notification cron (`rankPushCron` per-game) chạy trong process NestJS (`SchedulerRegistry` + BullMQ batch).
 
-- **Single instance** hoặc leader election nếu scale horizontal — tránh duplicate Saturday broadcast.
+- **Single instance** hoặc leader election nếu scale horizontal — tránh duplicate scheduled rank push.
 - BullMQ workers chạy trong cùng process — scale cẩn thận (nhiều worker = nhiều consumer, thường OK cho FCM delivery).
 
 Xem: [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).
@@ -142,7 +142,7 @@ Log quan trọng (NestJS `Logger`):
 
 - `HttpExceptionFilter` — mọi HTTP error
 - `MaintenanceService` — partition create/skip
-- `FcmRetryScheduler` / `SaturdayRankScheduler` — notification jobs
+- `RankPushScheduler` — scheduled rank push batch (per-game `rankPushCron` từ `GAME_CONFIG`)
 - `Firebase is not configured` — push disabled
 
 Chưa có `/api/metrics` (Prometheus) — optional tương lai.

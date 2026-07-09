@@ -1,5 +1,7 @@
 # BUILD SPEC — "Leaderboard-as-a-Service" Backend cho game guest-only
 
+> Source of truth kèm theo: `prisma/schema.prisma`, `documents/architecture/database-schema.md`, `documents/architecture/notifications.md`, `documents/apis/devices.md`.
+
 ---
 
 # 0. Mục tiêu
@@ -13,7 +15,7 @@ Server đảm nhiệm:
 - Lưu điểm số.
 - Chống gian lận bằng HMAC (tập trung ở lớp chữ ký kết quả chơi, không phải xác thực người dùng).
 - Cung cấp leaderboard hiệu năng cao (hỗ trợ nhiều game độc lập).
-- Push notification (FCM): Top 100, Saturday rank broadcast.
+- Push notification (FCM): Top 100, scheduled rank push (`rank_push` via `rankPushCron`).
 - Danh sách game được khai báo trong source code (type-safe, không cần bảng games).
 
 ## Triết lý
@@ -32,7 +34,7 @@ Server đảm nhiệm:
 - PostgreSQL 16
 - Redis 8 (ioredis)
 - `@nestjs/schedule`
-- `@nestjs/bullmq` + `bullmq` (Saturday rank broadcast queue)
+- `@nestjs/bullmq` + `bullmq` (scheduled rank push batch — queue `rank-push-notification`)
 - `@nestjs/event-emitter` (Top 100 notification events)
 - `firebase-admin` (FCM push — optional, graceful disable khi thiếu env)
 - `@nestjs/config`
@@ -114,17 +116,17 @@ new ValidationPipe({
 
 ### HTTP Status
 
-| Mã  | Ý nghĩa                                              |
-| --- | ---------------------------------------------------- |
-| 200 | Thành công                                           |
-| 201 | Tạo mới thành công                                   |
-| 400 | Validation lỗi                                       |
-| 401 | Token không hợp lệ                                   |
-| 403 | Guest không thuộc game (ví dụ `gameId` body ≠ token) |
-| 404 | gameId không tồn tại                                 |
-| 429 | Rate limit                                           |
-| 503 | DB hoặc Redis không kết nối                          |
-| 500 | Lỗi nội bộ                                           |
+| Mã  | Ý nghĩa                                                     |
+| --- | ----------------------------------------------------------- |
+| 200 | Thành công                                                  |
+| 201 | Tạo mới thành công                                          |
+| 400 | Validation lỗi                                              |
+| 401 | Token không hợp lệ                                          |
+| 403 | Guest không thuộc game (ví dụ `gameId` body ≠ token)        |
+| 404 | gameId không tồn tại                                        |
+| 429 | Rate limit                                                  |
+| 503 | Postgres không kết nối (Redis down vẫn có thể 200 degraded) |
+| 500 | Lỗi nội bộ                                                  |
 
 ---
 
@@ -140,68 +142,31 @@ src/
   common/
     constants/
       game.constants.ts
-      runtime.constants.ts   # RATE_LIMITS, PARTITION_CRON, LEADERBOARD_CACHE_MAX, AUTH_TOKEN_CACHE_TTL_SECONDS
+      notification.constants.ts
+      runtime.constants.ts
       index.ts
-
     utils/
-      crypto.util.ts         # token, HMAC, dedupLockKey
-      game.util.ts           # validateGameSecrets, buildReplayPayload
+      crypto.util.ts
+      game.util.ts
       index.ts
-
     guards/
       guest-auth.guard.ts
       rate-limit.guard.ts
-      index.ts
-
     decorators/
       guest.decorator.ts
       rate-limit.decorator.ts
-      index.ts
-
     validators/
       is-valid-metadata.validator.ts
-      index.ts
-
-    interfaces/
-      response.interface.ts
-      index.ts
-
     interceptors/
       response.interceptor.ts
-      index.ts
-
     filters/
       http-exception.filter.ts
-      index.ts
 
   features/
     guest/
-      guest.module.ts
-      guest.controller.ts
-      guest.service.ts
-      guest.repository.ts
-      dto/
-        init-guest.dto.ts
-        update-name.dto.ts
-
     results/
-      results.module.ts
-      results.controller.ts
-      results.service.ts
-      results.repository.ts
-      dto/
-        submit-result.dto.ts
-        submit-result-batch.dto.ts
-
+      results-data.module.ts
     leaderboard/
-      leaderboard.module.ts
-      leaderboard.controller.ts
-      leaderboard.service.ts
-      leaderboard-rank-tracker.service.ts
-      leaderboard-rank.resolver.ts
-      dto/
-        leaderboard-query.dto.ts
-
     notifications/
       notifications.module.ts
       devices.controller.ts
@@ -209,66 +174,32 @@ src/
       device-token.service.ts
       device-token.repository.ts
       notification-dispatcher.service.ts
-      notification-outbox.service.ts
-      notification-outbox.repository.ts
+      notification-delivery.service.ts
       top100-notification.listener.ts
       jobs/
-        saturday-rank.job.ts
-        saturday-rank.scheduler.ts
-        fcm-delivery.job.ts
-        fcm-retry.scheduler.ts
+        rank-push.job.ts
+        rank-push.scheduler.ts
       dto/
 
   domain/
     events/
-      player-entered-top100.event.ts
-      player-exited-top100.event.ts
-      index.ts
 
   infra/
     prisma/
-      prisma.module.ts
-      prisma.service.ts
-
     redis/
-      redis.module.ts
-      redis.service.ts
-
     maintenance/
-      maintenance.module.ts
-      maintenance.service.ts
 
 documents/
-  README.md
   apis/
-    guest.md
-    results.md
-    leaderboard.md
-    devices.md
-    health-check.md
   architecture/
-    overview.md
-    database-schema.md
-    redis-keys.md
-    notifications.md
   schedule/
-    game-results-partition.md
-    fcm-notification-jobs.md
   setup/
-    local-development.md
-    docker.md
-    environment-variables.md
-    adding-new-game.md
-    production-deployment.md
-
-README.md
-GAME_API_BUILD_SPEC.md
 
 prisma/
   schema.prisma
   migrations/
-    20260702084137_init/
-    20260702084137_partition_game_results/   # custom SQL partition migration
+    20260708083230_initial_database/
+    20260708083230_partition_game_results/
 
 docker-compose.yml
 .env
@@ -279,97 +210,109 @@ docker-compose.yml
 
 # 3. Game Config
 
-`replaySecret` phải là SHA256 hex (64 ký tự), tối thiểu 32 bytes entropy, và được khai báo cố định trong source.
+`GameId` re-export từ `@prisma/client`. `replaySecret` khai báo trong `GAME_CONFIG` (64-char hex). `rankPushCron` (optional) — cron expression bật scheduled rank push (FCM type `rank_push`).
 
 ```ts
 // src/common/constants/game.constants.ts
+import { GameId } from '@prisma/client';
 
-export enum GameId {
-  FRULOOP = 'FRULOOP',
+export { GameId };
+
+export interface GameConfigEntry {
+  replaySecret: string;
+  /** Cron (Asia/Ho_Chi_Minh). Có field → đăng ký scheduled rank push. */
+  rankPushCron?: string;
 }
 
-export const GAME_CONFIG: Record<GameId, { name: string; replaySecret: string }> = {
+export const GAME_CONFIG: Record<GameId, GameConfigEntry> = {
   [GameId.FRULOOP]: {
-    name: 'Fruloop',
     replaySecret: '...fixed value...',
+    rankPushCron: '0 9 * * 6',
   },
-} as const;
-```
+};
 
-### Helper
-
-```ts
-export function validateGameId(gameId: string): GameId {
-  if (!Object.values(GameId).includes(gameId as GameId)) {
-    throw new NotFoundException(`Game "${gameId}" not supported`);
-  }
-  return gameId as GameId;
+export function hasRankPushCron(gameId: GameId): boolean {
+  /* ... */
+}
+export function getGamesWithRankPushCron(): GameId[] {
+  /* ... */
 }
 
+export function validateGameId(gameId: string): GameId {
+  /* ... */
+}
 export function getGameConfig(gameId: GameId) {
-  return GAME_CONFIG[gameId];
+  /* ... */
 }
 ```
 
 ### Startup Guard
 
-Xem Section 11 — `validateGameSecrets()` chạy trong `main.ts` trước khi tạo Nest app.
+`validateGameSecrets()` chạy trong `main.ts` trước khi tạo Nest app (Section 11).
+
+### Thêm game mới
+
+1. Thêm giá trị vào enum `GameId` trong `prisma/schema.prisma`
+2. Chạy `npm run prisma:generate` + migration
+3. Thêm entry vào `GAME_CONFIG` — TypeScript báo lỗi nếu thiếu (`Record<GameId, ...>`)
+4. (Tuỳ chọn) Thêm `rankPushCron` nếu game cần scheduled rank push
+5. Cập nhật client: `VITE_GAME_ID`, `VITE_REPLAY_SECRET`
 
 ---
 
 # 4. Prisma Schema
 
-> **Lưu ý quan trọng về partitioning:** Prisma không hỗ trợ native PostgreSQL table partitioning. Việc `ALTER TABLE game_results PARTITION BY RANGE` phải thực hiện qua custom SQL migration (không phải `prisma migrate dev` thông thường). Xem Section 5 để biết quy trình chi tiết.
+Database gồm **3 bảng** nghiệp vụ chính. Device token và notification state nằm trên `guest_players`. Không có `guest_device_tokens`, không có `notification_outbox`.
+
+> **Partitioning:** Prisma không hỗ trợ native PostgreSQL partitioning. `game_results` partition theo `createdAt` qua custom SQL migration (Section 5).
 
 ```prisma
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum GameId {
-  FRULOOP
-}
+enum GameId { FRULOOP }
+enum DevicePlatform { IOS ANDROID }
+enum NotificationLocale { EN VI }
 
 model GuestPlayer {
-  id              String   @id @default(uuid())
-  gameId          GameId
-  name            String?
-  secretTokenHash String
-  inTop100        Boolean  @default(false)
-  createdAt       DateTime @default(now())
+  // ID & Scope
+  id     String @id @default(uuid())
+  gameId GameId
+
+  // Profile
+  name String?
+
+  // Authentication
+  authTokenHash String @unique
+
+  // Push Notification
+  fcmToken           String?             @unique
+  devicePlatform     DevicePlatform?
+  notificationLocale NotificationLocale?
+
+  // Notification State — true chỉ sau FCM top_100_entered thành công
+  top100EnterNotified Boolean @default(false)
+
+  // Timestamps
+  createdAt DateTime @default(now())
 
   gameResults  GameResult[]
   leaderboards Leaderboard?
-  deviceToken  GuestDeviceToken?
 
   @@unique([gameId, id])
-  @@unique([secretTokenHash])
   @@map("guest_players")
 }
 
 model GameResult {
-  id             String   @default(uuid())
-  createdAt      DateTime @default(now())
-  gameId         GameId
-  guestId        String
+  id        String   @default(uuid())
+  createdAt DateTime @default(now())
+  gameId    GameId
+  guestId   String
   clientResultId String
-  score          Int
-  replayHash     String
-  metadata       Json?
-  playedAt       DateTime?
+  score     Int
+  signature String
+  metadata  Json?
+  playedAt  DateTime?
 
-  guest GuestPlayer @relation(
-    fields: [gameId, guestId],
-    references: [gameId, id],
-    onDelete: Cascade
-  )
+  guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
 
-  // Composite PK bao gồm createdAt để hỗ trợ partition by range
   @@id([id, createdAt])
   @@index([gameId, guestId, clientResultId])
   @@index([gameId, guestId])
@@ -383,397 +326,155 @@ model Leaderboard {
   bestScore Int
   updatedAt DateTime @updatedAt
 
-  guest GuestPlayer @relation(
-    fields: [gameId, guestId],
-    references: [gameId, id],
-    onDelete: Cascade
-  )
+  guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
 
   @@id([gameId, guestId])
-  // Index cho leaderboard query: ORDER BY bestScore DESC WHERE gameId = ?
   @@index([gameId, bestScore(sort: Desc)])
   @@map("leaderboards")
 }
-
-enum DevicePlatform { IOS ANDROID }
-enum DeviceTokenStatus { ACTIVE INACTIVE INVALID }
-enum NotificationLocale { EN VI }
-
-model GuestDeviceToken {
-  id         String             @id @default(uuid())
-  gameId     GameId
-  guestId    String
-  token      String             @unique
-  platform   DevicePlatform
-  locale     NotificationLocale @default(EN)
-  status     DeviceTokenStatus  @default(ACTIVE)
-  lastSeenAt DateTime           @default(now())
-  // @@unique([gameId, guestId]) — 1 active token per guest per game
-  @@map("guest_device_tokens")
-}
-
-model NotificationOutbox {
-  id             String                   @id @default(uuid())
-  gameId         GameId
-  guestId        String
-  type           String
-  route          String
-  status         NotificationOutboxStatus @default(PENDING)
-  idempotencyKey String?                  @unique
-  // ... xem prisma/schema.prisma đầy đủ
-  @@map("notification_outbox")
-}
 ```
 
-> Chi tiết schema đầy đủ: `prisma/schema.prisma`. Migrations: `20260706033137_add_notification_tables`, `20260707100000_merge_notification_state_into_guest`.
+Chi tiết đầy đủ: `prisma/schema.prisma`, `documents/architecture/database-schema.md`.
 
 ---
 
 # 5. Partition
 
-## Lưu ý về Prisma + PostgreSQL Partitioning
+## Quy trình migration
 
-Prisma không hỗ trợ declarative partitioning. Vì vậy phải dùng **2-phase migration**:
+1. `prisma migrate dev` tạo `game_results` dạng table thường (`initial_database` migration).
+2. Custom SQL migration chuyển sang `PARTITION BY RANGE ("createdAt")`.
+3. Migration tự tạo partition theo năm cho dữ liệu cũ + năm hiện tại + năm kế tiếp.
 
-1. Chạy `prisma migrate dev` để tạo `game_results` dạng table thường.
-2. Tạo custom SQL migration để chuyển sang partitioned table.
-3. Nếu migration được apply thủ công, đánh dấu trạng thái bằng `prisma migrate resolve`.
+Migration hiện tại: `prisma/migrations/20260708083230_partition_game_results/migration.sql`
 
-### Custom migration mẫu
+### Partition creation trong migration (self-contained)
 
 ```sql
--- prisma/migrations/XXXXXX_partition_game_results/migration.sql
--- Convert game_results into a range-partitioned table by createdAt.
--- Prisma doesn't support declarative partitioning, so this migration is pure SQL.
+DO $$
+DECLARE
+  min_year INT;
+  max_year INT;
+  start_year INT;
+  end_year INT;
+  year_value INT;
+BEGIN
+  SELECT
+    EXTRACT(YEAR FROM MIN("createdAt"))::INT,
+    EXTRACT(YEAR FROM MAX("createdAt"))::INT
+  INTO min_year, max_year
+  FROM "game_results_old";
 
--- 1) Rename old constraints/indexes first to avoid name collisions
--- when creating the new parent table with the same canonical names.
-ALTER TABLE "game_results" RENAME CONSTRAINT "game_results_pkey" TO "game_results_old_pkey";
-ALTER TABLE "game_results" RENAME CONSTRAINT "game_results_gameId_guestId_fkey" TO "game_results_old_gameId_guestId_fkey";
-ALTER INDEX "game_results_gameId_guestId_idx" RENAME TO "game_results_old_gameId_guestId_idx";
-ALTER INDEX "game_results_gameId_createdAt_idx" RENAME TO "game_results_old_gameId_createdAt_idx";
-ALTER INDEX "game_results_gameId_guestId_clientResultId_idx" RENAME TO "game_results_old_gameId_guestId_clientResultId_idx";
+  start_year := COALESCE(min_year, EXTRACT(YEAR FROM NOW())::INT);
+  end_year := GREATEST(
+    COALESCE(max_year, EXTRACT(YEAR FROM NOW())::INT),
+    EXTRACT(YEAR FROM NOW())::INT + 1
+  );
 
--- 2) Move old table out of the way.
-ALTER TABLE "game_results" RENAME TO "game_results_old";
-
--- 3) Recreate partitioned parent table.
-CREATE TABLE "game_results" (
-  "id" TEXT NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "gameId" "GameId" NOT NULL,
-  "guestId" TEXT NOT NULL,
-  "clientResultId" TEXT NOT NULL,
-  "score" INTEGER NOT NULL,
-  "replayHash" TEXT NOT NULL,
-  "metadata" JSONB,
-  "playedAt" TIMESTAMP(3),
-  CONSTRAINT "game_results_pkey" PRIMARY KEY ("id", "createdAt"),
-  CONSTRAINT "game_results_gameId_guestId_fkey"
-    FOREIGN KEY ("gameId", "guestId")
-    REFERENCES "guest_players"("gameId", "id")
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
-) PARTITION BY RANGE ("createdAt");
-
--- 4) Indexes for hot read paths and dedup lookup.
-CREATE INDEX "game_results_gameId_guestId_idx" ON "game_results"("gameId", "guestId");
-CREATE INDEX "game_results_gameId_createdAt_idx" ON "game_results"("gameId", "createdAt");
-CREATE INDEX "game_results_gameId_guestId_clientResultId_idx" ON "game_results"("gameId", "guestId", "clientResultId");
-
--- 5) Seed first partition.
-CREATE TABLE "game_results_2026"
-  PARTITION OF "game_results"
-  FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
-
--- 6) Copy old data into the partitioned table.
-INSERT INTO "game_results" (
-  "id",
-  "createdAt",
-  "gameId",
-  "guestId",
-  "clientResultId",
-  "score",
-  "replayHash",
-  "metadata",
-  "playedAt"
-)
-SELECT
-  "id",
-  "createdAt",
-  "gameId",
-  "guestId",
-  "clientResultId",
-  "score",
-  "replayHash",
-  "metadata",
-  "playedAt"
-FROM "game_results_old";
-
--- 7) Drop old table.
-DROP TABLE "game_results_old";
+  FOR year_value IN start_year..end_year LOOP
+    EXECUTE format(
+      'CREATE TABLE IF NOT EXISTS %I PARTITION OF "game_results" FOR VALUES FROM (%L) TO (%L)',
+      'game_results_' || year_value,
+      make_date(year_value, 1, 1),
+      make_date(year_value + 1, 1, 1)
+    );
+  END LOOP;
+END $$;
 ```
 
-Nếu migration được chạy ngoài `prisma migrate dev`, đánh dấu như sau:
+### UNIQUE trên partitioned table
 
-```bash
-prisma migrate resolve --applied 20260702084137_partition_game_results
-```
+PostgreSQL yêu cầu UNIQUE constraint trên partitioned table phải chứa partition key. Vì vậy **không có** `UNIQUE (gameId, guestId, clientResultId)` toàn cục.
 
-### Lưu ý quan trọng về UNIQUE trên partitioned table
-
-PostgreSQL yêu cầu mọi `UNIQUE` constraint/index trên partitioned table phải chứa **toàn bộ partition key**.
-Vì `game_results` partition theo `createdAt`, nên `UNIQUE (gameId, guestId, clientResultId)` là **không hợp lệ**.
-
-Giải pháp thực tế — dedup atomic bằng Postgres advisory lock (không dựa vào `ON CONFLICT`):
-
-- Dùng index thường cho `(gameId, guestId, clientResultId)` để tối ưu lookup dedup (đã có sẵn ở `@@index([gameId, guestId, clientResultId])`).
-- Vì không có unique index toàn cục nên **không thể dùng `INSERT ... ON CONFLICT` (upsert)** để dedup — 2 request đồng thời với cùng `clientResultId` có thể cùng pass check "chưa tồn tại" rồi cùng insert, tạo duplicate row.
-- Giải pháp: mỗi item được xử lý trong **1 transaction riêng**, lấy **Postgres advisory lock theo transaction** (`pg_advisory_xact_lock`) với key là hash 64-bit của `(gameId, guestId, clientResultId)`, sau đó mới `SELECT ... WHERE gameId = ? AND guestId = ? AND clientResultId = ?`. Lock tự giải phóng khi transaction commit/rollback.
+Dedup dùng Postgres advisory lock trong transaction:
 
 ```ts
-// Dedup key: hash 64-bit ổn định từ (gameId, guestId, clientResultId)
 function dedupLockKey(gameId: string, guestId: string, clientResultId: string): bigint {
   const hash = crypto
     .createHash('sha256')
     .update(`${gameId}|${guestId}|${clientResultId}`)
     .digest();
-  return hash.readBigInt64BE(0); // dùng làm key cho pg_advisory_xact_lock
+  return hash.readBigInt64BE(0);
 }
 ```
 
 ```sql
--- Trong 1 transaction, cho từng item của batch:
 SELECT pg_advisory_xact_lock($lockKey);
-
 SELECT 1 FROM game_results
 WHERE "gameId" = $gameId AND "guestId" = $guestId AND "clientResultId" = $clientResultId
 LIMIT 1;
--- Nếu đã tồn tại → skip item này (đã insert trước đó), commit, next item
--- Nếu chưa tồn tại → INSERT INTO game_results (...) VALUES (...), commit
-```
-
-> Lý do dùng advisory lock thay vì "check rồi insert" đơn thuần: lock đảm bảo
-> 2 request trùng `clientResultId` chạy đồng thời sẽ tuần tự hoá tại đúng
-> item đó (không khoá toàn bảng), loại bỏ race condition mà vẫn tương thích
-> với hạn chế "UNIQUE phải chứa partition key" ở trên.
-
-## Partition mẫu
-
-```sql
-CREATE TABLE game_results_<YYYY>
-  PARTITION OF game_results
-  FOR VALUES FROM ('<YYYY>-01-01') TO ('<YYYY+1>-01-01');
+-- Nếu chưa tồn tại → INSERT
 ```
 
 ## Cron tạo partition tự động
 
-- Chạy ngày 1 mỗi tháng theo cron cố định `0 3 1 * *`
-- Logic: kiểm tra xem partition cho **năm tiếp theo** đã tồn tại chưa
-- Nếu chưa có → tạo mới bằng `prisma.$executeRawUnsafe`
-- Nếu đã có → skip (idempotent)
+`MaintenanceService` (`src/infra/maintenance/maintenance.service.ts`):
+
+- Cron: `0 3 1 * *` + chạy lúc startup (`onModuleInit`)
+- Đảm bảo partition cho **năm hiện tại** và **năm kế tiếp**
+- Idempotent: `CREATE TABLE IF NOT EXISTS` qua check `pg_class`
 
 ---
 
 # 6. Endpoints
 
-> Chi tiết từng endpoint (request/response schema, use cases, lỗi thường gặp) nằm trong `documents/apis/`.
+> Chi tiết request/response: `documents/apis/`.
 
-Tất cả response thành công được bọc qua `ResponseInterceptor` (xem Section 1), **trừ** các payload service đã có field `success` (ví dụ `POST /results`, `PATCH /devices/heartbeat`, `PATCH /devices/preferences`, `DELETE /devices`) — interceptor trả nguyên body. Ví dụ dưới đây hiển thị phần `data` hoặc envelope đầy đủ tùy ngữ cảnh.
+Tất cả response thành công được bọc qua `ResponseInterceptor`, **trừ** payload service đã có field `success` (`POST /results`, `DELETE /devices`, `PATCH /devices/preferences`).
 
 ## Auth (Bearer token)
 
-Header:
-
 ```text
 Authorization: Bearer <secretToken>
-```
 
-Server flow:
-
-```text
 sha256(token)
-→ check Redis cache (TTL 5 phút)
-→ nếu miss: query DB guest_players WHERE secretTokenHash = tokenHash
-→ không tìm thấy → 401
-→ tìm thấy → cache { guestId, gameId } → attach request.user
+→ Redis auth:token:{hash} (TTL 300s)
+→ miss: SELECT guest_players WHERE authTokenHash = tokenHash
+→ 401 nếu không tìm thấy
+→ attach request.user = { guestId, gameId }
 ```
-
----
 
 ## GET /api/health
 
-Không auth.
-
-Response (bọc qua `ResponseInterceptor`):
-
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Data retrieved successfully",
-  "data": {
-    "status": "ok",
-    "timestamp": "2026-01-15T10:00:00.000Z",
-    "services": {
-      "db": "connected",
-      "redis": "connected"
-    },
-    "uptime": 12345
-  },
-  "path": "/api/health",
-  "timestamp": "2026-01-15T10:00:00.000Z"
-}
-```
-
-DB hoặc Redis lỗi → `503` (error envelope, không bọc success)
-
----
+Không auth. Kiểm tra Postgres + Redis.
 
 ## POST /api/guest/init
 
-Rate limit: `5 requests / 60s` per IP
+Rate limit: `5/60s` per IP.
 
-Body:
-
-```json
-{
-  "gameId": "FRULOOP"
-}
-```
-
-Flow:
-
-1. Validate `gameId` qua `validateGameId()`
-2. Rate limit check
-3. Generate token (`generateSecretToken()`)
-4. Hash token (`hashSecretToken()`)
-5. Tạo GuestPlayer mới
-6. Trả token về client (client tự lưu vĩnh viễn)
-
-Response (201 Created, bọc envelope):
+Response `data`:
 
 ```json
 {
-  "success": true,
-  "statusCode": 201,
-  "message": "Resource created successfully",
-  "data": {
-    "guestId": "uuid",
-    "gameId": "FRULOOP",
-    "secretToken": "raw-token-plain-text"
-  },
-  "path": "/api/guest/init",
-  "timestamp": "2026-01-15T10:00:00.000Z"
+  "guestId": "uuid",
+  "gameId": "FRULOOP",
+  "secretToken": "raw-token-plain-text"
 }
 ```
-
----
 
 ## PATCH /api/guest/name
 
-Auth: Bearer token required
-
-Rate limit: `10 / 60s` per guest
-
-Body:
-
-```json
-{
-  "name": "PlayerOne"
-}
-```
-
-Response (200 OK, bọc envelope):
-
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Resource updated successfully",
-  "data": {
-    "guestId": "uuid",
-    "gameId": "FRULOOP",
-    "name": "PlayerOne"
-  },
-  "path": "/api/guest/name",
-  "timestamp": "2026-01-15T10:00:00.000Z"
-}
-```
-
----
+Auth required. Rate limit: `10/60s` per guest.
 
 ## POST /api/results
 
-Auth: Bearer token required
+Auth required. Rate limit: `20/60s` per guest. Batch 1–50 items.
 
-Rate limit: `20 / 60s` per guest
-
-Body:
-
-```json
-{
-  "gameId": "FRULOOP",
-  "items": [
-    {
-      "clientResultId": "res-001",
-      "score": 1500,
-      "playedAt": "2026-01-15T10:00:00.000Z",
-      "metadata": { "level": 5, "combo": 10 },
-      "signature": "hmac-hex-string"
-    }
-  ]
-}
-```
-
-**Validation (`SubmitResultBatchDto` / `SubmitResultDto`):**
-
-- `items`: 1–50 phần tử
-- `score`: integer ≥ 0
-- `playedAt`: ISO8601 strict (optional)
-- `metadata`: flat object, max 10 keys, max 2048 bytes JSON (`@IsValidMetadata`)
-- `signature`: HMAC-SHA256 hex (64 ký tự)
-
-### HMAC Verification
-
-Payload phải khớp chính xác với client:
+### HMAC payload
 
 ```ts
 const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}`;
-
-const expected = computeReplaySignature(replaySecret, payload);
-// so sánh bằng timingSafeEqual
 ```
 
 ### Flow
 
-1. Validate `gameId` và body
-2. Xác thực Bearer token (`GuestAuthGuard`)
-3. Kiểm tra `guest.gameId === dto.gameId` — không khớp → `403 Forbidden`
-4. Verify signature từng item (skip item invalid, không fail toàn batch)
-5. Với từng item hợp lệ, dedup + insert **atomic** theo cơ chế advisory lock ở Section 5
-6. Upsert leaderboard: chỉ update `bestScore` nếu score cao hơn hiện tại (`GREATEST`)
-7. Update Redis sorted set nếu best score mới cao hơn trước đó
-8. **Top 100 push** (khi có best score mới): `LeaderboardRankTrackerService` dùng `LeaderboardRankResolverService` so rank trước/sau → emit event → outbox/dispatcher → FCM (`top_100_entered` / `top_100_exited`). State `inTop100` lưu trên `guest_players`.
+1. Validate + auth
+2. Verify HMAC từng item (skip invalid, không fail cả batch)
+3. Dedup + insert qua advisory lock (Section 5)
+4. Upsert `leaderboards` với `GREATEST(bestScore, newScore)`
+5. Top 100 detection (snapshot rank trước upsert) → domain events → FCM inline
 
-> Lưu ý: bước 4 **không phải** `INSERT ... ON CONFLICT` (upsert) vì bảng
-> `game_results` không thể có unique index trên `(gameId, guestId, clientResultId)`
-> khi đã partition theo `createdAt` (xem Section 5). Dedup được đảm bảo atomic
-> nhờ advisory lock trong transaction, không phải nhờ constraint ở tầng DB.
-
-**Leaderboard upsert (idempotent, chống race condition):**
-
-```sql
-INSERT INTO leaderboards ("gameId", "guestId", "bestScore", "updatedAt")
-VALUES ($gameId, $guestId, $score, now())
-ON CONFLICT ("gameId", "guestId")
-DO UPDATE SET
-  "bestScore" = GREATEST(leaderboards."bestScore", EXCLUDED."bestScore"),
-  "updatedAt" = now()
-WHERE EXCLUDED."bestScore" > leaderboards."bestScore";
-```
-
-Response (201 Created, **flat body** — `ResultsService` trả object có field `success` nên `ResponseInterceptor` không bọc envelope):
+Response (flat body, không bọc envelope):
 
 ```json
 {
@@ -784,131 +485,123 @@ Response (201 Created, **flat body** — `ResultsService` trả object có field
 }
 ```
 
-> `insertedCount` có thể là `0` khi tất cả items duplicate hoặc signature invalid — vẫn HTTP 201. `rejectedCount` cho biết số item bị từ chối do chữ ký không hợp lệ; chi tiết trong `rejected`.
-
----
-
 ## GET /api/leaderboards
 
-Auth: Không
+Public. Rate limit: `30/60s` per IP.
 
-Rate limit: `30 / 60s` per IP
+Query: `gameId`, `page`, `limit`, `guestId?` (self rank).
 
-Query params:
-
-```text
-gameId  (required)
-page    (default: 1)
-limit   (default: 20, max: 100)
-guestId (optional, để lấy self rank)
-```
-
-Response (200 OK, bọc envelope):
-
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Data retrieved successfully",
-  "data": {
-    "gameId": "FRULOOP",
-    "total": 150,
-    "page": 1,
-    "limit": 20,
-    "items": [{ "rank": 1, "guestId": "uuid", "name": "PlayerOne", "bestScore": 9999 }],
-    "self": { "rank": 12, "bestScore": 5000 }
-  },
-  "path": "/api/leaderboards?gameId=FRULOOP",
-  "timestamp": "2026-01-15T10:00:00.000Z"
-}
-```
-
-> `self` là `null` khi không truyền `guestId`, hoặc guest chưa có entry trên leaderboard. `name` có thể `null` nếu chưa gọi `PATCH /api/guest/name`.
-
-Logic:
-
-```text
-1. Query Redis ZREVRANGE leaderboard:{gameId} với pagination
-2. Nếu Redis miss hoặc down → fallback query PostgreSQL leaderboards table
-3. self rank: ZREVRANK leaderboard:{gameId} {guestId}
-   → nếu Redis miss → query DB: COUNT(*) WHERE gameId = ? AND bestScore > ?
-```
-
-**Redis Cold Start / Rebuild:**
-
-Khi Redis khởi động lại hoặc key bị flush:
-
-```text
-Lần đầu tiên query leaderboard:{gameId} mà key không tồn tại:
-→ Query top LEADERBOARD_CACHE_MAX từ DB
-→ Bulk ZADD vào Redis
-→ Tiếp tục serve request
-
-Trigger: khi ZCARD leaderboard:{gameId} = 0
-```
-
----
+Logic: PostgreSQL `leaderboards` (ORDER BY `bestScore` DESC, `guestId` ASC).
 
 ## Devices API (`/api/devices`)
 
-Auth: Bearer token required. Rate limit: `10 / 60s` per guest.
+Auth required. Rate limit: `10/60s` per guest.
 
 | Method | Path                       | Mô tả                                             |
 | ------ | -------------------------- | ------------------------------------------------- |
 | POST   | `/api/devices`             | Đăng ký FCM token (`token`, `platform`, `locale`) |
 | PATCH  | `/api/devices`             | Cập nhật token / locale                           |
-| DELETE | `/api/devices`             | Unregister → `INACTIVE`                           |
-| PATCH  | `/api/devices/heartbeat`   | Cập nhật `lastSeenAt` (app resume)                |
-| PATCH  | `/api/devices/preferences` | Bật/tắt push (`enabled: boolean`)                 |
+| DELETE | `/api/devices`             | Unregister (clear `fcmToken` + device fields)     |
+| PATCH  | `/api/devices/preferences` | Bật/tắt push qua Redis mute (`enabled: boolean`)  |
+
+Device data lưu trên `guest_players`: `fcmToken`, `devicePlatform`, `notificationLocale`.
+
+Register/Update response `data`:
+
+```json
+{ "guestId": "uuid" }
+```
+
+Unregister/Preferences response `data`:
+
+```json
+{ "success": true }
+```
+
+Không có endpoint heartbeat. Không có `deviceId`, không có `status` ACTIVE/INACTIVE/INVALID.
 
 Chi tiết: `documents/apis/devices.md`.
 
-### Push notification types (server → client)
+### Push notification types
 
-| `type`            | Trigger                                           | FCM `data.route` |
-| ----------------- | ------------------------------------------------- | ---------------- |
-| `top_100_entered` | Vào Top 100 sau submit score                      | `Leaderboard`    |
-| `top_100_exited`  | Rời Top 100 (kể cả bị đẩy)                        | `Leaderboard`    |
-| `saturday_rank`   | Cron `0 9 * * 6` (Asia/Ho_Chi_Minh), BullMQ batch | `Leaderboard`    |
-
-- Saturday broadcast **chỉ gửi** guest có rank (Redis, fallback DB khi cache miss).
-- Thiếu `FIREBASE_*` → FCM disabled; device APIs vẫn hoạt động.
-- Client dùng in-app navigation từ `data.type` + `data.route` (không deeplink URL).
+| `type`            | Trigger                        | FCM `data.route` |
+| ----------------- | ------------------------------ | ---------------- |
+| `top_100_entered` | Vào Top 100 sau submit score   | `Leaderboard`    |
+| `top_100_exited`  | Rời Top 100                    | `Leaderboard`    |
+| `rank_push`       | Cron per-game (`rankPushCron`) | `Leaderboard`    |
 
 ---
 
-# 7. Redis
+# 7. Push Notifications
+
+Kiến trúc: **không DB outbox**. Top 100 gửi FCM inline; scheduled rank push (`rankPushCron`) batch qua BullMQ.
+
+```text
+Top 100 (event)
+  → Top100NotificationListener
+  → NotificationDispatcherService
+  → NotificationDeliveryService.deliver()  // returns result.success
+  → FcmService.sendToToken()
+  → on enter success: confirmTop100Entered() → top100EnterNotified = true
+
+Scheduled rank cron (per game có rankPushCron)
+  → RankPushScheduler (đăng ký cron động từ GAME_CONFIG)
+  → BullMQ rank-push-notification (batch 500)
+  → NotificationDispatcherService.sendRankPush()
+  → NotificationDeliveryService.deliver() (inline)
+  → FcmService.sendToToken()
+```
+
+## Điều kiện gửi
+
+1. Guest không mute (`notification:muted:{gameId}:{guestId}` không tồn tại trên Redis)
+2. Guest có `fcmToken` trong `guest_players`
+3. Scheduled rank push: game có `rankPushCron` trong `GAME_CONFIG` và guest có rank trên leaderboard
+
+## Top 100 state (`top100EnterNotified`)
+
+- Vào Top 100: emit event trước; `top100EnterNotified = true` chỉ sau FCM `top_100_entered` thành công.
+- Rời Top 100: `top100EnterNotified = false` trước khi emit exit event.
+- Device register khi đang trong Top 100 nhưng chưa nhận push: `maybeNotifyTop100OnDeviceRegister()` retry nếu `top100EnterNotified` vẫn `false`.
+
+## Invalid token
+
+FCM lỗi `registration-token-not-registered` / `invalid-registration-token` → clear `fcmToken`, `devicePlatform`, `notificationLocale` trên `guest_players`.
+
+## BullMQ queues
+
+| Queue                    | Worker              |
+| ------------------------ | ------------------- |
+| `rank-push-notification` | `RankPushProcessor` |
+
+Chi tiết: `documents/architecture/notifications.md`, `documents/schedule/fcm-notification-jobs.md`.
+
+---
+
+# 8. Redis
 
 ```text
 Auth token cache:
-Key:   auth:token:{sha256Hash}
-Value: JSON { "guestId": "...", "gameId": "..." }
-TTL:   AUTH_TOKEN_CACHE_TTL_SECONDS = 300 (5 phút)
+  Key:   auth:token:{sha256Hash}
+  Value: JSON { "guestId", "gameId" }
+  TTL:   300s
 
-Leaderboard cache:
-Key:    leaderboard:{gameId}
-Member: guestId
-Score:  bestScore
-TTL:    không đặt (persistent trong Redis)
-Max:    LEADERBOARD_CACHE_MAX = 1000 entries
+Notification mute:
+  Key: notification:muted:{gameId}:{guestId}
+  Value: "1" (SET khi mute, DEL khi unmute)
+
+Rate limit:
+  Key: rate:{prefix}:{id}
+  TTL: window seconds
 ```
 
-Hằng số trong `src/common/constants/runtime.constants.ts`.
+Leaderboard **không** cache trên Redis — đọc trực tiếp PostgreSQL `leaderboards`.
 
-> Auth cache value **phải** chứa cả `gameId` và `guestId` — `POST /results` đối chiếu `guest.gameId` với `body.gameId` mà không cần query DB thêm khi cache hit.
-
-Khi update leaderboard sau POST /results:
-
-```text
-ZADD leaderboard:{gameId} {bestScore} {guestId}
-ZREMRANGEBYRANK leaderboard:{gameId} 0 -(LEADERBOARD_CACHE_MAX+1)
-```
+Chi tiết: `documents/architecture/redis-keys.md`.
 
 ---
 
-# 8. HMAC Anti-cheat
-
-Payload (build bằng `buildReplayPayload()` trong `game.util.ts`):
+# 9. HMAC Anti-cheat
 
 ```text
 HMAC-SHA256(
@@ -917,83 +610,27 @@ HMAC-SHA256(
 )
 ```
 
-> `playedAt` dùng đúng chuỗi ISO8601 gốc từ client, không reformat, để đảm bảo signature khớp.
-
-Compute:
-
-```ts
-computeReplaySignature(replaySecret: string, payload: string): string
-```
-
-Compare:
-
-```ts
-crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(received, 'hex'));
-```
+So sánh bằng `crypto.timingSafeEqual`. `replaySecret` từ `GAME_CONFIG`, không đọc từ env.
 
 ---
 
-# 9. Rate Limit
+# 10. Rate Limit
 
-Implement bằng Redis counter cố định (`INCR` + `EXPIRE` trên lần hit đầu tiên trong window). Guard: `RateLimitGuard` + decorator `@RateLimit`.
+Redis counter (`INCR` + `EXPIRE`). Guard: `RateLimitGuard` + `@RateLimit`.
 
-| Endpoint                                             | Limit | Window | Key source | Redis Key prefix        |
-| ---------------------------------------------------- | ----: | -----: | ---------- | ----------------------- |
-| POST /guest/init                                     |     5 |    60s | IP         | `rate:init:{ip}`        |
-| PATCH /guest/name                                    |    10 |    60s | guest      | `rate:name:{guestId}`   |
-| POST /results                                        |    20 |    60s | guest      | `rate:result:{guestId}` |
-| GET /leaderboards                                    |    30 |    60s | IP         | `rate:lb:{ip}`          |
-| POST/PATCH/DELETE /devices, PATCH /devices/heartbeat |    10 |    60s | guest      | `rate:device:{guestId}` |
+| Endpoint                                               | Limit | Window | Key source | Prefix         |
+| ------------------------------------------------------ | ----: | -----: | ---------- | -------------- |
+| POST /guest/init                                       |     5 |    60s | IP         | `rate:init:`   |
+| PATCH /guest/name                                      |    10 |    60s | guest      | `rate:name:`   |
+| POST /results                                          |    20 |    60s | guest      | `rate:result:` |
+| GET /leaderboards                                      |    30 |    60s | IP         | `rate:lb:`     |
+| POST/PATCH/DELETE /devices, PATCH /devices/preferences |    10 |    60s | guest      | `rate:device:` |
 
-> `GET /api/health` **không** có rate limit.
-
-Hằng số limit nằm trong `src/common/constants/runtime.constants.ts` (`RATE_LIMITS`).
-
-Vượt → `429 Too Many Requests`
-
----
-
-# 10. Partition Maintenance
-
-Cron schedule (fixed in source):
-
-```text
-Mặc định: 0 3 1 * * (3:00 sáng ngày 1 mỗi tháng)
-```
-
-Logic (triển khai trong `MaintenanceService.ensureNextYearPartition()`):
-
-```ts
-const nextYear = new Date().getFullYear() + 1;
-const tableName = `game_results_${nextYear}`;
-
-const exists = await prisma.$queryRaw<Array<{ exists: boolean }>>`
-  SELECT EXISTS (
-    SELECT 1 FROM pg_class WHERE relname = ${tableName}
-  ) AS exists
-`;
-
-if (exists[0]?.exists) {
-  return; // idempotent skip
-}
-
-const from = `${nextYear}-01-01`;
-const to = `${nextYear + 1}-01-01`;
-
-await prisma.$executeRawUnsafe(`
-  CREATE TABLE ${tableName}
-  PARTITION OF game_results
-  FOR VALUES FROM ('${from}') TO ('${to}')
-`);
-```
-
-> `MaintenanceService` cũng gọi `ensureNextYearPartition()` trong `onModuleInit()` để đảm bảo partition tồn tại ngay khi app khởi động (bổ sung cho cron hàng tháng).
+`GET /api/health` không rate limit.
 
 ---
 
 # 11. Startup Guard
-
-Chạy **trước** `NestFactory.create()` trong `src/main.ts`, gọi `validateGameSecrets()` từ `src/common/utils/game.util.ts`.
 
 ```ts
 // main.ts
@@ -1001,98 +638,43 @@ validateGameSecrets();
 const app = await NestFactory.create(AppModule);
 ```
 
-```ts
-// game.util.ts
-export function validateGameSecrets(): void {
-  for (const gameId of Object.values(GameId)) {
-    const config = getGameConfig(gameId);
-    if (!config.replaySecret) {
-      throw new Error(`[StartupGuard] Missing replaySecret for game: ${gameId}`);
-    }
-    if (!isValidSha256Hex(config.replaySecret)) {
-      throw new Error(
-        `[StartupGuard] Invalid replaySecret for game: ${gameId}. Must be 64-char hex string.`,
-      );
-    }
-  }
-}
-```
-
-Sai → throw Error → app không khởi động (fail-fast).
+Kiểm tra mọi `GameId` trong `GAME_CONFIG` có `replaySecret` hợp lệ (64-char hex). Sai → app không khởi động.
 
 ---
 
 # 12. Auth
 
-`GuestAuthGuard`:
+`GuestAuthGuard` lookup `authTokenHash` trên `guest_players`. Cache Redis 5 phút.
 
-```text
-Lấy token từ header Authorization: Bearer <token>
-→ sha256(token) → tokenHash
-→ Check Redis: GET auth:token:{tokenHash}
-  → Hit: parse JSON → { guestId, gameId } từ cache
-  → Miss: query DB guest_players WHERE secretTokenHash = tokenHash
-         → Không tìm thấy → 401
-         → Tìm thấy → Cache kết quả:
-             SET auth:token:{tokenHash} JSON.stringify({ guestId, gameId }) EX 300
-→ Nếu không tìm thấy (cả cache lẫn DB) → 401
-→ Attach vào request.user = { guestId, gameId }
-```
-
-> Cache value luôn là JSON `{ guestId, gameId }`, không chỉ `guestId`,
-> để cache hit không cần query DB thêm lần nào mà vẫn đủ dữ liệu
-> cho các route cần đối chiếu `gameId` (ví dụ `POST /results`).
-
-Decorator:
-
-```ts
-@Guest()   // inject current guest từ request
-```
+Decorator `@Guest()` inject `{ guestId, gameId }`.
 
 ---
 
 # 13. Crypto & Game Utils
 
-**`crypto.util.ts`**
+**`crypto.util.ts`:** `generateSecretToken`, `hashSecretToken`, `computeReplaySignature`, `verifyReplaySignature`, `isValidSha256Hex`, `dedupLockKey`
 
-```ts
-generateSecretToken(): string          // URL-safe base64, 32 bytes entropy
-hashSecretToken(token: string): string // SHA256 hex
-computeReplaySignature(secret: string, payload: string): string
-verifyReplaySignature(secret: string, payload: string, received: string): boolean
-isValidSha256Hex(value: string): boolean
-dedupLockKey(gameId: string, guestId: string, clientResultId: string): bigint
-```
-
-**`game.util.ts`**
-
-```ts
-validateGameSecrets(): void           // startup guard (Section 11)
-buildReplayPayload(params): string    // `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt ?? ''}`
-```
+**`game.util.ts`:** `validateGameSecrets`, `buildReplayPayload`
 
 ---
 
 # 14. Environment Variables
 
 ```env
-DATABASE_URL="postgresql://kwong2000:1234abcd@localhost:5432/game-api"
-
-REDIS_URL=redis://localhost:6379
-
+DATABASE_URL="postgresql://..."
+REDIS_URL="redis://localhost:6379"
 PORT=3000
-
 NODE_ENV=development
 
-# Optional — FCM push (thiếu → push disabled, server vẫn chạy)
+# Optional — FCM push (thiếu → push disabled)
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 ```
 
-> **Khi thêm game mới:** Sửa `GameId` enum, `GAME_CONFIG` trong source và sync Prisma schema. Backend **không** đọc `replaySecret` từ biến môi trường — client dùng `VITE_REPLAY_SECRET` khớp với `GAME_CONFIG`.
+`replaySecret` **không** đọc từ env — nằm trong `GAME_CONFIG`.
 
-> Firebase Admin (push): `documents/setup/environment-variables.md`. Client FCM: `game-starter-kit/documents/setup/firebase-native.md`.
+Chi tiết: `documents/setup/environment-variables.md`.
 
 ---
 
@@ -1100,16 +682,13 @@ FIREBASE_PRIVATE_KEY=
 
 ```json
 {
-  "engines": { "node": ">=20" },
   "start:dev": "nest start --watch",
-  "start:debug": "nest start --debug --watch",
   "build": "nest build",
   "start:prod": "node dist/main",
   "prisma:migrate": "prisma migrate dev",
   "prisma:generate": "prisma generate",
   "prisma:reset": "prisma migrate reset",
-  "lint": "eslint \"src/**/*.ts\" --fix",
-  "format": "prettier --write \"src/**/*.ts\""
+  "lint": "eslint \"src/**/*.ts\" --fix"
 }
 ```
 
@@ -1119,62 +698,31 @@ FIREBASE_PRIVATE_KEY=
 
 ```bash
 npm install
-
 docker-compose up -d
-
-cp .env.example .env   # chỉnh DATABASE_URL, REDIS_URL
-
+cp .env.example .env
 npm run prisma:migrate
-# Migration partition đã có sẵn: prisma/migrations/20260702084137_partition_game_results/
-
 npm run start:dev
 # → http://localhost:3000/api
-
-# Production
-npm run build
-npm run start:prod
 ```
 
-### Thêm game mới
+Migrations:
 
-1. Thêm giá trị vào `GameId` enum trong `src/common/constants/game.constants.ts` **và** `prisma/schema.prisma`
-2. Thêm entry vào `GAME_CONFIG` với `replaySecret` (64-char hex, ≥ 32 bytes entropy)
-3. Chạy `npm run prisma:migrate` để sync enum PostgreSQL
-4. Deploy backend và cập nhật client:
-   - `VITE_GAME_ID` khớp `GameId` mới
-   - `VITE_REPLAY_SECRET` khớp `GAME_CONFIG[gameId].replaySecret` trên backend
-5. Không cần biến môi trường `REPLAY_SECRET_*` trên backend — secret nằm trong source `GAME_CONFIG`
+- `20260708083230_initial_database` — 3 bảng + enums
+- `20260708083230_partition_game_results` — partition `game_results`
 
-### Rotate secret
-
-```text
-Phải release cùng lúc backend + client (coordinated deploy)
-Trong cửa sổ rotate: signature cũ sẽ invalid → kết quả pending trên client bị từ chối
-Nên rotate khi traffic thấp
-```
+Production: `npm run build && npm run start:prod`
 
 ---
 
 # 17. Logging & Monitoring
 
-**Đã triển khai:**
-
-- NestJS `Logger` trong `Bootstrap`, `HttpExceptionFilter`, `MaintenanceService`
-- `HttpExceptionFilter` log mỗi lỗi: `METHOD path - status - message` (+ stack trong dev)
-- Stack trace trong response body chỉ khi `NODE_ENV !== 'production'`
-- **Không bao giờ log:** `replaySecret`, `secretToken` (raw), `secretTokenHash`
-
-**Chưa triển khai (optional / tương lai):**
-
-- Request logging middleware (duration per request)
-- `/api/metrics` (Prometheus)
-- Tích hợp Sentry / Datadog
+- NestJS `Logger` trong bootstrap, filters, services
+- Không log: `replaySecret`, `secretToken` (raw), `authTokenHash`
+- Stack trace chỉ trong response khi `NODE_ENV !== 'production'`
 
 ---
 
 # 18. CORS
-
-Cấu hình trong `src/main.ts` — **không** giới hạn `origin` cố định; cho phép mọi origin với credentials:
 
 ```ts
 app.enableCors({
@@ -1184,54 +732,48 @@ app.enableCors({
 });
 ```
 
-> Production nên đặt reverse proxy hoặc cập nhật `origin` whitelist nếu cần hạn chế domain.
+Production nên hạn chế origin qua reverse proxy.
 
 ---
 
 # 19. Bảo mật bổ sung
 
-- `helmet` — security headers (CSP chỉ bật khi `NODE_ENV === 'production'`)
-- `compression` — gzip responses (threshold 1024 bytes, level 6)
-- Không expose stack trace ở production (response body)
-- Không log `replaySecret` hoặc `secretToken` raw
-- Rate limit trên guest/results/leaderboard endpoints (`GET /health` không rate limit)
-- `timingSafeEqual` cho so sánh HMAC signature
-- Startup Guard chặn app khởi động nếu `replaySecret` sai format
+- `helmet`, `compression`
+- `timingSafeEqual` cho HMAC
+- Rate limit trên guest/results/leaderboard/devices
+- Startup guard cho `replaySecret`
 - `app.enableShutdownHooks()` cho graceful shutdown
 
 ---
 
 # 20. Trade-off
 
-| Ưu điểm                        | Nhược điểm                                     |
-| ------------------------------ | ---------------------------------------------- |
-| Không cần bảng games           | Thêm game phải deploy lại                      |
-| Verify HMAC nhanh              | Secret nằm trong client (env, không hardcode)  |
-| Redis cache nhanh              | Redis mất data khi restart → cần rebuild logic |
-| Partition tối ưu write/archive | Custom migration, Prisma không support native  |
-| Token cache Redis              | Cache TTL 5 phút, cố định trong source         |
-| Leaderboard upsert idempotent  | GREATEST() chỉ update khi score cao hơn        |
-| Token vĩnh viễn, đơn giản      | Uninstall/clear data = mất data, không relink  |
-| Behavior đồng nhất iOS/Android | Guest mới sau mỗi lần cài app                  |
+| Ưu điểm                         | Nhược điểm                                     |
+| ------------------------------- | ---------------------------------------------- |
+| Schema gọn (3 bảng)             | Push không có DB outbox/retry                  |
+| Không cần bảng games            | Thêm game phải deploy lại                      |
+| Verify HMAC nhanh               | Secret nằm trong client (env)                  |
+| PostgreSQL leaderboard đơn giản | Không cache Redis — query DB mỗi request       |
+| Partition tối ưu write/archive  | Custom SQL migration cho partition             |
+| Token vĩnh viễn, đơn giản       | Uninstall/clear data = mất guest, không relink |
 
 ---
 
 # 21. Đồng bộ với game-starter-kit (frontend)
 
-| Điểm đồng bộ        | Backend                                                                                     | Frontend (game-starter-kit)                                            |
-| ------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| GameId              | `GameId` enum trong `game.constants.ts`                                                     | `VITE_GAME_ID` → `gameConfig.id` trong `src/game/config.ts`            |
-| replaySecret        | `GAME_CONFIG[gameId].replaySecret` (hardcoded trong source)                                 | `VITE_REPLAY_SECRET` env var (phải khớp backend)                       |
-| HMAC payload        | `${gameId}\|${guestId}\|${clientResultId}\|${score}\|${playedAt\|\|''}`                     | Idem (`game-sync` module)                                              |
-| API base URL        | Global prefix `/api`, PORT=3000                                                             | `VITE_API_URL` hoặc default trong platform config                      |
-| Response envelope   | `{ success, statusCode, message, data, path, timestamp }`                                   | `ApiClient` envelope type                                              |
-| Auth header         | `Authorization: Bearer <secretToken>`                                                       | `ApiClient.setAuthToken(secretToken)`                                  |
-| Token persistence   | Không TTL, không rotate, vĩnh viễn                                                          | Lưu trong Capacitor Preferences `gsk:guest`                            |
-| deviceId            | Không nhận trong body                                                                       | Không gửi lên server                                                   |
-| FCM device token    | `POST/PATCH /api/devices`, `PATCH /api/devices/preferences` — `token`, `platform`, `locale` | `notifications/services/push-notification.service` sau `guest.onReady` |
-| Push payload        | FCM `data: { type, route }` — EN/VI từ `locale` trên device record                          | In-app navigation (`Leaderboard`, `DailyReward`) — không URL deeplink  |
-| Notification flags  | —                                                                                           | `notification-env.json`: dev push off, local on                        |
-| Guest init behavior | Mỗi lần gọi = tạo guest mới                                                                 | Chỉ gọi khi `gsk:guest` chưa có trong storage                          |
-| Batch limits        | 1–50 items per request (`SubmitResultBatchDto`)                                             | `MAX_BATCH_SIZE = 50` trong game-sync                                  |
-| playedAt format     | ISO8601 strict (`@IsISO8601`)                                                               | ISO8601 string                                                         |
-| metadata limits     | max 10 keys, 2048 bytes (`@IsValidMetadata`)                                                | Documented trong `documents/modules/game-result-sync.md`               |
+| Điểm đồng bộ        | Backend                                                                                                        | Frontend (game-starter-kit)                                                                                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GameId              | `GameId` enum trong Prisma + `GAME_CONFIG`                                                                     | `VITE_GAME_ID`                                                                                                                                                                                       |
+| replaySecret        | `GAME_CONFIG[gameId].replaySecret`                                                                             | `VITE_REPLAY_SECRET`                                                                                                                                                                                 |
+| HMAC payload        | `${gameId}\|${guestId}\|${clientResultId}\|${score}\|${playedAt\|\|''}`                                        | Idem (`game-sync` module)                                                                                                                                                                            |
+| API base URL        | Prefix `/api`, PORT=3000                                                                                       | `VITE_APP_ENV` → map trong `src/platform/core/config/index.ts` (`dev`: `http://localhost:3000/api`, `staging`: `https://staging-api.studio.games/api`, `production`: `https://api.studio.games/api`) |
+| Response envelope   | `{ success, statusCode, message, data, path, timestamp }`                                                      | `ApiClient` envelope                                                                                                                                                                                 |
+| Auth header         | `Authorization: Bearer <secretToken>`                                                                          | `ApiClient.setAuthToken(secretToken)`                                                                                                                                                                |
+| Token persistence   | Không TTL                                                                                                      | Capacitor Preferences `gsk:guest`                                                                                                                                                                    |
+| FCM device          | `POST/PATCH/DELETE /api/devices`, `PATCH /api/devices/preferences`                                             | `notifications` module                                                                                                                                                                               |
+| Device API response | `{ guestId }` (register/update)                                                                                | Không dùng `deviceId`                                                                                                                                                                                |
+| Push payload        | FCM `data: { type, route }` — `type`: `top_100_entered`, `top_100_exited`, `rank_push`; `route`: `Leaderboard` | In-app navigation + foreground toast; local daily reward chỉ dùng `route: DailyReward`                                                                                                               |
+| Scheduled rank push | `GAME_CONFIG.rankPushCron` per-game (optional)                                                                 | Client handle `rank_push` → Leaderboard                                                                                                                                                              |
+| Batch limits        | 1–50 items per request                                                                                         | `MAX_BATCH_SIZE = 50`                                                                                                                                                                                |
+| playedAt format     | ISO8601 strict                                                                                                 | ISO8601 string                                                                                                                                                                                       |
+| metadata limits     | max 10 keys, 2048 bytes                                                                                        | Documented trong game-starter-kit                                                                                                                                                                    |

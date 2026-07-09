@@ -1,12 +1,6 @@
-import { GameId } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 
-import {
-  validateGameId,
-  LEADERBOARD_CACHE_MAX,
-  type GameId as AppGameId,
-} from '@/common/constants';
-import { RedisService } from '@/infra/redis/redis.service';
+import { GameId, validateGameId } from '@/common/constants';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { ResultsRepository } from '@/features/results/results.repository';
 import { LeaderboardQueryDto } from '@/features/leaderboard/dto/leaderboard-query.dto';
@@ -16,19 +10,18 @@ import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboa
 export class LeaderboardService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly redisService: RedisService,
     private readonly resultsRepository: ResultsRepository,
     private readonly rankResolver: LeaderboardRankResolverService,
   ) {}
 
   async getLeaderboard(query: LeaderboardQueryDto) {
-    const gameId = validateGameId(query.gameId) as GameId;
+    const gameId = validateGameId(query.gameId);
     const page = query.page;
     const limit = Math.min(query.limit, 100);
     const offset = (page - 1) * limit;
 
     const total = await this.resultsRepository.countLeaderboard(gameId);
-    const items = await this.fetchLeaderboardItems(gameId, offset, limit);
+    const items = await this.fetchLeaderboardFromDb(gameId, offset, limit);
 
     const names = await this.resolveGuestNames(items.map((entry) => entry.guestId));
 
@@ -52,41 +45,13 @@ export class LeaderboardService {
     };
   }
 
-  private async fetchLeaderboardItems(gameId: GameId, offset: number, limit: number) {
-    try {
-      await this.ensureLeaderboardCache(gameId);
-      const cacheCount = await this.redisService.getLeaderboardCount(gameId);
-
-      if (cacheCount > 0 && offset + limit <= cacheCount) {
-        return this.redisService.getLeaderboardTop(gameId, offset, limit);
-      }
-    } catch {
-      // Redis miss or down — fall back to PostgreSQL.
-    }
-
-    return this.fetchLeaderboardFromDb(gameId, offset, limit);
-  }
-
   private async resolveSelfRank(gameId: GameId, guestId: string) {
-    const rank = await this.rankResolver.resolveRank(gameId as AppGameId, guestId);
+    const rank = await this.rankResolver.resolveRank(gameId, guestId);
     if (!rank) {
       return null;
     }
 
     return { rank: rank.rank, bestScore: rank.bestScore };
-  }
-
-  private async ensureLeaderboardCache(gameId: GameId) {
-    const count = await this.redisService.getLeaderboardCount(gameId);
-    if (count > 0) {
-      return;
-    }
-
-    const entries = await this.resultsRepository.getTopLeaderboardEntries(
-      gameId,
-      LEADERBOARD_CACHE_MAX,
-    );
-    await this.redisService.rebuildLeaderboard(gameId, entries);
   }
 
   private async fetchLeaderboardFromDb(gameId: GameId, offset: number, limit: number) {

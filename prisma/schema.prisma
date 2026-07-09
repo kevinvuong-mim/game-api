@@ -16,53 +16,62 @@ enum DevicePlatform {
   ANDROID
 }
 
-enum DeviceTokenStatus {
-  ACTIVE
-  INVALID
-  INACTIVE
-}
-
 enum NotificationLocale {
   EN
   VI
 }
 
-enum NotificationOutboxStatus {
-  DEAD
-  SENT
-  PENDING
-  SKIPPED
-  PROCESSING
-}
-
 model GuestPlayer {
-  id              String   @id @default(uuid())
-  gameId          GameId
-  name            String?
-  secretTokenHash String
-  inTop100        Boolean  @default(false)
-  createdAt       DateTime @default(now())
+  // ID & Scope
+  id     String @id @default(uuid())
+  gameId GameId
 
+  // Profile
+  name String?
+
+  // Authentication
+  authTokenHash String @unique
+
+  // Push Notification
+  fcmToken           String?             @unique
+  devicePlatform     DevicePlatform?
+  notificationLocale NotificationLocale?
+
+  // Notification State
+  top100EnterNotified Boolean @default(false)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+
+  // Relations
   gameResults  GameResult[]
   leaderboards Leaderboard?
-  deviceToken  GuestDeviceToken?
 
   @@unique([gameId, id])
-  @@unique([secretTokenHash])
   @@map("guest_players")
 }
 
 model GameResult {
-  id             String    @default(uuid())
-  createdAt      DateTime  @default(now())
-  gameId         GameId
-  guestId        String
-  clientResultId String
-  score          Int
-  replayHash     String
-  metadata       Json?
-  playedAt       DateTime?
+  // ID & Partition Key
+  id        String   @default(uuid())
+  createdAt DateTime @default(now())
 
+  // Scope
+  gameId  GameId
+  guestId String
+
+  // Client Identity
+  clientResultId String
+
+  // Score & Verification
+  score     Int
+  signature String
+
+  // Optional Metadata
+  metadata Json?
+  playedAt DateTime?
+
+  // Relations
   guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
 
   @@id([id, createdAt])
@@ -73,57 +82,20 @@ model GameResult {
 }
 
 model Leaderboard {
-  gameId    GameId
-  guestId   String
+  // Primary Key
+  gameId  GameId
+  guestId String
+
+  // Score
   bestScore Int
+
+  // Timestamps
   updatedAt DateTime @updatedAt
 
+  // Relations
   guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
 
   @@id([gameId, guestId])
   @@index([gameId, bestScore(sort: Desc)])
   @@map("leaderboards")
-}
-
-model GuestDeviceToken {
-  id         String             @id @default(uuid())
-  gameId     GameId
-  guestId    String
-  token      String             @unique
-  platform   DevicePlatform
-  locale     NotificationLocale @default(EN)
-  status     DeviceTokenStatus  @default(ACTIVE)
-  lastSeenAt DateTime           @default(now())
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
-
-  guest GuestPlayer @relation(fields: [gameId, guestId], references: [gameId, id], onDelete: Cascade)
-
-  @@unique([gameId, guestId])
-  @@index([gameId, status])
-  @@index([status, lastSeenAt])
-  @@map("guest_device_tokens")
-}
-
-model NotificationOutbox {
-  id             String                   @id @default(uuid())
-  gameId         GameId
-  guestId        String
-  type           String
-  route          String
-  params         Json?
-  locale         NotificationLocale?
-  status         NotificationOutboxStatus @default(PENDING)
-  attempts       Int                      @default(0)
-  maxAttempts    Int                      @default(5)
-  lastError      String?
-  idempotencyKey String?                  @unique
-  scheduledAt    DateTime                 @default(now())
-  sentAt         DateTime?
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-
-  @@index([status, scheduledAt])
-  @@index([gameId, guestId, createdAt])
-  @@map("notification_outbox")
 }

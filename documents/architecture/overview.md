@@ -4,16 +4,16 @@ Game API là backend **Leaderboard-as-a-Service** cho game casual/hyper-casual. 
 
 ## Tech stack
 
-| Thành phần | Công nghệ |
-| ---------- | --------- |
-| Framework | NestJS 11 |
-| ORM | Prisma 6 |
-| Database | PostgreSQL 16 (partitioned `game_results`) |
-| Cache / rate limit | Redis 8 (ioredis) |
-| Queue | BullMQ (`@nestjs/bullmq`) |
-| Push | firebase-admin (FCM, optional) |
-| Scheduler | `@nestjs/schedule` |
-| Events | `@nestjs/event-emitter` |
+| Thành phần         | Công nghệ                                   |
+| ------------------ | ------------------------------------------- |
+| Framework          | NestJS 11                                   |
+| ORM                | Prisma 6                                    |
+| Database           | PostgreSQL 16 (partitioned `game_results`)  |
+| Cache / rate limit | Redis 8 (auth cache, rate limit, mute flag) |
+| Queue              | BullMQ (`@nestjs/bullmq`)                   |
+| Push               | firebase-admin (FCM, optional)              |
+| Scheduler          | `@nestjs/schedule`                          |
+| Events             | `@nestjs/event-emitter`                     |
 
 Global prefix: `/api`. Path alias: `@/*` → `src/*`.
 
@@ -27,6 +27,7 @@ src/
 ├── features/
 │   ├── guest/              # Init + display name
 │   ├── results/            # Batch submit, HMAC, dedup
+│   │   └── results-data.module.ts  # Shared ResultsRepository
 │   ├── leaderboard/        # Query + rank tracker
 │   └── notifications/      # FCM, device tokens, cron jobs
 ├── infra/
@@ -47,7 +48,7 @@ sequenceDiagram
     participant DB
 
     Client->>API: POST /api/guest/init { gameId }
-    API->>DB: INSERT guest_players (secretTokenHash)
+    API->>DB: INSERT guest_players (authTokenHash)
     API-->>Client: secretToken (plain, một lần)
 
     Client->>API: Authorization: Bearer secretToken
@@ -56,7 +57,7 @@ sequenceDiagram
     alt cache hit
         Redis-->>API: { guestId, gameId }
     else cache miss
-        API->>DB: SELECT by secretTokenHash
+        API->>DB: SELECT by authTokenHash
         API->>Redis: SET auth:token:{hash} TTL 300s
     end
     API-->>Client: response
@@ -73,7 +74,6 @@ sequenceDiagram
     participant Client
     participant ResultsService
     participant DB
-    participant Redis
     participant RankTracker
 
     Client->>ResultsService: POST /api/results (HMAC signed items)
@@ -82,10 +82,9 @@ sequenceDiagram
         ResultsService->>DB: advisory lock + dedup + INSERT game_results
         ResultsService->>DB: UPSERT leaderboards (GREATEST bestScore)
     end
-    ResultsService->>Redis: ZADD leaderboard:{gameId}
-    ResultsService->>RankTracker: onScoreUpdated()
+    ResultsService->>RankTracker: onScoreUpdated(snapshot before upsert)
     RankTracker->>RankTracker: detect Top 100 enter/exit
-    RankTracker-->>Notifications: domain events
+    RankTracker-->>Notifications: domain events → FCM inline
 ```
 
 - HMAC payload: `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}`
@@ -96,30 +95,29 @@ sequenceDiagram
 ## Luồng leaderboard
 
 1. Client gọi `GET /api/leaderboards?gameId=...&page=...&limit=...&guestId=...`
-2. Server đọc Redis sorted set `leaderboard:{gameId}`.
-3. Cache miss → rebuild top 1000 từ PostgreSQL → `ZADD`.
-4. Redis down → fallback query trực tiếp bảng `leaderboards`.
-5. Tùy chọn `guestId` → trả `self.rank` và `self.bestScore`.
+2. Server query PostgreSQL `leaderboards` (ORDER BY `bestScore` DESC, `guestId` ASC).
+3. Tùy chọn `guestId` → trả `self.rank` và `self.bestScore` (đếm số score cao hơn + 1).
 
-Chi tiết: [apis/leaderboard.md](../apis/leaderboard.md), [redis-keys.md](./redis-keys.md).
+Chi tiết: [apis/leaderboard.md](../apis/leaderboard.md).
 
 ## Luồng push notification
 
 ```mermaid
 flowchart LR
-    A[Score submit / Device register / Saturday cron] --> B[NotificationDispatcher]
-    B --> C[NotificationOutbox]
-    C --> D[BullMQ fcm-delivery]
-    D --> E[FcmService → FCM]
+    A[Top 100 event] --> B[NotificationDispatcher]
+    B --> C[NotificationDeliveryService]
+    C --> D[FcmService -> FCM]
+    E[Saturday cron] --> F[BullMQ batch]
+    F --> B
 ```
 
 Ba loại push:
 
-| Type | Trigger |
-| ---- | ------- |
-| `top_100_entered` | Guest vào Top 100 sau submit score |
-| `top_100_exited` | Guest rời Top 100 (kể cả bị đẩy) |
-| `saturday_rank` | Cron thứ 7 9:00 (Asia/Ho_Chi_Minh) |
+| Type              | Trigger                                         |
+| ----------------- | ----------------------------------------------- |
+| `top_100_entered` | Guest vào Top 100 sau submit score (FCM inline) |
+| `top_100_exited`  | Guest rời Top 100 (kể cả bị đẩy)                |
+| `rank_push`       | Cron per-game `GAME_CONFIG.rankPushCron`        |
 
 Chi tiết: [notifications.md](./notifications.md), [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).
 
@@ -142,7 +140,6 @@ Chi tiết: [notifications.md](./notifications.md), [schedule/fcm-notification-j
 
 - `POST /api/results`
 - `DELETE /api/devices`
-- `PATCH /api/devices/heartbeat`
 - `PATCH /api/devices/preferences`
 
 **Lỗi** — `HttpExceptionFilter`:
@@ -166,14 +163,14 @@ Stack trace chỉ có khi `NODE_ENV !== 'production'`.
 
 Dùng Redis counter sliding window (60 giây). Guard: `RateLimitGuard` + decorator `@RateLimit`.
 
-| Endpoint | Limit | Key source | Redis prefix |
-| -------- | ----- | ---------- | ------------ |
-| `POST /guest/init` | 5/min | IP | `rate:init:` |
-| `PATCH /guest/name` | 10/min | guest | `rate:name:` |
-| `POST /results` | 20/min | guest | `rate:result:` |
-| `GET /leaderboards` | 30/min | IP | `rate:lb:` |
-| `/devices/*` | 10/min | guest | `rate:device:` |
-| `GET /health` | không giới hạn | — | — |
+| Endpoint            | Limit          | Key source | Redis prefix   |
+| ------------------- | -------------- | ---------- | -------------- |
+| `POST /guest/init`  | 5/min          | IP         | `rate:init:`   |
+| `PATCH /guest/name` | 10/min         | guest      | `rate:name:`   |
+| `POST /results`     | 20/min         | guest      | `rate:result:` |
+| `GET /leaderboards` | 30/min         | IP         | `rate:lb:`     |
+| `/devices/*`        | 10/min         | guest      | `rate:device:` |
+| `GET /health`       | không giới hạn | —          | —              |
 
 ## Bảo mật
 
@@ -181,16 +178,15 @@ Dùng Redis counter sliding window (60 giây). Guard: `RateLimitGuard` + decorat
 - `compression` — gzip (threshold 1024 bytes)
 - HMAC so sánh bằng `timingSafeEqual`
 - Startup guard `validateGameSecrets()` — chặn app nếu `replaySecret` sai format
-- Không log `replaySecret`, `secretToken` raw, `secretTokenHash`
+- Không log `replaySecret`, `secretToken` raw, `authTokenHash`
 - CORS: cho phép mọi origin + credentials (production nên hạn chế qua reverse proxy)
 
 ## Scheduled maintenance
 
-| Job | Schedule | Mô tả |
-| --- | -------- | ----- |
-| Partition | `0 3 1 * *` + startup | Tạo `game_results_<YYYY>` |
-| Saturday rank | `0 9 * * 6` (VN TZ) | Broadcast rank hàng tuần |
-| FCM retry | `*/5 * * * *` (VN TZ) | Re-enqueue outbox PENDING |
+| Job           | Schedule                        | Mô tả                             |
+| ------------- | ------------------------------- | --------------------------------- |
+| Partition     | `0 3 1 * *` + startup           | Tạo `game_results_<YYYY>`         |
+| Saturday rank | Per-game `rankPushCron` (VN TZ) | Scheduled rank push (`rank_push`) |
 
 Xem [schedule/](../schedule/).
 

@@ -1,12 +1,22 @@
 -- CreateEnum
 CREATE TYPE "GameId" AS ENUM ('FRULOOP');
 
+-- CreateEnum
+CREATE TYPE "DevicePlatform" AS ENUM ('IOS', 'ANDROID');
+
+-- CreateEnum
+CREATE TYPE "NotificationLocale" AS ENUM ('EN', 'VI');
+
 -- CreateTable
 CREATE TABLE "guest_players" (
     "id" TEXT NOT NULL,
     "gameId" "GameId" NOT NULL,
     "name" TEXT,
-    "secretTokenHash" TEXT NOT NULL,
+    "authTokenHash" TEXT NOT NULL,
+    "fcmToken" TEXT,
+    "devicePlatform" "DevicePlatform",
+    "notificationLocale" "NotificationLocale",
+    "top100EnterNotified" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "guest_players_pkey" PRIMARY KEY ("id")
@@ -20,7 +30,7 @@ CREATE TABLE "game_results" (
     "guestId" TEXT NOT NULL,
     "clientResultId" TEXT NOT NULL,
     "score" INTEGER NOT NULL,
-    "replayHash" TEXT NOT NULL,
+    "signature" TEXT NOT NULL,
     "metadata" JSONB,
     "playedAt" TIMESTAMP(3),
 
@@ -38,10 +48,13 @@ CREATE TABLE "leaderboards" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "guest_players_gameId_id_key" ON "guest_players"("gameId", "id");
+CREATE UNIQUE INDEX "guest_players_authTokenHash_key" ON "guest_players"("authTokenHash");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "guest_players_secretTokenHash_key" ON "guest_players"("secretTokenHash");
+CREATE UNIQUE INDEX "guest_players_fcmToken_key" ON "guest_players"("fcmToken");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "guest_players_gameId_id_key" ON "guest_players"("gameId", "id");
 
 -- CreateIndex
 CREATE INDEX "game_results_gameId_guestId_clientResultId_idx" ON "game_results"("gameId", "guestId", "clientResultId");

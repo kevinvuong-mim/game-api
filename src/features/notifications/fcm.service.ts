@@ -70,8 +70,8 @@ export class FcmService implements OnModuleInit {
       await this.messaging.send({
         token,
         notification: {
-          title: content.title,
           body: content.body,
+          title: content.title,
         },
         data: {
           type: payload.type,

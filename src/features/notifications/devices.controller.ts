@@ -48,18 +48,6 @@ export class DevicesController {
     return this.deviceTokenService.unregisterDevice(guest);
   }
 
-  @Patch('heartbeat')
-  @UseGuards(GuestAuthGuard, RateLimitGuard)
-  @RateLimit({
-    windowSeconds: 60,
-    keySource: 'guest',
-    keyPrefix: 'rate:device:',
-    limit: RATE_LIMITS.device,
-  })
-  heartbeat(@Guest() guest: AuthenticatedGuest) {
-    return this.deviceTokenService.heartbeat(guest);
-  }
-
   @Patch('preferences')
   @UseGuards(GuestAuthGuard, RateLimitGuard)
   @RateLimit({

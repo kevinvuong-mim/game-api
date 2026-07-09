@@ -1,14 +1,14 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 
-import { ResultsModule } from '@/features/results/results.module';
+import { ResultsDataModule } from '@/features/results/results-data.module';
 import { LeaderboardService } from '@/features/leaderboard/leaderboard.service';
 import { LeaderboardController } from '@/features/leaderboard/leaderboard.controller';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
 
 @Module({
+  imports: [ResultsDataModule],
   controllers: [LeaderboardController],
-  imports: [forwardRef(() => ResultsModule)],
   exports: [LeaderboardRankTrackerService, LeaderboardRankResolverService],
   providers: [LeaderboardService, LeaderboardRankTrackerService, LeaderboardRankResolverService],
 })

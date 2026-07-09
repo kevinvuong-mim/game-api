@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { type DevicePlatform, DeviceTokenStatus, NotificationLocale } from '@prisma/client';
+import { type DevicePlatform, NotificationLocale } from '@prisma/client';
 
 import type { GameId } from '@/common/constants';
 import { PrismaService } from '@/infra/prisma/prisma.service';
@@ -17,45 +17,31 @@ export class DeviceTokenRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async registerDevice(input: RegisterDeviceInput) {
-    const now = new Date();
-
     return this.prisma.$transaction(async (tx) => {
-      const tokenOwner = await tx.guestDeviceToken.findUnique({
-        where: { token: input.token },
+      const tokenOwner = await tx.guestPlayer.findFirst({
+        where: { fcmToken: input.token },
+        select: { id: true, gameId: true },
       });
 
-      if (tokenOwner && tokenOwner.guestId !== input.guestId) {
-        await tx.guestDeviceToken.update({
+      if (tokenOwner && (tokenOwner.id !== input.guestId || tokenOwner.gameId !== input.gameId)) {
+        await tx.guestPlayer.update({
           where: { id: tokenOwner.id },
           data: {
-            token: `${tokenOwner.id}:revoked`,
-            status: DeviceTokenStatus.INACTIVE,
+            fcmToken: null,
+            devicePlatform: null,
+            notificationLocale: null,
           },
         });
       }
 
-      return tx.guestDeviceToken.upsert({
+      return tx.guestPlayer.update({
         where: {
-          gameId_guestId: {
-            gameId: input.gameId,
-            guestId: input.guestId,
-          },
+          gameId_id: { gameId: input.gameId, id: input.guestId },
         },
-        create: {
-          lastSeenAt: now,
-          token: input.token,
-          gameId: input.gameId,
-          locale: input.locale,
-          guestId: input.guestId,
-          platform: input.platform,
-          status: DeviceTokenStatus.ACTIVE,
-        },
-        update: {
-          lastSeenAt: now,
-          token: input.token,
-          locale: input.locale,
-          platform: input.platform,
-          status: DeviceTokenStatus.ACTIVE,
+        data: {
+          fcmToken: input.token,
+          notificationLocale: input.locale,
+          devicePlatform: input.platform,
         },
       });
     });
@@ -67,95 +53,91 @@ export class DeviceTokenRepository {
     token: string,
     locale: NotificationLocale,
   ) {
-    const now = new Date();
-    const existing = await this.prisma.guestDeviceToken.findUnique({
+    const existing = await this.prisma.guestPlayer.findUnique({
       where: {
-        gameId_guestId: {
+        gameId_id: {
           gameId,
-          guestId,
+          id: guestId,
         },
       },
+      select: { id: true, gameId: true, fcmToken: true },
     });
 
-    if (!existing) {
+    if (!existing || !existing.fcmToken) {
       throw new NotFoundException('Device token not found');
     }
 
-    const tokenOwner = await this.prisma.guestDeviceToken.findUnique({
-      where: { token },
+    const tokenOwner = await this.prisma.guestPlayer.findFirst({
+      where: { fcmToken: token },
+      select: { id: true, gameId: true },
     });
 
-    if (tokenOwner && tokenOwner.id !== existing.id) {
-      await this.prisma.guestDeviceToken.update({
+    if (tokenOwner && (tokenOwner.id !== existing.id || tokenOwner.gameId !== existing.gameId)) {
+      await this.prisma.guestPlayer.update({
         where: { id: tokenOwner.id },
         data: {
-          token: `${tokenOwner.id}:revoked`,
-          status: DeviceTokenStatus.INACTIVE,
+          fcmToken: null,
+          devicePlatform: null,
+          notificationLocale: null,
         },
       });
     }
 
-    return this.prisma.guestDeviceToken.update({
+    return this.prisma.guestPlayer.update({
       where: { id: existing.id },
       data: {
-        token,
-        locale,
-        status: DeviceTokenStatus.ACTIVE,
-        lastSeenAt: now,
+        fcmToken: token,
+        notificationLocale: locale,
       },
     });
   }
 
   async unregisterDevice(gameId: GameId, guestId: string) {
-    return this.prisma.guestDeviceToken.updateMany({
+    return this.prisma.guestPlayer.updateMany({
       where: {
         gameId,
-        guestId,
-        status: DeviceTokenStatus.ACTIVE,
+        id: guestId,
+        fcmToken: { not: null },
       },
       data: {
-        status: DeviceTokenStatus.INACTIVE,
-      },
-    });
-  }
-
-  async touchHeartbeat(gameId: GameId, guestId: string) {
-    return this.prisma.guestDeviceToken.updateMany({
-      where: {
-        gameId,
-        guestId,
-        status: DeviceTokenStatus.ACTIVE,
-      },
-      data: {
-        lastSeenAt: new Date(),
+        fcmToken: null,
+        devicePlatform: null,
+        notificationLocale: null,
       },
     });
   }
 
   async findActiveToken(gameId: GameId, guestId: string) {
-    return this.prisma.guestDeviceToken.findFirst({
+    return this.prisma.guestPlayer.findFirst({
       where: {
         gameId,
-        guestId,
-        status: DeviceTokenStatus.ACTIVE,
+        id: guestId,
+        fcmToken: { not: null },
+      },
+      select: { gameId: true, id: true, fcmToken: true, notificationLocale: true },
+    });
+  }
+
+  async markTokenInvalid(fcmToken: string) {
+    return this.prisma.guestPlayer.updateMany({
+      where: { fcmToken },
+      data: {
+        fcmToken: null,
+        devicePlatform: null,
+        notificationLocale: null,
       },
     });
   }
 
-  async markTokenInvalid(token: string) {
-    return this.prisma.guestDeviceToken.updateMany({
-      where: { token },
-      data: { status: DeviceTokenStatus.INVALID },
-    });
-  }
-
-  async findActiveTokenBatch(cursor?: string, take = 500) {
-    return this.prisma.guestDeviceToken.findMany({
+  async findActiveTokenBatch(gameId: GameId, cursor?: string, take = 500) {
+    return this.prisma.guestPlayer.findMany({
       where: {
-        status: DeviceTokenStatus.ACTIVE,
+        gameId,
+        fcmToken: { not: null },
       },
       orderBy: { id: 'asc' },
       take,
+      select: { id: true, gameId: true, fcmToken: true, notificationLocale: true },
       ...(cursor
         ? {
             skip: 1,

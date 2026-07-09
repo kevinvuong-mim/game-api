@@ -29,8 +29,7 @@ export class DeviceTokenService {
     await this.rankTracker.maybeNotifyTop100OnDeviceRegister(guest.gameId, guest.guestId);
 
     return {
-      deviceId: device.id,
-      status: device.status,
+      guestId: device.id,
     };
   }
 
@@ -45,24 +44,17 @@ export class DeviceTokenService {
     );
 
     return {
-      deviceId: device.id,
-      status: device.status,
+      guestId: device.id,
     };
   }
 
   async unregisterDevice(guest: AuthenticatedGuest) {
-    await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, true);
     await this.deviceTokenRepository.unregisterDevice(guest.gameId, guest.guestId);
     return { success: true };
   }
 
   async setNotificationPreference(guest: AuthenticatedGuest, enabled: boolean) {
     await this.redisService.setNotificationMuted(guest.gameId, guest.guestId, !enabled);
-    return { success: true };
-  }
-
-  async heartbeat(guest: AuthenticatedGuest) {
-    await this.deviceTokenRepository.touchHeartbeat(guest.gameId, guest.guestId);
     return { success: true };
   }
 

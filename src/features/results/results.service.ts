@@ -51,7 +51,7 @@ export class ResultsService {
       guest.guestId,
       validItems.map((item) => ({
         ...item,
-        replayHash: item.signature,
+        signature: item.signature,
       })),
     );
 
@@ -60,7 +60,10 @@ export class ResultsService {
       batchResult.insertedCount > 0 &&
       batchResult.newBest > (batchResult.previousBest ?? -Infinity)
     ) {
-      await this.leaderboardRankTracker.onScoreUpdated(gameId, guest.guestId, batchResult.newBest);
+      await this.leaderboardRankTracker.onScoreUpdated(gameId, guest.guestId, {
+        previousRank: batchResult.previousRank,
+        guestAtRank100BeforeGuestId: batchResult.guestAtRank100BeforeGuestId,
+      });
     }
 
     return {
