@@ -16,7 +16,6 @@ CREATE TABLE "guest_players" (
     "fcmToken" TEXT,
     "devicePlatform" "DevicePlatform",
     "notificationLocale" "NotificationLocale",
-    "top100EnterNotified" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "guest_players_pkey" PRIMARY KEY ("id")
