@@ -124,7 +124,6 @@ SELECT "gameId", COUNT(*) FROM leaderboards GROUP BY "gameId";
 docker-compose exec redis redis-cli
 KEYS auth:token:*
 KEYS rate:*
-GET notification:muted:FRULOOP:<guestId>
 ```
 
 ---

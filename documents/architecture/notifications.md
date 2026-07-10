@@ -29,9 +29,8 @@ Không dùng DB outbox.
 
 Notification được gửi khi:
 
-1. Guest không mute (`notification:muted:{gameId}:{guestId}` không tồn tại)
-2. Guest có `fcmToken` trong `guest_players`
-3. Scheduled rank push (`rank_push`): game có `rankPushCron` trong `GAME_CONFIG` và guest có rank trên leaderboard
+1. Guest có `fcmToken` trong `guest_players`
+2. Scheduled rank push (`rank_push`): game có `rankPushCron` trong `GAME_CONFIG` và guest có rank trên leaderboard
 
 ## Notification types
 

@@ -6,7 +6,6 @@ import { Guest, RateLimit, type AuthenticatedGuest } from '@/common/decorators';
 import { UpdateDeviceDto } from '@/features/notifications/dto/update-device.dto';
 import { DeviceTokenService } from '@/features/notifications/device-token.service';
 import { RegisterDeviceDto } from '@/features/notifications/dto/register-device.dto';
-import { DeviceNotificationPreferenceDto } from '@/features/notifications/dto/device-notification-preference.dto';
 
 @Controller('devices')
 export class DevicesController {
@@ -46,17 +45,5 @@ export class DevicesController {
   })
   unregisterDevice(@Guest() guest: AuthenticatedGuest) {
     return this.deviceTokenService.unregisterDevice(guest);
-  }
-
-  @Patch('preferences')
-  @UseGuards(GuestAuthGuard, RateLimitGuard)
-  @RateLimit({
-    windowSeconds: 60,
-    keySource: 'guest',
-    keyPrefix: 'rate:device:',
-    limit: RATE_LIMITS.device,
-  })
-  setPreferences(@Body() dto: DeviceNotificationPreferenceDto, @Guest() guest: AuthenticatedGuest) {
-    return this.deviceTokenService.setNotificationPreference(guest, dto.enabled);
   }
 }

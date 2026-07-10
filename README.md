@@ -79,17 +79,16 @@ curl http://localhost:3000/api/health
 
 Global prefix: `/api`
 
-| Method | Path                   | Auth   | Description                       |
-| ------ | ---------------------- | ------ | --------------------------------- |
-| GET    | `/health`              | Public | Health check (Postgres + Redis)   |
-| POST   | `/guest/init`          | Public | Create guest, receive token       |
-| PATCH  | `/guest/name`          | Bearer | Update display name               |
-| POST   | `/results`             | Bearer | Submit game results (batch)       |
-| GET    | `/leaderboards`        | Public | Paginated leaderboard             |
-| POST   | `/devices`             | Bearer | Register FCM device token         |
-| PATCH  | `/devices`             | Bearer | Update FCM token / locale         |
-| DELETE | `/devices`             | Bearer | Unregister device token           |
-| PATCH  | `/devices/preferences` | Bearer | Enable/disable push notifications |
+| Method | Path            | Auth   | Description                     |
+| ------ | --------------- | ------ | ------------------------------- |
+| GET    | `/health`       | Public | Health check (Postgres + Redis) |
+| POST   | `/guest/init`   | Public | Create guest, receive token     |
+| PATCH  | `/guest/name`   | Bearer | Update display name             |
+| POST   | `/results`      | Bearer | Submit game results (batch)     |
+| GET    | `/leaderboards` | Public | Paginated leaderboard           |
+| POST   | `/devices`      | Bearer | Register FCM device token       |
+| PATCH  | `/devices`      | Bearer | Update FCM token / locale       |
+| DELETE | `/devices`      | Bearer | Unregister FCM device token     |
 
 Detailed API docs:
 

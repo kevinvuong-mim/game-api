@@ -4,15 +4,15 @@ Game API là backend **Leaderboard-as-a-Service** cho game casual/hyper-casual. 
 
 ## Tech stack
 
-| Thành phần         | Công nghệ                                   |
-| ------------------ | ------------------------------------------- |
-| Framework          | NestJS 11                                   |
-| ORM                | Prisma 6                                    |
-| Database           | PostgreSQL 16 (partitioned `game_results`)  |
-| Cache / rate limit | Redis 8 (auth cache, rate limit, mute flag) |
-| Queue              | BullMQ (`@nestjs/bullmq`)                   |
-| Push               | firebase-admin (FCM, optional)              |
-| Scheduler          | `@nestjs/schedule`                          |
+| Thành phần         | Công nghệ                                  |
+| ------------------ | ------------------------------------------ |
+| Framework          | NestJS 11                                  |
+| ORM                | Prisma 6                                   |
+| Database           | PostgreSQL 16 (partitioned `game_results`) |
+| Cache / rate limit | Redis 8 (auth cache, rate limit)           |
+| Queue              | BullMQ (`@nestjs/bullmq`)                  |
+| Push               | firebase-admin (FCM, optional)             |
+| Scheduler          | `@nestjs/schedule`                         |
 
 Global prefix: `/api`. Path alias: `@/*` → `src/*`.
 

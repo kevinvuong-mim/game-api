@@ -1,6 +1,6 @@
 # Redis Keys
 
-Redis dùng cho auth cache, rate limiting, và notification mute flag. Client: ioredis qua `RedisService` (`src/infra/redis/redis.service.ts`).
+Redis dùng cho auth cache và rate limiting. Client: ioredis qua `RedisService` (`src/infra/redis/redis.service.ts`).
 
 Connection: biến môi trường `REDIS_URL`.
 
@@ -18,26 +18,6 @@ Connection: biến môi trường `REDIS_URL`.
 `sha256Hash` = SHA-256 hex của `secretToken` plain text.
 
 > Value **phải** chứa cả `gameId` và `guestId` — `POST /results` đối chiếu `guest.gameId` với body mà không query DB thêm khi cache hit.
-
-## Notification mute flag
-
-| Thuộc tính  | Giá trị                                 |
-| ----------- | --------------------------------------- |
-| Key pattern | `notification:muted:{gameId}:{guestId}` |
-| Value       | `"1"` khi muted                         |
-| TTL         | Không đặt                               |
-
-Set khi:
-
-- `PATCH /api/devices/preferences` với `enabled: false`
-
-Xóa khi:
-
-- `POST /api/devices` — register
-- `PATCH /api/devices` — update
-- `PATCH /api/devices/preferences` với `enabled: true`
-
-`DELETE /api/devices` chỉ clear `fcmToken` / device fields — **không** tự động set mute. Client gọi `PATCH /devices/preferences` khi user tắt push.
 
 ## Rate limit counters
 
@@ -77,9 +57,6 @@ KEYS auth:token:*
 
 # Rate limit (debug)
 KEYS rate:*
-
-# Mute flag
-GET notification:muted:FRULOOP:<guestId>
 ```
 
 ## Constants reference

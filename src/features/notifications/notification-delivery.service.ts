@@ -25,8 +25,7 @@ export class NotificationDeliveryService {
 
   async deliver(input: DeliverNotificationInput): Promise<boolean> {
     try {
-      const muted = await this.deviceTokenService.isNotificationMuted(input.gameId, input.guestId);
-      if (muted || !this.fcmService.isEnabled()) {
+      if (!this.fcmService.isEnabled()) {
         return false;
       }
 

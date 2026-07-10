@@ -497,12 +497,11 @@ Logic: PostgreSQL `leaderboards` (ORDER BY `bestScore` DESC, `guestId` ASC).
 
 Auth required. Rate limit: `10/60s` per guest.
 
-| Method | Path                       | Mô tả                                             |
-| ------ | -------------------------- | ------------------------------------------------- |
-| POST   | `/api/devices`             | Đăng ký FCM token (`token`, `platform`, `locale`) |
-| PATCH  | `/api/devices`             | Cập nhật token / locale                           |
-| DELETE | `/api/devices`             | Unregister (clear `fcmToken` + device fields)     |
-| PATCH  | `/api/devices/preferences` | Bật/tắt push qua Redis mute (`enabled: boolean`)  |
+| Method | Path           | Mô tả                                             |
+| ------ | -------------- | ------------------------------------------------- |
+| POST   | `/api/devices` | Đăng ký FCM token (`token`, `platform`, `locale`) |
+| PATCH  | `/api/devices` | Cập nhật token / locale                           |
+| DELETE | `/api/devices` | Unregister (clear `fcmToken` + device fields)     |
 
 Device data lưu trên `guest_players`: `fcmToken`, `devicePlatform`, `notificationLocale`.
 
@@ -512,7 +511,7 @@ Register/Update response `data`:
 { "guestId": "uuid" }
 ```
 
-Unregister/Preferences response `data`:
+Unregister response `data`:
 
 ```json
 { "success": true }
@@ -547,9 +546,8 @@ Scheduled rank cron (per game có rankPushCron)
 
 ## Điều kiện gửi
 
-1. Guest không mute (`notification:muted:{gameId}:{guestId}` không tồn tại trên Redis)
-2. Guest có `fcmToken` trong `guest_players`
-3. Scheduled rank push: game có `rankPushCron` trong `GAME_CONFIG` và guest có rank trên leaderboard
+1. Guest có `fcmToken` trong `guest_players`
+2. Scheduled rank push: game có `rankPushCron` trong `GAME_CONFIG` và guest có rank trên leaderboard
 
 ## Invalid token
 
@@ -572,10 +570,6 @@ Auth token cache:
   Key:   auth:token:{sha256Hash}
   Value: JSON { "guestId", "gameId" }
   TTL:   300s
-
-Notification mute:
-  Key: notification:muted:{gameId}:{guestId}
-  Value: "1" (SET khi mute, DEL khi unmute)
 
 Rate limit:
   Key: rate:{prefix}:{id}
@@ -605,13 +599,13 @@ So sánh bằng `crypto.timingSafeEqual`. `replaySecret` từ `GAME_CONFIG`, kh�
 
 Redis counter (`INCR` + `EXPIRE`). Guard: `RateLimitGuard` + `@RateLimit`.
 
-| Endpoint                                               | Limit | Window | Key source | Prefix         |
-| ------------------------------------------------------ | ----: | -----: | ---------- | -------------- |
-| POST /guest/init                                       |     5 |    60s | IP         | `rate:init:`   |
-| PATCH /guest/name                                      |    10 |    60s | guest      | `rate:name:`   |
-| POST /results                                          |    20 |    60s | guest      | `rate:result:` |
-| GET /leaderboards                                      |    30 |    60s | IP         | `rate:lb:`     |
-| POST/PATCH/DELETE /devices, PATCH /devices/preferences |    10 |    60s | guest      | `rate:device:` |
+| Endpoint                   | Limit | Window | Key source | Prefix         |
+| -------------------------- | ----: | -----: | ---------- | -------------- |
+| POST /guest/init           |     5 |    60s | IP         | `rate:init:`   |
+| PATCH /guest/name          |    10 |    60s | guest      | `rate:name:`   |
+| POST /results              |    20 |    60s | guest      | `rate:result:` |
+| GET /leaderboards          |    30 |    60s | IP         | `rate:lb:`     |
+| POST/PATCH/DELETE /devices |    10 |    60s | guest      | `rate:device:` |
 
 `GET /api/health` không rate limit.
 
@@ -757,7 +751,7 @@ Production nên hạn chế origin qua reverse proxy.
 | Response envelope   | `{ success, statusCode, message, data, path, timestamp }`                 | `ApiClient` envelope                                                                                                                                                                                 |
 | Auth header         | `Authorization: Bearer <secretToken>`                                     | `ApiClient.setAuthToken(secretToken)`                                                                                                                                                                |
 | Token persistence   | Không TTL                                                                 | Capacitor Preferences `gsk:guest`                                                                                                                                                                    |
-| FCM device          | `POST/PATCH/DELETE /api/devices`, `PATCH /api/devices/preferences`        | `notifications` module                                                                                                                                                                               |
+| FCM device          | `POST/PATCH/DELETE /api/devices`                                          | `notifications` module                                                                                                                                                                               |
 | Device API response | `{ guestId }` (register/update)                                           | Không dùng `deviceId`                                                                                                                                                                                |
 | Push payload        | FCM `data: { type, route }` — `type`: `rank_push`; `route`: `Leaderboard` | In-app navigation + foreground toast; local daily reward chỉ dùng `route: DailyReward`                                                                                                               |
 | Scheduled rank push | `GAME_CONFIG.rankPushCron` per-game (optional)                            | Client handle `rank_push` → Leaderboard                                                                                                                                                              |

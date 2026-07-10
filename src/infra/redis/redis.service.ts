@@ -9,7 +9,6 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
 
 export const REDIS_KEYS = {
   authToken: (tokenHash: string) => `auth:token:${tokenHash}`,
-  notificationMuted: (gameId: string, guestId: string) => `notification:muted:${gameId}:${guestId}`,
 } as const;
 
 @Injectable()
@@ -48,20 +47,6 @@ export class RedisService implements OnModuleDestroy {
       'EX',
       AUTH_TOKEN_CACHE_TTL_SECONDS,
     );
-  }
-
-  async setNotificationMuted(gameId: string, guestId: string, muted: boolean): Promise<void> {
-    const key = REDIS_KEYS.notificationMuted(gameId, guestId);
-    if (muted) {
-      await this.redis.set(key, '1');
-      return;
-    }
-    await this.redis.del(key);
-  }
-
-  async isNotificationMuted(gameId: string, guestId: string): Promise<boolean> {
-    const key = REDIS_KEYS.notificationMuted(gameId, guestId);
-    return (await this.redis.exists(key)) === 1;
   }
 
   async consumeRateLimit(key: string, limit: number, windowSeconds: number): Promise<boolean> {
