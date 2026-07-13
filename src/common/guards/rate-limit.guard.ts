@@ -70,11 +70,9 @@ export class RateLimitGuard implements CanActivate {
   }
 
   private extractClientIp(request: Request): string {
-    const forwarded = request.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string' && forwarded.length > 0) {
-      return forwarded.split(',')[0]?.trim() ?? request.ip ?? 'unknown';
-    }
-
+    // Use Express `request.ip` only. With `trust proxy` enabled in main.ts,
+    // Express derives the client IP from X-Forwarded-For safely. Reading the
+    // header here directly would let clients spoof rate-limit buckets.
     return request.ip ?? 'unknown';
   }
 }

@@ -28,7 +28,7 @@ Players are identified by anonymous guest tokens. The server handles score stora
 docker-compose up -d
 ```
 
-See [documents/setup/docker.md](./documents/setup/docker.md) for PostgreSQL and Redis connection details.
+See [documents/setup/local-development.md](./documents/setup/local-development.md) for PostgreSQL and Redis connection details.
 
 ### 2. Configure environment
 
@@ -59,7 +59,7 @@ npm install
 npm run prisma:migrate
 ```
 
-> `game_results` uses PostgreSQL range partitioning via a custom SQL migration. See [GAME_API_BUILD_SPEC.md](./GAME_API_BUILD_SPEC.md) Section 5 if you need to apply partition migrations manually.
+> `game_results` uses PostgreSQL range partitioning via a custom SQL migration. See [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md).
 
 ### 4. Run the server
 
@@ -129,9 +129,8 @@ game-api/
 ├── prisma/
 │   ├── schema.prisma
 │   └── migrations/
-├── documents/                     # API, setup, and schedule docs
-├── docker-compose.yml
-└── GAME_API_BUILD_SPEC.md         # Full build specification
+├── documents/                     # API, setup, architecture, schedule docs
+└── docker-compose.yml
 ```
 
 ## Path Alias
@@ -161,8 +160,9 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 ### Leaderboard
 
-- Đọc trực tiếp PostgreSQL `leaderboards` (ORDER BY `bestScore` DESC)
-- Không cache Redis sorted set
+- Query PostgreSQL `leaderboards` with `ORDER BY bestScore DESC, guestId ASC`
+- Self / submit / FCM ranks use the same tie-break (`countBetterRanks`)
+- No Redis sorted-set cache
 
 ### Result deduplication
 
@@ -172,7 +172,7 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 ### Scheduled maintenance
 
 - `MaintenanceService` creates `game_results_<YYYY>` partition for the next calendar year
-- Cron: `0 3 1 * *` (3:00 AM on the 1st of each month) + startup check
+- Cron: `59 23 28-31 * *` (last days of each month) + startup + ensure-on-insert
 
 See [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md).
 
@@ -196,7 +196,7 @@ Games are declared in source code (`GameId` enum), not in a database table.
 | --------- | ------------------------------- |
 | `FRULOOP` | `0 9 * * 6` (9:00 Thứ 7, VN TZ) |
 
-To add a new game, update `GAME_CONFIG` in `src/common/constants/game.constants.ts`. See [GAME_API_BUILD_SPEC.md](./documents/GAME_API_BUILD_SPEC.md).
+To add a new game, update `GAME_CONFIG` in `src/common/constants/game.constants.ts`. See [documents/setup/adding-new-game.md](./documents/setup/adding-new-game.md).
 
 ## Response Envelope
 
@@ -232,18 +232,15 @@ Errors use `HttpExceptionFilter` with `success: false`.
 
 | Topic                 | Path                                                                                           |
 | --------------------- | ---------------------------------------------------------------------------------------------- |
-| Full build spec       | [GAME_API_BUILD_SPEC.md](./GAME_API_BUILD_SPEC.md)                                             |
-| Architecture overview | [documents/architecture/overview.md](./documents/architecture/overview.md)                     |
-| Database schema       | [documents/architecture/database-schema.md](./documents/architecture/database-schema.md)       |
-| Push notifications    | [documents/architecture/notifications.md](./documents/architecture/notifications.md)           |
 | Local development     | [documents/setup/local-development.md](./documents/setup/local-development.md)                 |
+| Environment variables | [documents/setup/environment-variables.md](./documents/setup/environment-variables.md)         |
 | Production deployment | [documents/setup/production-deployment.md](./documents/setup/production-deployment.md)         |
 | Adding a new game     | [documents/setup/adding-new-game.md](./documents/setup/adding-new-game.md)                     |
-| Docker setup          | [documents/setup/docker.md](./documents/setup/docker.md)                                       |
-| Environment variables | [documents/setup/environment-variables.md](./documents/setup/environment-variables.md)         |
-| Devices / push tokens | [documents/apis/devices.md](./documents/apis/devices.md)                                       |
+| Database schema       | [documents/architecture/database-schema.md](./documents/architecture/database-schema.md)       |
+| Redis keys            | [documents/architecture/redis-keys.md](./documents/architecture/redis-keys.md)                 |
 | Partition maintenance | [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md) |
-| FCM scheduled jobs    | [documents/schedule/fcm-notification-jobs.md](./documents/schedule/fcm-notification-jobs.md)   |
+| FCM / push jobs       | [documents/schedule/fcm-notification-jobs.md](./documents/schedule/fcm-notification-jobs.md)   |
+| Devices / push tokens | [documents/apis/devices.md](./documents/apis/devices.md)                                       |
 
 ## Related Projects
 

@@ -13,6 +13,10 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
+  // Trust one reverse-proxy hop (e.g. Render) so `request.ip` is the real client.
+  // Required for IP rate limits — do not parse X-Forwarded-For in guards.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   app.setGlobalPrefix('api');
 
   app.use(

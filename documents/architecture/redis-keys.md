@@ -1,67 +1,61 @@
 # Redis Keys
 
-Redis dùng cho auth cache và rate limiting. Client: ioredis qua `RedisService` (`src/infra/redis/redis.service.ts`).
+Redis is used for auth cache, rate limiting, and BullMQ. Client: ioredis via `RedisService` (`src/infra/redis/redis.service.ts`).
 
-Connection: biến môi trường `REDIS_URL`.
+Connection: `REDIS_URL`.
 
-> Leaderboard **không** cache trên Redis — query trực tiếp PostgreSQL `leaderboards`.
+> Leaderboard is **not** cached in Redis — queries hit PostgreSQL `leaderboards` directly.
 
 ## Auth token cache
 
-| Thuộc tính  | Giá trị                                      |
-| ----------- | -------------------------------------------- |
-| Key pattern | `auth:token:{sha256Hash}`                    |
-| Value       | JSON `{"guestId":"...","gameId":"FRULOOP"}`  |
-| TTL         | 300 giây (`AUTH_TOKEN_CACHE_TTL_SECONDS`)    |
-| Set khi     | Guest auth cache miss → lookup DB thành công |
+| Property    | Value                                       |
+| ----------- | ------------------------------------------- |
+| Key pattern | `auth:token:{sha256Hash}`                   |
+| Value       | JSON `{"guestId":"...","gameId":"FRULOOP"}` |
+| TTL         | 300s (`AUTH_TOKEN_CACHE_TTL_SECONDS`)       |
+| Set when    | Auth cache miss → DB lookup succeeds        |
 
-`sha256Hash` = SHA-256 hex của `secretToken` plain text.
-
-> Value **phải** chứa cả `gameId` và `guestId` — `POST /results` đối chiếu `guest.gameId` với body mà không query DB thêm khi cache hit.
+`sha256Hash` = SHA-256 hex of the plain `secretToken`.
 
 ## Rate limit counters
 
-Pattern: `{prefix}{suffix}` — suffix là IP hoặc `guestId`.
+Pattern: `{prefix}{suffix}` — suffix is client IP or `guestId`.
 
-| Prefix         | Suffix    | Limit / 60s | Endpoint            |
-| -------------- | --------- | ----------- | ------------------- |
-| `rate:init:`   | client IP | 5           | `POST /guest/init`  |
-| `rate:name:`   | guestId   | 10          | `PATCH /guest/name` |
-| `rate:result:` | guestId   | 20          | `POST /results`     |
-| `rate:lb:`     | client IP | 30          | `GET /leaderboards` |
-| `rate:device:` | guestId   | 10          | `/devices/*`        |
+| Prefix         | Suffix  | Limit / 60s | Endpoint            |
+| -------------- | ------- | ----------- | ------------------- |
+| `rate:init:`   | IP      | 5           | `POST /guest/init`  |
+| `rate:name:`   | guestId | 10          | `PATCH /guest/name` |
+| `rate:result:` | guestId | 20          | `POST /results`     |
+| `rate:lb:`     | IP      | 30          | `GET /leaderboards` |
+| `rate:device:` | guestId | 10          | `/devices/*`        |
 
-Implementation: `INCR` + `EXPIRE` trên lần INCR đầu tiên (fixed window 60 giây).
+Implementation: **atomic Lua** `INCR` + `EXPIRE` (fixed 60s window). Also re-applies TTL if a key somehow lost it.
 
-**Fail-open:** `RateLimitGuard` và `GuestAuthGuard` cho phép request khi Redis lỗi (log warning, fallback DB cho auth).
+Client IP comes from Express `request.ip` with `trust proxy = 1` in `main.ts` (do **not** read raw `X-Forwarded-For` in the guard).
 
-IP lấy từ `X-Forwarded-For` (phần tử đầu) hoặc `request.ip`.
+**Fail-open:** if Redis errors, rate-limit and auth-cache guards allow the request (auth falls back to DB).
 
-## BullMQ queues
+## BullMQ
 
-BullMQ dùng Redis riêng cho job metadata (prefix mặc định `bull:`). Queue chính:
+BullMQ uses Redis with the default `bull:` prefix.
 
-| Queue name               | Mục đích                                |
-| ------------------------ | --------------------------------------- |
-| `rank-push-notification` | Batch scheduled rank push (`rank_push`) |
+| Queue name               | Purpose                      |
+| ------------------------ | ---------------------------- |
+| `rank-push-notification` | Scheduled weekly `rank_push` |
 
-Chi tiết job: [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).
+See [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).
 
-## CLI examples (local dev)
+## CLI (local)
 
 ```bash
 docker-compose exec redis redis-cli
-
-# Auth cache
 KEYS auth:token:*
-
-# Rate limit (debug)
 KEYS rate:*
 ```
 
-## Constants reference
+## Constants
 
-File: `src/common/constants/runtime.constants.ts`
+`src/common/constants/runtime.constants.ts`:
 
 ```ts
 RATE_LIMITS = { init: 5, name: 10, device: 10, result: 20, leaderboard: 30 };

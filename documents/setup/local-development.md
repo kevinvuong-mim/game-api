@@ -26,7 +26,18 @@ docker-compose exec redis redis-cli ping    # PONG
 docker-compose exec postgres pg_isready -U kwong2000 -d game-api
 ```
 
-Chi tiết Docker: [docker.md](./docker.md).
+### Thông tin kết nối Docker (dev)
+
+| Service    | Host      | Port | Credentials                             |
+| ---------- | --------- | ---- | --------------------------------------- |
+| PostgreSQL | localhost | 5432 | `kwong2000` / `1234abcd`, DB `game-api` |
+| Redis      | localhost | 6379 | Không password                          |
+
+```bash
+docker-compose stop      # giữ data
+docker-compose down      # xóa container, giữ volume
+docker-compose down -v   # xóa cả data (dev only)
+```
 
 ## 3. Cấu hình environment
 

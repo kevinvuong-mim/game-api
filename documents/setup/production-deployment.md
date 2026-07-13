@@ -99,7 +99,7 @@ Chi tiết: [apis/health-check.md](../apis/health-check.md).
 `MaintenanceService` tự tạo partition `game_results_<YYYY>` khi:
 
 - App startup (`onModuleInit`)
-- Cron `0 3 1 * *` (ngày 1 mỗi tháng, 3:00 AM server time)
+- Cron `59 23 28-31 * *` (cuối tháng) + startup + ensure-on-insert
 
 Đảm bảo app chạy liên tục hoặc có ít nhất một instance active qua đầu năm.
 
@@ -149,5 +149,7 @@ Chưa có `/api/metrics` (Prometheus) — optional tương lai.
 
 ## Related
 
-- Local dev: [local-development.md](./local-development.md)
-- Docker Compose (dev only): [docker.md](./docker.md)
+- Local development (incl. Docker): [local-development.md](./local-development.md)
+- Environment variables: [environment-variables.md](./environment-variables.md)
+- FCM jobs: [../schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md)
+- Partition cron: [../schedule/game-results-partition.md](../schedule/game-results-partition.md)

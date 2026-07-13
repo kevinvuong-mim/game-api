@@ -49,15 +49,26 @@ export class RedisService implements OnModuleDestroy {
     );
   }
 
+  /**
+   * Atomic fixed-window counter. Also heals keys that lost TTL (INCR without EXPIRE).
+   */
   async consumeRateLimit(key: string, limit: number, windowSeconds: number): Promise<boolean> {
-    const count = await this.redis.incr(key);
-
-    if (count === 1) {
-      await this.redis.expire(key, windowSeconds);
-    }
+    const count = Number(
+      await this.redis.eval(RedisService.RATE_LIMIT_LUA, 1, key, String(windowSeconds)),
+    );
 
     return count <= limit;
   }
+
+  private static readonly RATE_LIMIT_LUA = `
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+elseif redis.call('TTL', KEYS[1]) < 0 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return count
+`;
 }
 
 export function createRedisClient(configService: ConfigService) {

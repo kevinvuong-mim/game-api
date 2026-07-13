@@ -1,37 +1,53 @@
-# FCM Notification Scheduled Jobs
+# FCM Notification Jobs
 
-Tài liệu cron + worker cho notification trong kiến trúc hiện tại (không outbox DB).
+Cron + BullMQ workers for push notifications (no DB outbox).
 
 ## Jobs
 
-| Job                   | Schedule                            | Timezone           | File                                                     |
-| --------------------- | ----------------------------------- | ------------------ | -------------------------------------------------------- |
-| Rank push broadcast   | Per-game `GAME_CONFIG.rankPushCron` | `Asia/Ho_Chi_Minh` | `src/features/notifications/jobs/rank-push.scheduler.ts` |
-| Partition maintenance | `0 3 1 * *`                         | server local       | `src/infra/maintenance/maintenance.service.ts`           |
+| Job                 | Schedule                            | Timezone           | File                                                     |
+| ------------------- | ----------------------------------- | ------------------ | -------------------------------------------------------- |
+| Rank push broadcast | Per-game `GAME_CONFIG.rankPushCron` | `Asia/Ho_Chi_Minh` | `src/features/notifications/jobs/rank-push.scheduler.ts` |
+| Top 100 exit push   | On score submit (inline)            | —                  | `top100-exit-notification.listener.ts`                   |
 
-Game **không** có `rankPushCron` trong `GAME_CONFIG` → không đăng ký cron rank push cho game đó.
+Partition maintenance is **not** an FCM job — see [game-results-partition.md](./game-results-partition.md) (`59 23 28-31 * *`).
 
-Ví dụ FRULOOP: `rankPushCron: '0 9 * * 6'` (9:00 Thứ 7).
+Game **without** `rankPushCron` in `GAME_CONFIG` → no weekly rank-push cron for that game.
 
-## BullMQ queues
+Example FRULOOP: `rankPushCron: '0 9 * * 6'` (Saturday 09:00 VN).
+
+## Push types
+
+| `type`           | When                                              | Route         |
+| ---------------- | ------------------------------------------------- | ------------- |
+| `rank_push`      | Weekly BullMQ broadcast for guests with FCM token | `Leaderboard` |
+| `top_100_exited` | Player drops out of Top 100 after a better score  | `Leaderboard` |
+
+FCM `data` payload: `{ type, route }`. Locale templates: EN / VI (`localeToCode` accepts `vi` / `VI`).
+
+## BullMQ
 
 | Queue                    | Worker              |
 | ------------------------ | ------------------- |
 | `rank-push-notification` | `RankPushProcessor` |
 
-Top 100 push **không** còn dùng — rank sau submit trả trong `POST /api/results`.
+**Single Nest instance recommended** for cron: multiple replicas enqueue duplicate broadcasts (no jobId lock).
 
-## Scheduled rank push flow (`rankPushCron`)
+## Scheduled rank push flow
 
-1. `RankPushScheduler.onModuleInit()` đăng ký cron per-game từ `GAME_CONFIG`
-2. Cron fire → `RankPushCronService.enqueueRankPushBroadcast(gameId)`
-3. `RankPushProcessor` đọc batch guest có `fcmToken` (filter `gameId`)
-4. Resolve rank từng guest
-5. `NotificationDispatcherService.sendRankPush()` → `NotificationDeliveryService.deliver()` inline
+1. `RankPushScheduler.onModuleInit()` registers per-game cron from `GAME_CONFIG`
+2. Cron → enqueue `START_RANK_PUSH_BROADCAST`
+3. Worker loads guests with `fcmToken` in batches
+4. `resolveRank` (same order as leaderboard: `bestScore DESC`, `guestId ASC`)
+5. `NotificationDispatcherService.sendRankPush()` → FCM inline
+
+## Top 100 exit flow
+
+1. `POST /results` updates best score
+2. `LeaderboardRankTrackerService` detects previous #100 displaced
+3. Event → `Top100ExitNotificationListener` → FCM `top_100_exited`
 
 ## Delivery semantics
 
-- Không retry scheduler riêng cho FCM
-- Không outbox table (`notification_outbox`)
-- Nếu Firebase disabled hoặc guest bị mute/không token thì skip
-- Invalid token từ FCM → clear token ở `guest_players`
+- No separate FCM retry / outbox table
+- Missing Firebase credentials → push disabled; device APIs still work
+- Invalid FCM token → clear token fields on `guest_players`

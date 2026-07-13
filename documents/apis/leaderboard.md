@@ -45,7 +45,7 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 6. **Resolve names**: Batch query `GuestPlayer.name` cho các `guestId` trong trang hiện tại.
 7. **Resolve self rank** (nếu có `guestId`):
    - Lấy `bestScore` của guest từ `leaderboards`.
-   - Đếm số player có `bestScore` cao hơn → `rank = count + 1`.
+   - `rank = countBetterRanks + 1` — đếm player có `bestScore` cao hơn **hoặc** cùng score nhưng `guestId` nhỏ hơn (khớp thứ tự list).
 8. **Return response**: `gameId`, `total`, `page`, `limit`, `items`, `self`.
 
 ---

@@ -18,7 +18,12 @@ export class LeaderboardRankResolverService {
       return null;
     }
 
-    const betterCount = await this.resultsRepository.countBetterScores(gameId, row.bestScore);
+    // Match list ordering: bestScore DESC, guestId ASC (ties broken by guestId).
+    const betterCount = await this.resultsRepository.countBetterRanks(
+      gameId,
+      guestId,
+      row.bestScore,
+    );
     return {
       rank: betterCount + 1,
       bestScore: row.bestScore,

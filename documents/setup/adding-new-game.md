@@ -116,5 +116,5 @@ curl "https://api.example.com/api/leaderboards?gameId=MYGAME"
 ## Related
 
 - HMAC chi tiết: [apis/results.md](../apis/results.md)
-- Build spec: [GAME_API_BUILD_SPEC.md](../GAME_API_BUILD_SPEC.md)
 - Frontend sync: `game-starter-kit/documents/modules/game-result-sync.md`
+- Push jobs: [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md)

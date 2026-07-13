@@ -50,6 +50,7 @@ export class DeviceTokenService {
   }
 
   localeToCode(locale: { toString(): string }): 'en' | 'vi' {
-    return locale.toString() === 'VI' ? 'vi' : 'en';
+    const value = locale.toString().trim().toLowerCase();
+    return value === 'vi' || value.startsWith('vi') ? 'vi' : 'en';
   }
 }

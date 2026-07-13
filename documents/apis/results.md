@@ -2,7 +2,7 @@
 
 ## Overview
 
-API gửi kết quả game (batch submit). Mỗi kết quả được xác thực bằng HMAC signature để chống giả mạo điểm. Hỗ trợ dedup theo `clientResultId`, cập nhật leaderboard best score và Top 100 push.
+API gửi kết quả game (batch submit). Mỗi kết quả được xác thực bằng HMAC signature để chống giả mạo điểm. Hỗ trợ dedup theo `clientResultId`, cập nhật leaderboard best score; có thể emit FCM `top_100_exited` khi player bị đẩy khỏi Top 100.
 
 **Base URL**: `/api/results`
 

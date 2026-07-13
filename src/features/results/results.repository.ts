@@ -156,11 +156,12 @@ export class ResultsRepository {
     });
   }
 
-  countBetterScores(gameId: GameId, bestScore: number) {
+  /** Ranks ahead of this guest under (bestScore DESC, guestId ASC). */
+  countBetterRanks(gameId: GameId, guestId: string, bestScore: number) {
     return this.prisma.leaderboard.count({
       where: {
         gameId,
-        bestScore: { gt: bestScore },
+        OR: [{ bestScore: { gt: bestScore } }, { bestScore, guestId: { lt: guestId } }],
       },
     });
   }
