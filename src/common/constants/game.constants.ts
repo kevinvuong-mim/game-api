@@ -5,7 +5,6 @@ export { GameId };
 
 export interface GameConfigEntry {
   replaySecret: string;
-  /** Cron expression (Asia/Ho_Chi_Minh). When set, schedules periodic rank push (`rank_push`). */
   rankPushCron?: string;
 }
 

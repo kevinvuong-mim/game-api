@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 
-import { NOTIFICATION_QUEUE } from '@/common/constants';
 import {
   RankPushProcessor,
   RankPushCronService,
 } from '@/features/notifications/jobs/rank-push.job';
+import { NOTIFICATION_QUEUE } from '@/common/constants';
 import { GuestModule } from '@/features/guest/guest.module';
 import { FcmService } from '@/features/notifications/fcm.service';
 import { LeaderboardModule } from '@/features/leaderboard/leaderboard.module';

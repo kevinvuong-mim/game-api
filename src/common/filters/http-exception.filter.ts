@@ -29,7 +29,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let message = 'Internal server error';
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     const healthDetails: Partial<
-      Pick<ErrorResponse, 'status' | 'services' | 'uptime' | 'timestamp'>
+      Pick<ErrorResponse, 'status' | 'uptime' | 'services' | 'timestamp'>
     > = {};
 
     // Handle HttpException

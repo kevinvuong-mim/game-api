@@ -34,8 +34,8 @@ export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICA
 export type NotificationLocaleCode = 'en' | 'vi';
 
 export interface LocalizedNotificationContent {
-  title: string;
   body: string;
+  title: string;
 }
 
 export const NOTIFICATION_I18N: Record<
@@ -80,8 +80,8 @@ export function getLocalizedNotification(
   }
 
   return {
-    title: interpolate(template.title, params),
     body: interpolate(template.body, params),
+    title: interpolate(template.title, params),
   };
 }
 
