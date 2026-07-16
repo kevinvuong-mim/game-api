@@ -47,7 +47,7 @@ Content-Type: application/json
 | gameId                 | string | Yes      | `@IsEnum(GameId)`                 | Mã game (`FRULOOP`). Phải khớp game của guest token. |
 | items                  | array  | Yes      | Min: 1, Max: 50 items             | Danh sách kết quả cần gửi                            |
 | items[].clientResultId | string | Yes      | Non-empty string                  | ID duy nhất do client tạo (dedup key)                |
-| items[].score          | number | Yes      | Integer, Min: 0                   | Điểm số                                              |
+| items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647  | Điểm số (khớp Prisma `Int` / PG `integer`)           |
 | items[].playedAt       | string | No       | ISO 8601 strict                   | Thời điểm chơi                                       |
 | items[].metadata       | object | No       | `@IsValidMetadata` (xem bên dưới) | Metadata bổ sung (flat object)                       |
 | items[].signature      | string | Yes      | HMAC-SHA256 hex (64 chars)        | Chữ ký xác thực replay                               |

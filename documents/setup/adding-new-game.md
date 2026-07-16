@@ -1,13 +1,27 @@
 # Thêm game mới
 
-Game được khai báo **trong source code** (type-safe), không có bảng `games` trong database. Thêm game mới yêu cầu deploy backend **và** cập nhật client.
+Game được khai báo **trong source code** (type-safe), không có bảng `games` trong database.
+
+## Quy tắc bắt buộc
+
+**Mỗi game mới = đúng 1 PR trên `game-api`**, gồm đủ cả ba phần:
+
+1. **`GameId`** — thêm giá trị vào Prisma enum (+ migration)
+2. **`GAME_CONFIG`** — thêm entry trong `src/common/constants/game.constants.ts` (`replaySecret`, optional `rankPushCron`)
+3. **Migrate** — `npm run prisma:migrate` (và `prisma:generate`) rồi deploy
+
+Client (`game-starter-kit`) chỉ đổi `VITE_GAME_ID` + `VITE_REPLAY_SECRET` **sau** khi PR API đã merge/deploy. Không thể “chỉ clone kit” mà bỏ qua PR API — backend sẽ trả `404 Game "X" not supported`.
+
+Thêm game mới luôn yêu cầu deploy backend **và** cập nhật client (coordinated release).
 
 ## Checklist
 
-- [ ] Thêm `GameId` enum trong backend
+- [ ] Mở 1 PR `game-api` với đủ: `GameId` + `GAME_CONFIG` + migrate
+- [ ] Thêm `GameId` enum trong Prisma schema
 - [ ] Thêm entry `GAME_CONFIG` với `replaySecret`
 - [ ] (Tuỳ chọn) Thêm `rankPushCron` nếu cần scheduled rank push (`rank_push`)
-- [ ] Sync Prisma schema + migration
+- [ ] Chạy migration + generate Prisma client
+- [ ] Merge/deploy API trước (hoặc cùng lúc) client
 - [ ] Cập nhật client `VITE_GAME_ID` + `VITE_REPLAY_SECRET`
 - [ ] Test guest init, submit result, leaderboard
 

@@ -43,8 +43,9 @@ FCM `data` payload: `{ type, route }`. Locale templates: EN / VI (`localeToCode`
 ## Top 100 exit flow
 
 1. `POST /results` updates best score
-2. `LeaderboardRankTrackerService` detects previous #100 displaced
-3. Event → `Top100ExitNotificationListener` → FCM `top_100_exited`
+2. Before upsert, capture `previousRank` with the same tie-break as the public leaderboard (`bestScore DESC`, `guestId ASC` — same as `countBetterRanks`)
+3. `LeaderboardRankTrackerService` detects submitting-guest exit and/or previous #100 displaced
+4. Event → `Top100ExitNotificationListener` → FCM `top_100_exited`
 
 ## Delivery semantics
 

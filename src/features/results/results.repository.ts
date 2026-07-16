@@ -94,10 +94,17 @@ export class ResultsRepository {
         select: { bestScore: true },
       });
       const previousBest = previousRow?.bestScore ?? null;
+      // Same tie-break as countBetterRanks: bestScore DESC, guestId ASC.
       const previousRank =
         previousBest !== null
           ? (await tx.leaderboard.count({
-              where: { gameId, bestScore: { gt: previousBest } },
+              where: {
+                gameId,
+                OR: [
+                  { bestScore: { gt: previousBest } },
+                  { bestScore: previousBest, guestId: { lt: guestId } },
+                ],
+              },
             })) + 1
           : null;
       const guestAtRank100 = await tx.leaderboard.findMany({
