@@ -32,8 +32,8 @@ export class ResultsRepository {
   ): Promise<BatchSubmitResult> {
     if (items.length === 0) {
       return {
-        insertedCount: 0,
         newBest: null,
+        insertedCount: 0,
         previousBest: null,
         previousRank: null,
         guestAtRank100BeforeGuestId: null,
@@ -143,15 +143,6 @@ export class ResultsRepository {
     });
   }
 
-  getTopLeaderboardEntries(gameId: GameId, limit: number) {
-    return this.prisma.leaderboard.findMany({
-      take: limit,
-      where: { gameId },
-      select: { guestId: true, bestScore: true },
-      orderBy: [{ bestScore: 'desc' }, { guestId: 'asc' }],
-    });
-  }
-
   countLeaderboard(gameId: GameId) {
     return this.prisma.leaderboard.count({ where: { gameId } });
   }
@@ -171,30 +162,5 @@ export class ResultsRepository {
         OR: [{ bestScore: { gt: bestScore } }, { bestScore, guestId: { lt: guestId } }],
       },
     });
-  }
-
-  async getGuestAtRank(gameId: GameId, rank: number) {
-    if (rank < 1) {
-      return null;
-    }
-
-    const rows = await this.prisma.leaderboard.findMany({
-      take: 1,
-      skip: rank - 1,
-      where: { gameId },
-      select: { guestId: true, bestScore: true },
-      orderBy: [{ bestScore: 'desc' }, { guestId: 'asc' }],
-    });
-
-    const row = rows[0];
-    if (!row) {
-      return null;
-    }
-
-    return {
-      rank,
-      guestId: row.guestId,
-      bestScore: row.bestScore,
-    };
   }
 }

@@ -15,10 +15,6 @@ export const GAME_CONFIG: Record<GameId, GameConfigEntry> = {
   },
 };
 
-export function hasRankPushCron(gameId: GameId): boolean {
-  return Boolean(GAME_CONFIG[gameId]?.rankPushCron);
-}
-
 export function getGamesWithRankPushCron(): GameId[] {
   return Object.entries(GAME_CONFIG)
     .filter(([, config]) => config.rankPushCron)

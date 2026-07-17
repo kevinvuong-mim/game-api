@@ -37,6 +37,5 @@ import { Top100ExitNotificationListener } from '@/features/notifications/top100-
       name: NOTIFICATION_QUEUE.RANK_PUSH,
     }),
   ],
-  exports: [FcmService, DeviceTokenService, NotificationDispatcherService],
 })
 export class NotificationsModule {}

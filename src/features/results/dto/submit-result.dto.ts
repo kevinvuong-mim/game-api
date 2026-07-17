@@ -3,7 +3,7 @@ import { Max, Min, IsInt, IsString, IsISO8601, IsOptional } from 'class-validato
 import { IsValidMetadata } from '@/common/validators';
 
 /** Prisma `Int` / PostgreSQL `integer` upper bound. */
-export const MAX_RESULT_SCORE = 2_147_483_647;
+const MAX_RESULT_SCORE = 2_147_483_647;
 
 export class SubmitResultDto {
   @IsString()

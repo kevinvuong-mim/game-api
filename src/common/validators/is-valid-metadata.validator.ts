@@ -6,10 +6,10 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator';
 
-export const METADATA_MAX_KEYS = 10;
-export const METADATA_MAX_BYTES = 2048;
-export const METADATA_MAX_KEY_LENGTH = 64;
-export const METADATA_MAX_STRING_LENGTH = 256;
+const METADATA_MAX_KEYS = 10;
+const METADATA_MAX_BYTES = 2048;
+const METADATA_MAX_KEY_LENGTH = 64;
+const METADATA_MAX_STRING_LENGTH = 256;
 
 function isAllowedMetadataValue(value: unknown): boolean {
   if (value === null) {
@@ -28,7 +28,7 @@ function isAllowedMetadataValue(value: unknown): boolean {
 }
 
 @ValidatorConstraint({ name: 'isValidMetadata', async: false })
-export class IsValidMetadataConstraint implements ValidatorConstraintInterface {
+class IsValidMetadataConstraint implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
     if (value === undefined || value === null) {
       return true;

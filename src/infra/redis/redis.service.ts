@@ -7,7 +7,7 @@ import type { AuthenticatedGuest } from '@/common/decorators/guest.decorator';
 
 export const REDIS_CLIENT = 'REDIS_CLIENT';
 
-export const REDIS_KEYS = {
+const REDIS_KEYS = {
   authToken: (tokenHash: string) => `auth:token:${tokenHash}`,
 } as const;
 

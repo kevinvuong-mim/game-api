@@ -1,5 +1,4 @@
 import { Logger, Injectable } from '@nestjs/common';
-import { NotificationLocale } from '@prisma/client';
 
 import { FcmService } from '@/features/notifications/fcm.service';
 import { type GameId, type NotificationType } from '@/common/constants';
@@ -53,18 +52,5 @@ export class NotificationDeliveryService {
       this.logger.error('Unexpected FCM delivery error', error);
       return false;
     }
-  }
-
-  resolveLocale(
-    locale: string | null | undefined,
-    deviceLocale?: NotificationLocale | null,
-  ): NotificationLocale {
-    if (locale?.toLowerCase().startsWith('vi')) {
-      return NotificationLocale.VI;
-    }
-    if (locale?.toLowerCase().startsWith('en')) {
-      return NotificationLocale.EN;
-    }
-    return deviceLocale ?? NotificationLocale.EN;
   }
 }

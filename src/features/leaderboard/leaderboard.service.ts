@@ -31,10 +31,10 @@ export class LeaderboardService {
     }
 
     return {
-      gameId,
-      total,
       page,
       limit,
+      total,
+      gameId,
       items: items.map((entry) => ({
         rank: entry.rank,
         guestId: entry.guestId,

@@ -7,7 +7,7 @@ import { GuestRepository } from '@/features/guest/guest.repository';
 
 @Module({
   controllers: [GuestController],
-  exports: [GuestService, GuestAuthGuard, GuestRepository],
+  exports: [GuestAuthGuard, GuestRepository],
   providers: [GuestService, GuestAuthGuard, GuestRepository],
 })
 export class GuestModule {}

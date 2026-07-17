@@ -22,8 +22,6 @@ export const NOTIFICATION_ROUTES = {
   LEADERBOARD: 'Leaderboard',
 } as const;
 
-export type NotificationRoute = (typeof NOTIFICATION_ROUTES)[keyof typeof NOTIFICATION_ROUTES];
-
 export const NOTIFICATION_TYPES = {
   RANK_PUSH: 'rank_push',
   TOP_100_EXITED: 'top_100_exited',
@@ -38,7 +36,7 @@ export interface LocalizedNotificationContent {
   title: string;
 }
 
-export const NOTIFICATION_I18N: Record<
+const NOTIFICATION_I18N: Record<
   string,
   Record<NotificationLocaleCode, LocalizedNotificationContent>
 > = {

@@ -6,13 +6,7 @@
   },
   "compilerOptions": {
     "watchAssets": true,
-    "deleteOutDir": true,
-    "assets": [
-      {
-        "outDir": "./dist",
-        "include": "**/*.prisma"
-      }
-    ]
+    "deleteOutDir": true
   },
   "collection": "@nestjs/schematics",
   "$schema": "https://json.schemastore.org/nest-cli"

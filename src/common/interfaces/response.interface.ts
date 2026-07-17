@@ -28,4 +28,4 @@ interface ValidationError {
   message: string;
 }
 
-export type { ErrorResponse, SuccessResponse, ValidationError };
+export type { ErrorResponse, SuccessResponse };

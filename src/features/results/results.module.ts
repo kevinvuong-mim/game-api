@@ -7,7 +7,6 @@ import { ResultsDataModule } from '@/features/results/results-data.module';
 import { LeaderboardModule } from '@/features/leaderboard/leaderboard.module';
 
 @Module({
-  exports: [ResultsService],
   providers: [ResultsService],
   controllers: [ResultsController],
   imports: [GuestModule, ResultsDataModule, LeaderboardModule],
