@@ -2,7 +2,7 @@
 
 Backend API for hyper-casual / casual mobile games. **Leaderboard-as-a-Service** for guest-only players — no user accounts, no registration.
 
-Players are identified by anonymous guest tokens. The server handles score storage, HMAC replay protection, and high-performance leaderboards across multiple games.
+Players are identified by anonymous guest tokens. The server handles score storage, HMAC verification, result-ID deduplication, and PostgreSQL leaderboards across multiple games.
 
 **Node.js:** `>= 20`
 
@@ -13,7 +13,7 @@ Players are identified by anonymous guest tokens. The server handles score stora
 | Framework  | NestJS 11                                               |
 | ORM        | Prisma 6                                                |
 | Database   | PostgreSQL 16 (partitioned results)                     |
-| Cache      | Redis 8 (ioredis)                                       |
+| Cache      | Redis 8.6 dev image (ioredis)                           |
 | Queue      | BullMQ (`rank-push-notification` — scheduled rank push) |
 | Push       | firebase-admin (FCM)                                    |
 | Validation | class-validator, class-transformer                      |
@@ -36,7 +36,7 @@ See [documents/setup/local-development.md](./documents/setup/local-development.m
 cp .env.example .env
 ```
 
-Required variables:
+Runtime configuration (`DATABASE_URL` and `REDIS_URL` are required; `PORT` defaults to 3000 and `NODE_ENV` is optional):
 
 ```env
 DATABASE_URL="postgresql://kwong2000:1234abcd@localhost:5432/game-api"
@@ -121,7 +121,7 @@ game-api/
 │   │   ├── results/               # Result submission + dedup
 │   │   │   └── results-data.module.ts  # Shared ResultsRepository
 │   │   ├── leaderboard/           # Leaderboard query + rank resolver
-│   │   └── notifications/         # FCM + Saturday BullMQ batch
+│   │   └── notifications/         # FCM + per-game scheduled BullMQ batches
 │   ├── infra/
 │   │   ├── prisma/
 │   │   ├── redis/
@@ -147,7 +147,7 @@ game-api/
 - Server stores only SHA-256 hash. Subsequent requests use `Authorization: Bearer <token>`.
 - Token cached in Redis (TTL 5 min) to avoid DB lookup on every request.
 
-### HMAC replay protection
+### HMAC verification and deduplication
 
 Each result item includes an HMAC-SHA256 signature:
 
@@ -156,7 +156,7 @@ const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || '
 const signature = createHmac('sha256', replaySecret).update(payload).digest('hex');
 ```
 
-`replaySecret` is configured per game in `src/common/constants/game.constants.ts`.
+`replaySecret` is configured per game in `src/common/constants/game.constants.ts` and is also shipped to the game client. HMAC catches malformed or mismatched submissions but is not server-authoritative anti-cheat; replay of the same `clientResultId` is prevented separately by database deduplication.
 
 ### Leaderboard
 
@@ -171,8 +171,8 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 ### Scheduled maintenance
 
-- `MaintenanceService` creates `game_results_<YYYY>` partition for the next calendar year
-- Cron: `59 23 28-31 * *` (last days of each month) + startup + ensure-on-insert
+- `PartitionService` ensures `game_results_<YYYY>` for the current and next process-local calendar years
+- Triggers: startup, ensure-on-insert, and cron `59 23 28-31 * *` (handler acts only on the process-local last day of each month)
 
 See [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md).
 
@@ -180,7 +180,7 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 - Device fields are stored on `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`)
 - `POST /api/devices` — client registers FCM token after guest init
-- **Top 100 exit**: Rank tracker events → FCM inline (`top_100_exited`) khi player rời Top 100
+- **Top 100 exit**: khi một guest từ ngoài đi vào Top 100 nhờ best score mới, guest #100 cũ bị đẩy xuống >100 nhận FCM qua async in-process event listener (`top_100_exited`). Tracker cũng bắt trường hợp submitter chuyển từ ≤100 xuống >100 giữa hai snapshot do cập nhật concurrent. Submit response không chờ delivery; không có push “entered Top 100”.
 - **Scheduled rank push**: Cron per-game `GAME_CONFIG.rankPushCron` → BullMQ batch → FCM inline (`rank_push`); chỉ guest có token và có rank
 - **Rank sau submit**: `POST /api/results` trả `rank`, `bestScore` khi guest có entry trên leaderboard
 - FCM payload `data`: `{ type, route }` — client dùng in-app navigation, không phải deeplink URL

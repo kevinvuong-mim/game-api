@@ -41,7 +41,7 @@ Content-Type: application/json
 
 ### Business Logic
 
-1. **Validate gameId**: Gọi `validateGameId()` — throw 404 nếu game không tồn tại.
+1. **Validate gameId**: `@IsEnum(GameId)` trả 400 nếu game không nằm trong enum; service gọi lại `validateGameId()` sau validation.
 2. **Rate limit check**: Giới hạn theo IP (`rate:init:{ip}`).
 3. **Generate token**: `generateSecretToken()` — random 32 bytes, base64url.
 4. **Hash token**: `hashSecretToken()` — SHA-256 hex, chỉ lưu hash vào DB.
@@ -77,7 +77,7 @@ Content-Type: application/json
 
 | Field | Type   | Required | Validation                  | Description                    |
 | ----- | ------ | -------- | --------------------------- | ------------------------------ |
-| name  | string | Yes      | MinLength: 1, MaxLength: 32 | Tên hiển thị trên leaderboard. |
+| name  | string | Yes      | MinLength: 1, MaxLength: 32 | Tên hiển thị; server không trim hoặc cấm whitespace-only. |
 
 ### Business Logic
 
@@ -147,21 +147,6 @@ Trả về khi body không hợp lệ (thiếu field, sai enum, name quá dài, 
       "value": "INVALID"
     }
   ],
-  "timestamp": "2026-06-27T12:00:00.000Z",
-  "path": "/api/guest/init"
-}
-```
-
-**404 Not Found - Game không tồn tại**
-
-Trả về khi `gameId` không được hỗ trợ.
-
-```json
-{
-  "success": false,
-  "statusCode": 404,
-  "message": "Game \"INVALID\" not supported",
-  "error": "Not Found",
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/guest/init"
 }
@@ -320,14 +305,13 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 
 ## Common Errors and Solutions
 
-### Error: "Game \"X\" not supported"
+### Error: gameId không được hỗ trợ
 
 **Cause**: `gameId` không nằm trong enum `GameId`
 
-**Solution**:
+**Result**: DTO `isEnum` validation trả HTTP 400 trước khi service chạy.
 
-- Kiểm tra `gameId` đúng (`FRULOOP`)
-- Đảm bảo game đã được cấu hình trong `GAME_CONFIG`
+**Solution**: Kiểm tra `gameId` đúng (`FRULOOP`) và đã có trong cả Prisma `GameId` lẫn `GAME_CONFIG`.
 
 ### Error: "Bearer token required"
 
@@ -363,7 +347,7 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 **Solution**:
 
 - Validate phía client trước khi submit
-- Trim whitespace, giới hạn độ dài 1–32 ký tự
+- Tự trim/loại whitespace-only ở client nếu sản phẩm yêu cầu; server hiện chỉ kiểm tra độ dài 1–32
 
 ---
 

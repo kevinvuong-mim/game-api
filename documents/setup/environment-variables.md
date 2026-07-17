@@ -2,6 +2,16 @@
 
 Tài liệu này hướng dẫn cách lấy các biến môi trường cần thiết cho dự án game-api.
 
+## Tổng quan
+
+| Variable | Required | Runtime behavior |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | Prisma/PostgreSQL connection and migrations |
+| `REDIS_URL` | Yes | `RedisService` throws during provider creation if absent; BullMQ also uses this URL |
+| `PORT` | No | Defaults to `3000` via `process.env.PORT ?? 3000` |
+| `NODE_ENV` | No | Only changes Helmet CSP and whether error stack traces are returned; Docker sets `production` |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one disables push delivery without disabling device APIs |
+
 ## 1. Database
 
 ### DATABASE_URL
@@ -75,10 +85,7 @@ Môi trường chạy của ứng dụng.
 NODE_ENV="development"
 ```
 
-**Lưu ý:**
-
-- Trong môi trường development, logging chi tiết hơn và có hot-reload
-- Trong production, ứng dụng được tối ưu hóa về hiệu suất
+**Lưu ý:** Hot reload do script `npm run start:dev`, không do `NODE_ENV`. Trong code hiện tại, production bật Helmet CSP và ẩn stack trace khỏi error envelope.
 
 ---
 
@@ -86,7 +93,7 @@ NODE_ENV="development"
 
 Backend dùng **Firebase Admin SDK** để gửi FCM push notification tới thiết bị native. Ba biến sau lấy từ **Service Account** của cùng Firebase project mà client dùng (`google-services.json` / `GoogleService-Info.plist`).
 
-> Hướng dẫn cấu hình phía client: `game-starter-kit/documents/setup/firebase-native.md`
+> Hướng dẫn cấu hình phía client: [game-starter-kit/documents/setup/firebase-native.md](../../../game-starter-kit/documents/setup/firebase-native.md)
 
 ### Cách lấy credentials
 
@@ -185,8 +192,8 @@ Các API device token (`POST /api/devices`, v.v.) vẫn hoạt động; chỉ b�
 
 1. Khởi động lại server: `npm run start:dev`
 2. Xác nhận log: `Firebase Admin SDK initialized`
-3. Đăng ký device token từ app native (xem `documents/apis/devices.md`)
-4. Trigger notification (ví dụ: vào/ra Top 100) hoặc đợi cron theo `GAME_CONFIG.rankPushCron` (FRULOOP mặc định: 9:00 Thứ 7 VN) — chỉ game có field và guest có rank
+3. Đăng ký device token từ app native (xem [Devices API](../apis/devices.md))
+4. Trigger notification bằng cách để một guest mới đi vào Top 100 và đẩy guest #100 cũ ra, hoặc đợi cron theo `GAME_CONFIG.rankPushCron` (FRULOOP: 9:00 Thứ 7, `Asia/Ho_Chi_Minh`). Backend chỉ có push exit cho guest bị đẩy ra, không có push enter.
 
 ---
 
@@ -235,18 +242,9 @@ FIREBASE_CLIENT_EMAIL=
 **Giải pháp:**
 
 ```bash
-# Kiểm tra PostgreSQL đang chạy
-# macOS
-brew services list
-
-# Hoặc
-ps aux | grep kwong2000
-
-# Start PostgreSQL nếu chưa chạy
-brew services start postgresql
-
-# Test connection
-psql -U kwong2000 -d game-api
+# Với stack của repo
+docker-compose ps
+docker-compose exec postgres pg_isready -U kwong2000 -d game-api
 ```
 
 ### 2. Port already in use

@@ -33,11 +33,11 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 | gameId  | string | Yes      | Phải là `GameId` hợp lệ | -       | Mã game (`FRULOOP`)                               |
 | page    | number | No       | Min: 1, integer         | `1`     | Trang hiện tại (1-based)                          |
 | limit   | number | No       | Min: 1, Max: 100        | `20`    | Số entry mỗi trang (server cap tối đa 100)        |
-| guestId | string | No       | UUID v4                 | -       | Guest ID để lấy rank và best score của chính mình |
+| guestId | string | No       | UUID (`@IsUUID()`, không khóa version) | - | Guest ID để lấy rank và best score của chính mình |
 
 ### Business Logic
 
-1. **Validate gameId**: Gọi `validateGameId()` — throw 404 nếu game không tồn tại.
+1. **Validate query**: `@IsEnum(GameId)` trả 400 cho game không hợp lệ; service gọi `validateGameId()` sau DTO validation.
 2. **Rate limit check**: Giới hạn theo IP (`rate:lb:{ip}`).
 3. **Pagination**: Tính `offset = (page - 1) * limit`, cap `limit` tối đa 100.
 4. **Count total**: Đếm tổng entry trong bảng `leaderboards` theo `gameId`.
@@ -129,19 +129,6 @@ Trả về khi query params không hợp lệ (thiếu `gameId`, `page` < 1, `li
   ],
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/leaderboards?gameId=FRULOOP&guestId=invalid"
-}
-```
-
-**404 Not Found - Game không tồn tại**
-
-```json
-{
-  "success": false,
-  "statusCode": 404,
-  "message": "Game \"INVALID\" not supported",
-  "error": "Not Found",
-  "timestamp": "2026-06-27T12:00:00.000Z",
-  "path": "/api/leaderboards?gameId=INVALID"
 }
 ```
 
@@ -261,11 +248,13 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 
 ## Common Errors and Solutions
 
-### Error: "Game \"X\" not supported"
+### Error: gameId không được hỗ trợ
 
-**Cause**: `gameId` query param không hợp lệ
+**Cause**: `gameId` query param không hợp lệ.
 
-**Solution**: Dùng `gameId=FRULOOP` hoặc game ID đã cấu hình
+**Result**: DTO validation trả HTTP 400 trước khi service chạy.
+
+**Solution**: Dùng `gameId=FRULOOP` hoặc game ID đã có trong Prisma enum và `GAME_CONFIG`.
 
 ### Error: Validation failed (page/limit)
 
@@ -297,7 +286,7 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 
 - **POST /api/guest/init**: Khởi tạo guest (lấy `guestId` cho param `self`)
 - **PATCH /api/guest/name**: Đặt tên hiển thị trên leaderboard
-- **POST /api/results**: Gửi kết quả game (cập nhật best score và leaderboard; có thể trigger push Top 100)
+- **POST /api/results**: Gửi kết quả game; một guest đi vào Top 100 có thể làm guest #100 cũ nhận push `top_100_exited`
 - **POST /api/devices**: Đăng ký FCM token để nhận push rank / Top 100
 - **GET /api/health**: Kiểm tra server và dependencies
 

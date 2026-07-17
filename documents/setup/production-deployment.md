@@ -7,8 +7,8 @@ Hướng dẫn build và deploy `game-api` lên production. Dockerfile multi-sta
 | Thành phần | Ghi chú                                                    |
 | ---------- | ---------------------------------------------------------- |
 | Node.js    | ≥ 20 (image `node:20-alpine`)                              |
-| PostgreSQL | 16+, managed service khuyến nghị                           |
-| Redis      | 8+, có auth/TLS trên production                            |
+| PostgreSQL | Repo dev image là 16; production nên giữ parity, managed service khuyến nghị |
+| Redis      | Repo dev image là 8.6; production cần tương thích ioredis 5/BullMQ 5 và nên có auth/TLS |
 | Env vars   | Xem [environment-variables.md](./environment-variables.md) |
 
 ## Docker build
@@ -99,9 +99,9 @@ Chi tiết: [apis/health-check.md](../apis/health-check.md).
 `MaintenanceService` tự tạo partition `game_results_<YYYY>` khi:
 
 - App startup (`onModuleInit`)
-- Cron `59 23 28-31 * *` (cuối tháng) + startup + ensure-on-insert
+- Cron `59 23 28-31 * *` (chỉ xử lý ngày cuối tháng) + startup + ensure-on-insert
 
-Đảm bảo app chạy liên tục hoặc có ít nhất một instance active qua đầu năm.
+Cron partition không đặt timezone; nó dùng timezone local của process. Startup và ensure-on-insert vẫn bảo vệ việc ghi nếu cron bị lỡ.
 
 Xem: [schedule/game-results-partition.md](../schedule/game-results-partition.md).
 

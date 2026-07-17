@@ -2,24 +2,16 @@
 
 ## Overview
 
-API quản lý FCM token theo guest. Dữ liệu device được lưu trực tiếp trong `guest_players`:
+API quản lý một FCM token cho mỗi guest. Dữ liệu nằm trực tiếp trên `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`); không có bảng device riêng, status, mute hay heartbeat endpoint.
 
-- `fcmToken`
-- `devicePlatform`
-- `notificationLocale`
+**Base URL:** `/api/devices`  
+**Authentication:** `Authorization: Bearer <secretToken>` cho cả ba endpoint  
+**Rate limit:** 10 requests / 60 giây per guest, dùng chung key `rate:device:{guestId}` giữa POST/PATCH/DELETE  
+**Validation:** global whitelist từ chối field thừa; enum phân biệt hoa/thường
 
-Không còn bảng `guest_device_tokens`, không còn `status`, không có heartbeat endpoint.
+## POST `/api/devices`
 
-Base URL: `/api/devices`  
-Auth: Bearer guest token
-
-## Endpoints
-
-### POST `/api/devices`
-
-Đăng ký token lần đầu hoặc ghi đè token hiện tại.
-
-Body:
+Đăng ký lần đầu hoặc ghi đè device hiện tại. Nest trả **201 Created**.
 
 ```json
 {
@@ -29,19 +21,28 @@ Body:
 }
 ```
 
-Response `data`:
+| Field | Required | Validation |
+| --- | --- | --- |
+| `token` | Yes | non-empty string; không có max length trong DTO |
+| `platform` | Yes | `IOS` hoặc `ANDROID` |
+| `locale` | Yes | `EN` hoặc `VI` |
+
+Nếu token đã thuộc guest khác (kể cả game khác), transaction clear cả ba field device của owner cũ rồi gán token cho guest hiện tại. Response:
 
 ```json
 {
-  "guestId": "uuid"
+  "success": true,
+  "statusCode": 201,
+  "message": "Resource created successfully",
+  "data": { "guestId": "uuid" },
+  "timestamp": "2026-07-17T12:00:00.000Z",
+  "path": "/api/devices"
 }
 ```
 
-### PATCH `/api/devices`
+## PATCH `/api/devices`
 
-Cập nhật token/locale khi token refresh hoặc đổi ngôn ngữ.
-
-Body:
+Cập nhật **cả** token và locale; hai field đều required. Platform hiện tại được giữ nguyên. Trả **200 OK**.
 
 ```json
 {
@@ -50,37 +51,27 @@ Body:
 }
 ```
 
-Response `data`:
+Nếu guest chưa có `fcmToken`, trả `404 Device token not found`. Việc chuyển token từ guest khác có cùng semantics như POST. `data` là `{ "guestId": "uuid" }`.
+
+## DELETE `/api/devices`
+
+Clear `fcmToken`, `devicePlatform` và `notificationLocale`. Endpoint idempotent: kể cả khi không có token, vẫn trả **200 OK**:
 
 ```json
 {
-  "guestId": "uuid"
+  "success": true,
+  "statusCode": 200,
+  "message": "Resource deleted successfully",
+  "data": { "success": true },
+  "timestamp": "2026-07-17T12:00:00.000Z",
+  "path": "/api/devices"
 }
 ```
 
-Nếu guest chưa từng register token: `404 Device token not found`.
+## Errors and delivery behavior
 
-### DELETE `/api/devices`
-
-Hủy đăng ký device — clear token fields:
-
-- set `fcmToken = null`
-- set `devicePlatform = null`
-- set `notificationLocale = null`
-
-Client tắt push bằng cách gọi `DELETE /api/devices` (unregister).
-
-Response `data`:
-
-```json
-{
-  "success": true
-}
-```
-
-## Notes
-
-- Rate limit: `10/60s` per guest (`rate:device:{guestId}`)
-- `token` là FCM token và unique toàn DB (một token chỉ thuộc một guest tại một thời điểm)
-- Khi FCM trả invalid token, backend sẽ clear token của guest (set về `null`)
-- Push locale resolve từ `notificationLocale` (`EN` -> `en`, `VI` -> `vi`)
+- Thiếu/sai Bearer token: 401; DTO invalid/field thừa: 400; vượt shared limit: 429.
+- `fcmToken` unique toàn DB. Code chủ động chuyển ownership trước update để tránh unique conflict.
+- FCM error `messaging/registration-token-not-registered` hoặc `messaging/invalid-registration-token` clear cả ba field device.
+- Locale `VI` map sang `vi`; mọi giá trị còn lại trong delivery path fallback `en`.
+- Thiếu Firebase credentials không làm device API lỗi; dữ liệu vẫn được lưu nhưng delivery bị skip.

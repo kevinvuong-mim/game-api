@@ -4,7 +4,7 @@ Tài liệu này mô tả chi tiết cron job được triển khai trong file `
 
 ## 1. ensurePartitions
 
-**Schedule:** 23:59 ngày cuối tháng (`59 23 28-31 * *`, chỉ chạy khi ngày hôm sau là mùng 1)
+**Schedule:** 23:59 ngày cuối tháng (`59 23 28-31 * *`, handler chỉ chạy khi ngày hôm sau là mùng 1). `@Cron` không đặt `timeZone`, nên lịch và phép tính “ngày mai” dùng timezone local của process/container.
 
 **Purpose:**
 
@@ -18,7 +18,7 @@ Tài liệu này mô tả chi tiết cron job được triển khai trong file `
 2. Gọi `ensurePartitionForYear(currentYear)` rồi `ensurePartitionForYear(currentYear + 1)`.
 3. Với mỗi năm: `tableName = game_results_<YYYY>`.
 4. Kiểm tra partition đã tồn tại chưa bằng query `pg_class` (`SELECT EXISTS ... WHERE relname = tableName`).
-5. Nếu partition **đã tồn tại** → ghi log và skip (idempotent).
+5. Nếu partition **đã tồn tại** → return im lặng (idempotent).
 6. Nếu partition **chưa tồn tại** → tạo bằng raw SQL:
    - `CREATE TABLE game_results_<YYYY> PARTITION OF game_results`
    - `FOR VALUES FROM ('<YYYY>-01-01') TO ('<YYYY+1>-01-01')`
@@ -39,8 +39,8 @@ Tài liệu này mô tả chi tiết cron job được triển khai trong file `
 
 **General Notes:**
 
-- Prisma không hỗ trợ declarative partitioning — bảng `game_results` được chuyển sang partitioned table qua custom SQL migration (`prisma/migrations/..._partition_game_results/migration.sql`).
-- Partition đầu tiên (ví dụ `game_results_2026`) được tạo trong migration; các năm sau do `MaintenanceService` quản lý.
-- PostgreSQL yêu cầu mọi `UNIQUE` constraint trên partitioned table phải chứa partition key — vì vậy **không thể** dùng `UNIQUE (gameId, guestId, clientResultId)`. Dedup được xử lý bằng advisory lock trong `ResultsRepository` (xem `documents/apis/results.md`).
+- Prisma không hỗ trợ declarative partitioning — bảng `game_results` được chuyển qua custom SQL migration [`prisma/migrations/20260709123010_partition_game_results/migration.sql`](../../prisma/migrations/20260709123010_partition_game_results/migration.sql).
+- Migration tạo partition cho mọi năm có dữ liệu cũ, năm hiện tại của PostgreSQL và ít nhất năm kế tiếp; các năm sau do `PartitionService` quản lý.
+- PostgreSQL yêu cầu mọi `UNIQUE` constraint trên partitioned table phải chứa partition key — vì vậy **không thể** dùng `UNIQUE (gameId, guestId, clientResultId)`. Dedup được xử lý bằng advisory lock trong `ResultsRepository` (xem [Results API](../apis/results.md)).
 - Cron constant được định nghĩa cố định trong source (`PARTITION_CRON`), không đọc từ biến môi trường.
-- Mỗi lần chạy đều ghi log (`Partition ... already exists` hoặc `Created partition ...`) để tiện giám sát và debug.
+- Chỉ việc tạo partition mới được log (`Created partition ...`); nhánh partition đã tồn tại không log.

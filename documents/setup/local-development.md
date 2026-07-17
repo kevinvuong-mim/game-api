@@ -145,12 +145,12 @@ Mở UI tại `http://localhost:5555` để xem/edit data.
 Trên client, set:
 
 ```env
-VITE_API_URL=http://localhost:3000/api
+VITE_APP_ENV=dev
 VITE_GAME_ID=FRULOOP
 VITE_REPLAY_SECRET=<khớp GAME_CONFIG replaySecret>
 ```
 
-Chạy client trên emulator/device cùng mạng LAN nếu không dùng localhost (dùng IP máy dev thay `localhost`).
+Preset `dev` trong [`game-starter-kit/src/platform/core/config/index.ts`](../../../game-starter-kit/src/platform/core/config/index.ts) hiện dùng `http://localhost:3000/api`; client không đọc `VITE_API_URL`. Với emulator/device không dùng được host localhost, cập nhật preset/client networking tương ứng sang IP máy dev.
 
 ## Troubleshooting
 
@@ -158,8 +158,8 @@ Chạy client trên emulator/device cùng mạng LAN nếu không dùng localhos
 | ------------------------ | ----------------------------------------------------------------------------------- |
 | `EADDRINUSE :3000`       | Đổi `PORT` hoặc kill process: `lsof -i :3000`                                       |
 | Health 503               | Kiểm tra Postgres (`DATABASE_URL`, `docker-compose`); Redis down chỉ → 200 degraded |
-| `Game "X" not supported` | Dùng `FRULOOP` hoặc thêm game — [adding-new-game.md](./adding-new-game.md)          |
+| Validation 400 cho `gameId` | Dùng `FRULOOP` hoặc thêm game vào Prisma enum + `GAME_CONFIG` — [adding-new-game.md](./adding-new-game.md) |
 | HMAC invalid             | Đảm bảo `replaySecret` client = backend `GAME_CONFIG`                               |
-| Push không gửi           | Kiểm tra `FIREBASE_*`, device token `ACTIVE`, không bị mute                         |
+| Push không gửi           | Kiểm tra đủ `FIREBASE_*`, guest có `fcmToken`, có leaderboard rank; backend không có status/mute |
 
 Xem thêm troubleshooting env: [environment-variables.md](./environment-variables.md).

@@ -72,6 +72,7 @@ Trả về khi Postgres kết nối thành công.
 {
   "success": true,
   "statusCode": 200,
+  "message": "Data retrieved successfully",
   "data": {
     "status": "degraded",
     "services": {
@@ -80,7 +81,9 @@ Trả về khi Postgres kết nối thành công.
     },
     "timestamp": "2026-06-27T12:00:00.000Z",
     "uptime": 12345
-  }
+  },
+  "timestamp": "2026-06-27T12:00:00.000Z",
+  "path": "/api/health"
 }
 ```
 
@@ -105,12 +108,20 @@ Trả về khi Postgres không kết nối được.
 {
   "success": false,
   "statusCode": 503,
-  "message": "Service Unavailable",
-  "error": "Service Unavailable",
+  "message": "Service Unavailable Exception",
+  "error": "ServiceUnavailableException",
+  "status": "degraded",
+  "services": {
+    "db": "disconnected",
+    "redis": "connected"
+  },
+  "uptime": 12345,
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/health"
 }
 ```
+
+Với 503, filter giữ lại `status`, `services`, `uptime` và health-check `timestamp` trong error envelope. Field `timestamp` sau cùng chính là timestamp của health check vì nó ghi đè timestamp tạo bởi filter.
 
 **Possible states**:
 

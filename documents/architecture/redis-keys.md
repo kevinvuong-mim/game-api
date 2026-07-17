@@ -27,7 +27,7 @@ Pattern: `{prefix}{suffix}` — suffix is client IP or `guestId`.
 | `rate:name:`   | guestId | 10          | `PATCH /guest/name` |
 | `rate:result:` | guestId | 20          | `POST /results`     |
 | `rate:lb:`     | IP      | 30          | `GET /leaderboards` |
-| `rate:device:` | guestId | 10          | `/devices/*`        |
+| `rate:device:` | guestId | 10          | Shared by POST/PATCH/DELETE `/devices` |
 
 Implementation: **atomic Lua** `INCR` + `EXPIRE` (fixed 60s window). Also re-applies TTL if a key somehow lost it.
 
@@ -37,7 +37,7 @@ Client IP comes from Express `request.ip` with `trust proxy = 1` in `main.ts` (d
 
 ## BullMQ
 
-BullMQ uses Redis with the default `bull:` prefix.
+BullMQ uses the same `REDIS_URL` with its default `bull:` prefix. Queue/job internals create multiple Redis keys; they are owned by BullMQ rather than `RedisService`.
 
 | Queue name               | Purpose                      |
 | ------------------------ | ---------------------------- |

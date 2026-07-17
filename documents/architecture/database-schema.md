@@ -24,7 +24,7 @@ Database: PostgreSQL 16
 | `fcmToken`           | `TEXT?`               | unique FCM token       |
 | `devicePlatform`     | `DevicePlatform?`     | IOS/ANDROID            |
 | `notificationLocale` | `NotificationLocale?` | EN/VI                  |
-| `createdAt`          | `TIMESTAMP`           | creation timestamp     |
+| `createdAt`          | `TIMESTAMP(3)`        | creation timestamp     |
 
 Constraints:
 
@@ -37,14 +37,14 @@ Constraints:
 | Column           | Type         | Notes                            |
 | ---------------- | ------------ | -------------------------------- |
 | `id`             | `TEXT`       | part of PK                       |
-| `createdAt`      | `TIMESTAMP`  | part of PK + partition key       |
+| `createdAt`      | `TIMESTAMP(3)` | part of PK + partition key     |
 | `gameId`         | `GameId`     |                                  |
 | `guestId`        | `TEXT`       | FK -> `guest_players(gameId,id)` |
 | `clientResultId` | `TEXT`       | client dedup key                 |
 | `score`          | `INTEGER`    |                                  |
 | `signature`      | `TEXT`       | HMAC verified hash               |
 | `metadata`       | `JSONB?`     | optional                         |
-| `playedAt`       | `TIMESTAMP?` | optional                         |
+| `playedAt`       | `TIMESTAMP(3)?` | optional                       |
 
 Indexes:
 
@@ -59,7 +59,7 @@ Indexes:
 | `gameId`    | `GameId`    | PK part      |
 | `guestId`   | `TEXT`      | PK part + FK |
 | `bestScore` | `INTEGER`   |              |
-| `updatedAt` | `TIMESTAMP` | auto updated |
+| `updatedAt` | `TIMESTAMP(3)` | updated by Prisma/raw upsert |
 
 Index:
 
@@ -78,3 +78,5 @@ erDiagram
 - Chỉ có 3 bảng nghiệp vụ chính: `guest_players`, `game_results`, `leaderboards`.
 - Không còn `guest_device_tokens` và `notification_outbox`.
 - `game_results` partition tạo bằng custom SQL migration + maintenance job.
+- Cả `game_results` và `leaderboards` dùng composite FK (`gameId`, `guestId`) tới `guest_players`; delete guest cascade sang hai bảng.
+- `clientResultId` không có unique constraint toàn parent partition; service dùng advisory transaction lock rồi lookup để dedup theo (`gameId`, `guestId`, `clientResultId`).

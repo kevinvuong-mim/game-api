@@ -2,7 +2,7 @@
 
 ## Overview
 
-API gửi kết quả game (batch submit). Mỗi kết quả được xác thực bằng HMAC signature để chống giả mạo điểm. Hỗ trợ dedup theo `clientResultId`, cập nhật leaderboard best score; có thể emit FCM `top_100_exited` khi player bị đẩy khỏi Top 100.
+API gửi kết quả game (batch submit). Mỗi kết quả được xác thực bằng HMAC signature; dedup theo `clientResultId` ngăn cùng kết quả được ghi lại. Batch cập nhật leaderboard best score và, khi một guest từ ngoài Top 100 đi vào Top 100, có thể phát FCM `top_100_exited` cho guest từng đứng #100 và vừa bị đẩy ra. Không có notification “entered Top 100”.
 
 **Base URL**: `/api/results`
 
@@ -46,11 +46,11 @@ Content-Type: application/json
 | ---------------------- | ------ | -------- | --------------------------------- | ---------------------------------------------------- |
 | gameId                 | string | Yes      | `@IsEnum(GameId)`                 | Mã game (`FRULOOP`). Phải khớp game của guest token. |
 | items                  | array  | Yes      | Min: 1, Max: 50 items             | Danh sách kết quả cần gửi                            |
-| items[].clientResultId | string | Yes      | Non-empty string                  | ID duy nhất do client tạo (dedup key)                |
+| items[].clientResultId | string | Yes      | String (DTO không đặt min length) | ID do client tạo; dùng làm dedup key trong guest/game |
 | items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647  | Điểm số (khớp Prisma `Int` / PG `integer`)           |
 | items[].playedAt       | string | No       | ISO 8601 strict                   | Thời điểm chơi                                       |
 | items[].metadata       | object | No       | `@IsValidMetadata` (xem bên dưới) | Metadata bổ sung (flat object)                       |
-| items[].signature      | string | Yes      | HMAC-SHA256 hex (64 chars)        | Chữ ký xác thực replay                               |
+| items[].signature      | string | Yes      | String; verified in service       | HMAC-SHA256 hợp lệ được tạo dạng lowercase hex 64 ký tự |
 
 ### Metadata Constraints (`@IsValidMetadata`)
 
@@ -58,7 +58,7 @@ Content-Type: application/json
 - Tối đa 10 keys
 - Key length: 1–64 ký tự
 - Value types: `string` (max 256 chars), `number`, `boolean`, `null`
-- Tổng JSON size: tối đa 2048 bytes
+- `JSON.stringify(metadata).length` tối đa 2048 JavaScript code units (validator không đo UTF-8 bytes)
 
 ### HMAC Signature
 
@@ -77,7 +77,7 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 1. **Authenticate**: `GuestAuthGuard` xác thực Bearer token.
 2. **Rate limit check**: Giới hạn theo `guestId` (`rate:result:{guestId}`).
-3. **Validate gameId**: `validateGameId()` + kiểm tra `guest.gameId === dto.gameId` (403 nếu không khớp).
+3. **Validate gameId**: `@IsEnum(GameId)` trả 400 cho giá trị không hợp lệ; sau đó kiểm tra `guest.gameId === dto.gameId` (403 nếu không khớp).
 4. **Verify signatures**: Các item có signature không hợp lệ được ghi vào `rejected` (không fail toàn batch).
 5. **Atomic batch insert** (tất cả item hợp lệ trong một transaction):
    - Advisory lock: `pg_advisory_xact_lock` theo `(gameId, guestId, clientResultId)`.
@@ -85,8 +85,9 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
    - Insert vào `game_results` nếu chưa có.
 6. **Update leaderboard** (cùng transaction với insert):
    - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
-7. **Resolve rank**: Trả `rank` và `bestScore` trong response khi guest có entry trên leaderboard.
-8. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `rank?`, `bestScore?` trong `data` envelope.
+7. **Track Top 100**: Chỉ khi batch insert ít nhất một item và tạo best score mới cao hơn best cũ. Nếu submitter đi từ ngoài vào Top 100, guest ở #100 trước update được resolve lại; nếu đã xuống >100 thì phát event exit cho guest đó. Tracker cũng phát exit cho submitter nếu snapshot trước là ≤100 nhưng rank resolve sau update là >100 (own score không làm rank xấu đi, nhưng thay đổi concurrent có thể).
+8. **Resolve rank**: Trả `rank` và `bestScore` khi guest có entry trên leaderboard.
+9. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `rank?`, `bestScore?` trong `data` envelope.
 
 ---
 
@@ -177,19 +178,6 @@ Trả về khi `gameId` trong body khác với game của guest token.
 }
 ```
 
-**404 Not Found - Game không tồn tại**
-
-```json
-{
-  "success": false,
-  "statusCode": 404,
-  "message": "Game \"INVALID\" not supported",
-  "error": "Not Found",
-  "timestamp": "2026-06-27T12:00:00.000Z",
-  "path": "/api/results"
-}
-```
-
 **429 Too Many Requests - Vượt quá rate limit**
 
 ```json
@@ -242,7 +230,9 @@ curl -X POST http://localhost:3000/api/results \
   "timestamp": "2026-07-09T12:00:00.000Z",
   "data": {
     "insertedCount": 1,
-    "rejectedCount": 0
+    "rejectedCount": 0,
+    "rank": 42,
+    "bestScore": 1500
   }
 }
 ```
@@ -279,7 +269,9 @@ curl -X POST http://localhost:3000/api/results \
   "timestamp": "2026-07-09T12:00:00.000Z",
   "data": {
     "insertedCount": 2,
-    "rejectedCount": 0
+    "rejectedCount": 0,
+    "rank": 20,
+    "bestScore": 2000
   }
 }
 ```
@@ -319,7 +311,9 @@ curl -X POST http://localhost:3000/api/results \
   "timestamp": "2026-07-09T12:00:00.000Z",
   "data": {
     "insertedCount": 0,
-    "rejectedCount": 0
+    "rejectedCount": 0,
+    "rank": 42,
+    "bestScore": 1500
   }
 }
 ```
@@ -332,19 +326,19 @@ Client tính sai HMAC — item bị skip, không fail request.
 
 **Request:** Gửi item với `signature` sai.
 
-**Response:** HTTP 201 với `insertedCount: 0` (item invalid bị lọc bỏ).
+**Response:** HTTP 201 với `insertedCount: 0`, `rejectedCount: 1`, và `rejected: [{"clientResultId":"...","reason":"invalid_signature"}]`. Nếu guest đã có leaderboard entry, response vẫn kèm rank hiện tại.
 
 ---
 
 ## Security Considerations
 
-1. **HMAC replay protection**: Mỗi kết quả phải có signature HMAC-SHA256 với `replaySecret` — chống giả mạo điểm từ client.
+1. **HMAC verification**: Mỗi kết quả phải có signature HMAC-SHA256 với `replaySecret`. Vì client cũng cần secret, đây không thay thế server-authoritative scoring; replay của cùng ID được chặn bằng dedup.
 2. **Timing-safe comparison**: Signature verify dùng `timingSafeEqual` chống timing attack.
 3. **Bearer authentication**: Chỉ guest đã init mới gửi được kết quả.
 4. **Game isolation**: `guest.gameId` phải khớp `body.gameId` — ngăn cross-game submit.
 5. **Atomic dedup**: Advisory lock đảm bảo không insert trùng `clientResultId` dù concurrent requests.
 6. **Rate limiting**: 20 requests/60s per guest chống spam.
-7. **Invalid items silently skipped**: Signature sai không báo lỗi chi tiết — tránh leak thông tin về payload format.
+7. **Invalid items are rejected per item**: Request vẫn thành công nhưng response liệt kê `clientResultId` và reason `invalid_signature`.
 
 ---
 
@@ -384,7 +378,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 
 - Dùng flat object, max 10 keys
 - String values max 256 chars
-- Total JSON max 2048 bytes
+- `JSON.stringify(metadata).length` tối đa 2048 (không phải byte count)
 
 ### Error: Rate limit exceeded
 
