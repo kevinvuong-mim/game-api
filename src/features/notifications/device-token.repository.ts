@@ -53,42 +53,44 @@ export class DeviceTokenRepository {
     token: string,
     locale: NotificationLocale,
   ) {
-    const existing = await this.prisma.guestPlayer.findUnique({
-      where: {
-        gameId_id: {
-          gameId,
-          id: guestId,
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.guestPlayer.findUnique({
+        where: {
+          gameId_id: {
+            gameId,
+            id: guestId,
+          },
         },
-      },
-      select: { id: true, gameId: true, fcmToken: true },
-    });
+        select: { id: true, gameId: true, fcmToken: true },
+      });
 
-    if (!existing || !existing.fcmToken) {
-      throw new NotFoundException('Device token not found');
-    }
+      if (!existing || !existing.fcmToken) {
+        throw new NotFoundException('Device token not found');
+      }
 
-    const tokenOwner = await this.prisma.guestPlayer.findFirst({
-      where: { fcmToken: token },
-      select: { id: true, gameId: true },
-    });
+      const tokenOwner = await tx.guestPlayer.findFirst({
+        where: { fcmToken: token },
+        select: { id: true, gameId: true },
+      });
 
-    if (tokenOwner && (tokenOwner.id !== existing.id || tokenOwner.gameId !== existing.gameId)) {
-      await this.prisma.guestPlayer.update({
-        where: { id: tokenOwner.id },
+      if (tokenOwner && (tokenOwner.id !== existing.id || tokenOwner.gameId !== existing.gameId)) {
+        await tx.guestPlayer.update({
+          where: { id: tokenOwner.id },
+          data: {
+            fcmToken: null,
+            devicePlatform: null,
+            notificationLocale: null,
+          },
+        });
+      }
+
+      return tx.guestPlayer.update({
+        where: { id: existing.id },
         data: {
-          fcmToken: null,
-          devicePlatform: null,
-          notificationLocale: null,
+          fcmToken: token,
+          notificationLocale: locale,
         },
       });
-    }
-
-    return this.prisma.guestPlayer.update({
-      where: { id: existing.id },
-      data: {
-        fcmToken: token,
-        notificationLocale: locale,
-      },
     });
   }
 

@@ -76,6 +76,9 @@ export class FcmService implements OnModuleInit {
         data: {
           type: payload.type,
           route: payload.route,
+          ...Object.fromEntries(
+            Object.entries(payload.params ?? {}).map(([key, value]) => [key, String(value)]),
+          ),
         },
         android: {
           priority: 'high',

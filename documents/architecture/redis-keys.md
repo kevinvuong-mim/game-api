@@ -43,6 +43,13 @@ BullMQ uses the same `REDIS_URL` with its default `bull:` prefix. Queue/job inte
 | ------------------------ | ---------------------------- |
 | `rank-push-notification` | Scheduled weekly `rank_push` |
 
+Stable application `jobId`s (not Redis key names, but useful when inspecting BullMQ):
+
+| Pattern | Purpose |
+| --- | --- |
+| `rank-push-start-{gameId}-{weekKey}` | Dedupe start-of-week broadcast enqueue |
+| `rank-push-batch-{gameId}-{weekKey}-…` | Dedupe batch chain steps |
+
 See [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).
 
 ## CLI (local)

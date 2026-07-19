@@ -18,9 +18,10 @@ export function isValidSha256Hex(value: string): boolean {
 
 export function verifyReplaySignature(secret: string, payload: string, received: string): boolean {
   const expected = computeReplaySignature(secret, payload);
+  const normalized = received.toLowerCase();
 
   try {
-    return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(received, 'hex'));
+    return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(normalized, 'hex'));
   } catch {
     return false;
   }

@@ -51,10 +51,7 @@ export class ResultsService {
     const batchResult = await this.resultsRepository.submitValidatedBatch(
       gameId,
       guest.guestId,
-      validItems.map((item) => ({
-        ...item,
-        signature: item.signature,
-      })),
+      validItems,
     );
 
     if (

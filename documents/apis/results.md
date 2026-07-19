@@ -46,11 +46,11 @@ Content-Type: application/json
 | ---------------------- | ------ | -------- | --------------------------------- | ---------------------------------------------------- |
 | gameId                 | string | Yes      | `@IsEnum(GameId)`                 | Mã game (`FRULOOP`). Phải khớp game của guest token. |
 | items                  | array  | Yes      | Min: 1, Max: 50 items             | Danh sách kết quả cần gửi                            |
-| items[].clientResultId | string | Yes      | String (DTO không đặt min length) | ID do client tạo; dùng làm dedup key trong guest/game |
+| items[].clientResultId | string | Yes      | `@MaxLength(128)` (DTO không đặt min length) | ID do client tạo; dùng làm dedup key trong guest/game |
 | items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647  | Điểm số (khớp Prisma `Int` / PG `integer`)           |
 | items[].playedAt       | string | No       | ISO 8601 strict                   | Thời điểm chơi                                       |
 | items[].metadata       | object | No       | `@IsValidMetadata` (xem bên dưới) | Metadata bổ sung (flat object)                       |
-| items[].signature      | string | Yes      | String; verified in service       | HMAC-SHA256 hợp lệ được tạo dạng lowercase hex 64 ký tự |
+| items[].signature      | string | Yes      | `@Matches(/^[0-9a-f]{64}$/i)` + HMAC verify in service | Hex SHA-256 64 ký tự (case-insensitive ở DTO; service so sánh lowercase) |
 
 ### Metadata Constraints (`@IsValidMetadata`)
 
@@ -69,9 +69,9 @@ const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || '
 const signature = createHmac('sha256', replaySecret).update(payload).digest('hex');
 ```
 
-- `replaySecret`: Lấy từ `GAME_CONFIG[gameId].replaySecret` (64-char hex)
+- `replaySecret`: Lấy từ `GAME_CONFIG[gameId].replaySecret` (64-char **lowercase** hex)
 - `guestId`: Từ Bearer token (không gửi trong body)
-- So sánh signature bằng `timingSafeEqual`
+- So sánh signature bằng `timingSafeEqual` sau khi normalize received về lowercase
 
 ### Business Logic
 

@@ -38,7 +38,7 @@ export interface GameConfigEntry {
 export const GAME_CONFIG: Record<GameId, GameConfigEntry> = {
   [GameId.FRULOOP]: { ... },
   [GameId.MYGAME]: {
-    replaySecret: '<64-char-hex-sha256>',
+    replaySecret: '<64-char-lowercase-sha256-hex>',
     rankPushCron: '0 9 * * 6', // optional
   },
 };
@@ -46,10 +46,10 @@ export const GAME_CONFIG: Record<GameId, GameConfigEntry> = {
 
 ### `replaySecret` requirements
 
-- SHA-256 hex string, **64 ký tự**
-- Entropy tối thiểu 32 bytes (generate bằng `openssl rand -hex 32`)
+- SHA-256 hex string, **64 ký tự lowercase** (`/^[a-f0-9]{64}$/`) — `openssl rand -hex 32` đã đúng format
+- Entropy tối thiểu 32 bytes
 - **Không** đọc từ biến môi trường backend — hardcode trong `GAME_CONFIG`
-- Client dùng cùng giá trị qua `VITE_REPLAY_SECRET`
+- Client dùng cùng giá trị qua `VITE_REPLAY_SECRET` (validator client cũng chỉ chấp nhận lowercase)
 
 ```bash
 openssl rand -hex 32

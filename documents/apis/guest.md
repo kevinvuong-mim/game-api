@@ -77,7 +77,7 @@ Content-Type: application/json
 
 | Field | Type   | Required | Validation                  | Description                    |
 | ----- | ------ | -------- | --------------------------- | ------------------------------ |
-| name  | string | Yes      | MinLength: 1, MaxLength: 32 | Tên hiển thị; server không trim hoặc cấm whitespace-only. |
+| name  | string | Yes      | Trim rồi MinLength: 1, MaxLength: 32 | Tên hiển thị; DTO `@Transform` trim trước validation — whitespace-only → 400. |
 
 ### Business Logic
 
@@ -347,7 +347,7 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 **Solution**:
 
 - Validate phía client trước khi submit
-- Tự trim/loại whitespace-only ở client nếu sản phẩm yêu cầu; server hiện chỉ kiểm tra độ dài 1–32
+- Client nên trim trước khi submit; server cũng trim rồi reject nếu rỗng (MinLength 1 sau trim)
 
 ---
 

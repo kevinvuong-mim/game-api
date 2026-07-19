@@ -91,15 +91,15 @@ Chi tiết: [apis/health-check.md](../apis/health-check.md).
 - [ ] Postgres không expose public port
 - [ ] `NODE_ENV=production` — không leak stack trace
 - [ ] Reverse proxy (nginx/Caddy) terminate TLS
-- [ ] CORS: cân nhắc whitelist origin thay vì `*` (hiện tại open trong `main.ts`)
+- [ ] CORS: cân nhắc whitelist origin (hiện tại open + `credentials: true` trong `main.ts`; methods: `GET, POST, PATCH, DELETE, OPTIONS` — không có `PUT`)
 - [ ] Không commit `.env` — dùng secret manager platform
 
 ## Partition maintenance
 
 `MaintenanceService` tự tạo partition `game_results_<YYYY>` khi:
 
-- App startup (`onModuleInit`)
-- Cron `59 23 28-31 * *` (chỉ xử lý ngày cuối tháng) + startup + ensure-on-insert
+- App startup (`onModuleInit` → `PartitionService.ensurePartitionsForUpcomingPeriod()`)
+- Cron `59 23 28-31 * *` (handler `ensurePartitionsBeforeMonthBoundary`, chỉ xử lý ngày cuối tháng) + ensure-on-insert
 
 Cron partition không đặt timezone; nó dùng timezone local của process. Startup và ensure-on-insert vẫn bảo vệ việc ghi nếu cron bị lỡ.
 
@@ -109,7 +109,7 @@ Xem: [schedule/game-results-partition.md](../schedule/game-results-partition.md)
 
 Notification cron (`rankPushCron` per-game) chạy trong process NestJS (`SchedulerRegistry` + BullMQ batch).
 
-- **Single instance** hoặc leader election nếu scale horizontal — tránh duplicate scheduled rank push.
+- **Single instance** vẫn khuyến nghị cho cron registration; week-key `jobId` dedupe giảm duplicate broadcast trong cùng tuần nhưng không thay leader election.
 - BullMQ workers chạy trong cùng process — scale cẩn thận (nhiều worker = nhiều consumer, thường OK cho FCM delivery).
 
 Xem: [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).

@@ -26,6 +26,7 @@ interface ValidationError {
   field: string;
   value?: unknown;
   message: string;
+  constraint?: string;
 }
 
 export type { ErrorResponse, SuccessResponse };

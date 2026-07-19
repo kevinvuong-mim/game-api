@@ -17,7 +17,7 @@ export class LeaderboardService {
   async getLeaderboard(query: LeaderboardQueryDto) {
     const gameId = validateGameId(query.gameId);
     const page = query.page;
-    const limit = Math.min(query.limit, 100);
+    const limit = query.limit;
     const offset = (page - 1) * limit;
 
     const total = await this.resultsRepository.countLeaderboard(gameId);

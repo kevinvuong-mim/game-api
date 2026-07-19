@@ -183,7 +183,8 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 - **Top 100 exit**: khi một guest từ ngoài đi vào Top 100 nhờ best score mới, guest #100 cũ bị đẩy xuống >100 nhận FCM qua async in-process event listener (`top_100_exited`). Tracker cũng bắt trường hợp submitter chuyển từ ≤100 xuống >100 giữa hai snapshot do cập nhật concurrent. Submit response không chờ delivery; không có push “entered Top 100”.
 - **Scheduled rank push**: Cron per-game `GAME_CONFIG.rankPushCron` → BullMQ batch → FCM inline (`rank_push`); chỉ guest có token và có rank
 - **Rank sau submit**: `POST /api/results` trả `rank`, `bestScore` khi guest có entry trên leaderboard
-- FCM payload `data`: `{ type, route }` — client dùng in-app navigation, không phải deeplink URL
+- FCM payload `data`: `{ type, route, ...params }` — ví dụ rank push có thêm `rank`; client dùng in-app navigation, không phải deeplink URL
+- Rank-push BullMQ: week-key `jobId` dedupe + `attempts: 3` / exponential backoff (xem [fcm-notification-jobs.md](./documents/schedule/fcm-notification-jobs.md))
 - Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động
 
 Client setup: [game-starter-kit/documents/setup/firebase-native.md](../game-starter-kit/documents/setup/firebase-native.md).

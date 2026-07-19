@@ -1,4 +1,13 @@
-import { Max, Min, IsInt, IsString, IsISO8601, IsOptional } from 'class-validator';
+import {
+  Max,
+  Min,
+  IsInt,
+  Matches,
+  IsString,
+  MaxLength,
+  IsISO8601,
+  IsOptional,
+} from 'class-validator';
 
 import { IsValidMetadata } from '@/common/validators';
 
@@ -7,6 +16,7 @@ const MAX_RESULT_SCORE = 2_147_483_647;
 
 export class SubmitResultDto {
   @IsString()
+  @MaxLength(128)
   clientResultId!: string;
 
   @Min(0)
@@ -23,5 +33,6 @@ export class SubmitResultDto {
   metadata?: Record<string, string | number | boolean | null>;
 
   @IsString()
+  @Matches(/^[0-9a-f]{64}$/i)
   signature!: string;
 }

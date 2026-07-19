@@ -22,7 +22,9 @@ Example FRULOOP: `rankPushCron: '0 9 * * 6'` (Saturday 09:00 VN).
 | `rank_push`      | Per-game scheduled broadcast for token holders who have a rank | `Leaderboard` |
 | `top_100_exited` | Guest previously at #100 is displaced by another guest entering Top 100 | `Leaderboard` |
 
-FCM `data` payload: `{ type, route }`; rank is interpolated into localized notification text but is not included in `data`. Android uses high priority and channel `game_alerts`; APNs requests default sound. Locale templates are EN / VI, with non-Vietnamese values falling back to English.
+FCM `data` payload: `{ type, route, ...params }` — stringified job params are merged into `data`. Rank push includes `rank` so the client can show a foreground toast with the same copy as the notification body. Rank is also interpolated into localized notification title/body (EN / VI; non-Vietnamese falls back to English).
+
+Android uses high priority and channel `game_alerts`; APNs requests default sound.
 
 ## BullMQ
 
@@ -30,15 +32,32 @@ FCM `data` payload: `{ type, route }`; rank is interpolated into localized notif
 | ------------------------ | ------------------- |
 | `rank-push-notification` | `RankPushProcessor` |
 
-**Single Nest instance recommended** for cron: multiple replicas enqueue duplicate broadcasts (no jobId lock).
+Job defaults (`rank-push.job.ts`):
+
+| Option | Value |
+| --- | --- |
+| `attempts` | `3` |
+| `backoff` | exponential, `delay: 5000` |
+| `removeOnComplete` | `true` |
+| `removeOnFail` | keep last `100` |
+
+Stable `jobId`s (week key in `Asia/Ho_Chi_Minh` via `getRankPushWeekKey()`):
+
+| Job | `jobId` pattern |
+| --- | --- |
+| Start broadcast | `rank-push-start-{gameId}-{weekKey}` |
+| First batch | `rank-push-batch-{gameId}-{weekKey}-start` |
+| Cursor batch | `rank-push-batch-{gameId}-{weekKey}-{cursorGuestId}` |
+
+**Single Nest instance still recommended** for cron registration: week-key `jobId`s dedupe duplicate enqueues within the same ISO week, but multiple replicas can still race on in-process Top-100-exit listeners and cron registration noise.
 
 ## Scheduled rank push flow
 
 1. `RankPushScheduler.onModuleInit()` registers per-game cron from `GAME_CONFIG`
-2. Cron → enqueue `START_RANK_PUSH_BROADCAST`
+2. Cron → enqueue `START_RANK_PUSH_BROADCAST` with `{ gameId, weekKey }` and the start `jobId`
 3. Start job chains `SEND_RANK_PUSH_BATCH` jobs; each loads up to 500 guests with `fcmToken`, ordered/cursored by guest ID
 4. `resolveRank` (same order as leaderboard: `bestScore DESC`, `guestId ASC`)
-5. Guests without a leaderboard entry are skipped; remaining guests are sent sequentially in the worker
+5. Guests without a leaderboard entry are skipped; remaining guests are sent sequentially in the worker (`params: { rank }`)
 6. Every non-empty batch enqueues the next cursor batch; the first empty batch completes the broadcast
 
 ## Top 100 exit flow
@@ -54,7 +73,7 @@ FCM `data` payload: `{ type, route }`; rank is interpolated into localized notif
 ## Delivery semantics
 
 - No separate FCM retry / outbox table
-- Queue jobs do not configure custom `attempts`, backoff, deduplication, or stable job IDs
+- Rank-push queue jobs use BullMQ `attempts` / exponential backoff and week-key `jobId` dedupe (see above)
 - Missing Firebase credentials → push disabled; device APIs still work
 - Invalid FCM token → clear token fields on `guest_players`
-- Other FCM failures are logged and return `false`; they are not retried by application code
+- Other FCM failures are logged and return `false`; they are not retried by application code outside BullMQ job attempts
