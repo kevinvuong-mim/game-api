@@ -176,7 +176,7 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFA
 - Luôn bọc trong dấu ngoặc kép `"..."` vì giá trị chứa ký tự đặc biệt
 - Backend tự chuyển `\\n` thành xuống dòng thật khi khởi tạo Firebase Admin SDK
 - **Không commit** file JSON gốc hoặc private key lên Git
-- Mỗi môi trường (dev/staging/production) nên dùng Service Account riêng hoặc project Firebase riêng
+- Mỗi môi trường (dev/production) nên dùng Service Account riêng hoặc project Firebase riêng
 
 ### Hành vi khi thiếu cấu hình
 
@@ -223,7 +223,7 @@ FIREBASE_CLIENT_EMAIL=
 - File `.env` chứa thông tin nhạy cảm, **KHÔNG BAO GIỜ commit lên Git**
 - Đảm bảo `.env` đã được thêm vào `.gitignore`
 - Sử dụng file `.env.example` để chia sẻ template với team
-- Mỗi môi trường (dev, staging, production) nên có file `.env` riêng với các giá trị khác nhau
+- Mỗi môi trường (dev, production) nên có file `.env` riêng với các giá trị khác nhau
 
 ---
 
