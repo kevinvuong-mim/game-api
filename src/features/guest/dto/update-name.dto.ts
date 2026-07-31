@@ -5,6 +5,6 @@ export class UpdateNameDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(1)
-  @MaxLength(32)
+  @MaxLength(26)
   name!: string;
 }

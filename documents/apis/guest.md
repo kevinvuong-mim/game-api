@@ -77,7 +77,7 @@ Content-Type: application/json
 
 | Field | Type   | Required | Validation                  | Description                    |
 | ----- | ------ | -------- | --------------------------- | ------------------------------ |
-| name  | string | Yes      | Trim rồi MinLength: 1, MaxLength: 32 | Tên hiển thị; DTO `@Transform` trim trước validation — whitespace-only → 400. |
+| name  | string | Yes      | Trim rồi MinLength: 1, MaxLength: 26 | Tên hiển thị; DTO `@Transform` trim trước validation — whitespace-only → 400. |
 
 ### Business Logic
 
@@ -355,7 +355,7 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 
 ### Error: Validation failed (name)
 
-**Cause**: `name` rỗng hoặc vượt quá 32 ký tự
+**Cause**: `name` rỗng hoặc vượt quá 26 ký tự
 
 **Solution**:
 
