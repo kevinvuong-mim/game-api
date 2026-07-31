@@ -1,4 +1,5 @@
-version: '3.8'
+# Dev-only local dependencies (Postgres + Redis). Do NOT reuse these credentials in production.
+# Redis has no password and binds to the host — suitable for local development only.
 
 services:
   postgres:

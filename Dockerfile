@@ -50,7 +50,11 @@ USER node
 # EXPOSE chỉ mang tính tài liệu; Render tự phát hiện cổng từ biến PORT.
 EXPOSE 3000
 
+# Health: cả Postgres và Redis phải connected (xem GET /api/health).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 # Áp dụng migration trước khi khởi động app.
 # Nếu muốn tách riêng, có thể bỏ "prisma migrate deploy" ở đây
-# và đặt nó vào Pre-Deploy Command trên Render.
+# và đặt nó vào Pre-Deploy Command trên Render (khuyến nghị khi scale >1 replica).
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

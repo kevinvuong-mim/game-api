@@ -11,4 +11,10 @@ export interface RateLimitOptions {
   keySource: RateLimitKeySource;
 }
 
-export const RateLimit = (options: RateLimitOptions) => SetMetadata(RATE_LIMIT_KEY, options);
+/** One or more windows — every listed limit must pass. */
+export const RateLimit = (...options: RateLimitOptions[]) => {
+  if (options.length === 0) {
+    throw new Error('RateLimit requires at least one options object');
+  }
+  return SetMetadata(RATE_LIMIT_KEY, options.length === 1 ? options[0] : options);
+};

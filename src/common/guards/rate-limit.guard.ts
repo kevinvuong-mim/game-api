@@ -29,41 +29,46 @@ export class RateLimitGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const options = this.reflector.getAllAndOverride<RateLimitOptions | undefined>(RATE_LIMIT_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const raw = this.reflector.getAllAndOverride<RateLimitOptions | RateLimitOptions[] | undefined>(
+      RATE_LIMIT_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
-    if (!options) {
+    if (!raw) {
       return true;
     }
 
+    const optionsList = Array.isArray(raw) ? raw : [raw];
     const request = context.switchToHttp().getRequest<RateLimitRequest>();
-    const keySuffix =
-      options.keySource === 'guest' ? request.user?.guestId : this.extractClientIp(request);
 
-    if (!keySuffix) {
-      if (options.keySource === 'guest') {
-        throw new UnauthorizedException('Authentication required for rate limiting');
+    for (const options of optionsList) {
+      const keySuffix =
+        options.keySource === 'guest' ? request.user?.guestId : this.extractClientIp(request);
+
+      if (!keySuffix) {
+        if (options.keySource === 'guest') {
+          throw new UnauthorizedException('Authentication required for rate limiting');
+        }
+
+        throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
       }
 
-      throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
-    }
+      let allowed: boolean;
+      try {
+        allowed = await this.redisService.consumeRateLimit(
+          `${options.keyPrefix}${keySuffix}`,
+          options.limit,
+          options.windowSeconds,
+        );
+      } catch {
+        // Fail closed — without Redis we cannot enforce limits, so reject the request.
+        this.logger.error(`Rate limit unavailable — Redis down (${options.keyPrefix}${keySuffix})`);
+        throw new HttpException('Service Temporarily Unavailable', HttpStatus.SERVICE_UNAVAILABLE);
+      }
 
-    let allowed: boolean;
-    try {
-      allowed = await this.redisService.consumeRateLimit(
-        `${options.keyPrefix}${keySuffix}`,
-        options.limit,
-        options.windowSeconds,
-      );
-    } catch {
-      this.logger.warn(`Rate limit skipped — Redis unavailable (${options.keyPrefix}${keySuffix})`);
-      return true;
-    }
-
-    if (!allowed) {
-      throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+      if (!allowed) {
+        throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+      }
     }
 
     return true;

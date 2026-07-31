@@ -15,7 +15,7 @@ API quản lý guest player (người chơi ẩn danh) cho game. Gồm hai endpo
 
 **Endpoint**: `POST /api/guest/init`
 
-**Rate Limit**: 5 requests / 60 giây (per IP)
+**Rate Limit**: 3 requests / 60 giây + 15 requests / 3600 giây (per IP)
 
 **Authentication**: Public (không yêu cầu token)
 
@@ -42,7 +42,7 @@ Content-Type: application/json
 ### Business Logic
 
 1. **Validate gameId**: `@IsEnum(GameId)` trả 400 nếu game không nằm trong enum; service gọi lại `validateGameId()` sau validation.
-2. **Rate limit check**: Giới hạn theo IP (`rate:init:{ip}`).
+2. **Rate limit check**: Giới hạn theo IP — `rate:init:{ip}` (3/60s) và `rate:init:h:{ip}` (15/3600s). Cả hai phải pass.
 3. **Generate token**: `generateSecretToken()` — random 32 bytes, base64url.
 4. **Hash token**: `hashSecretToken()` — SHA-256 hex, chỉ lưu hash vào DB.
 5. **Create guest**: Insert `GuestPlayer` với `gameId` và `authTokenHash`.
@@ -187,7 +187,20 @@ hoặc
   "success": false,
   "statusCode": 429,
   "message": "Too Many Requests",
-  "error": "Too Many Requests",
+  "error": "HttpException",
+  "timestamp": "2026-06-27T12:00:00.000Z",
+  "path": "/api/guest/init"
+}
+```
+
+**503 Service Unavailable - Redis lỗi (rate limit fail-closed)**
+
+```json
+{
+  "success": false,
+  "statusCode": 503,
+  "message": "Service Temporarily Unavailable",
+  "error": "HttpException",
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/guest/init"
 }
@@ -333,7 +346,7 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 
 ### Error: Rate limit exceeded
 
-**Cause**: Vượt quá 5 init/IP/phút hoặc 10 name/guest/phút
+**Cause**: Vượt quá 3 init/IP/phút, 15 init/IP/giờ, hoặc 10 name/guest/phút
 
 **Solution**:
 
@@ -367,4 +380,4 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 - `secretToken` dài 43 ký tự base64url (32 random bytes).
 - Mỗi guest gắn với một `gameId` cố định — token chỉ hợp lệ cho game đã init.
 - Guest name là optional, có thể `null` trên leaderboard nếu chưa đặt tên.
-- Rate limits: init `5/60s` per IP, name `10/60s` per guest.
+- Rate limits: init `3/60s` + `15/hour` per IP, name `10/60s` per guest.

@@ -36,21 +36,9 @@ See [documents/setup/local-development.md](./documents/setup/local-development.m
 cp .env.example .env
 ```
 
-Runtime configuration (`DATABASE_URL` and `REDIS_URL` are required; `PORT` defaults to 3000 and `NODE_ENV` is optional):
+Copy values from [`.env.example`](./.env.example) (dev credentials for local Postgres/Redis). Full reference: [documents/setup/environment-variables.md](./documents/setup/environment-variables.md).
 
-```env
-DATABASE_URL="postgresql://kwong2000:1234abcd@localhost:5432/game-api"
-REDIS_URL="redis://localhost:6379"
-PORT=3000
-NODE_ENV="development"
-
-# Optional — push notifications (FCM)
-FIREBASE_PROJECT_ID=
-FIREBASE_PRIVATE_KEY=
-FIREBASE_CLIENT_EMAIL=
-```
-
-Push is optional: server starts without Firebase; device APIs still work. See [documents/setup/environment-variables.md](./documents/setup/environment-variables.md) for full details.
+Push is optional: server starts without Firebase; device APIs still work.
 
 ### 3. Install and migrate
 

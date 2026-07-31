@@ -13,12 +13,20 @@ export class GuestController {
 
   @Post('init')
   @UseGuards(RateLimitGuard)
-  @RateLimit({
-    keySource: 'ip',
-    windowSeconds: 60,
-    keyPrefix: 'rate:init:',
-    limit: RATE_LIMITS.init,
-  })
+  @RateLimit(
+    {
+      keySource: 'ip',
+      windowSeconds: 60,
+      keyPrefix: 'rate:init:',
+      limit: RATE_LIMITS.init,
+    },
+    {
+      keySource: 'ip',
+      windowSeconds: 3600,
+      keyPrefix: 'rate:init:h:',
+      limit: RATE_LIMITS.initHourly,
+    },
+  )
   initGuest(@Body() dto: InitGuestDto) {
     return this.guestService.initializeGuest(dto);
   }

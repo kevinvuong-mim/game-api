@@ -1,8 +1,8 @@
 import { Logger, Injectable } from '@nestjs/common';
 
 import { FcmService } from '@/features/notifications/fcm.service';
-import { type GameId, type NotificationType } from '@/common/constants';
 import { DeviceTokenService } from '@/features/notifications/device-token.service';
+import { type GameId, type NotificationType, resolveNotificationLocale } from '@/common/constants';
 
 export interface DeliverNotificationInput {
   route: string;
@@ -33,8 +33,8 @@ export class NotificationDeliveryService {
         return false;
       }
 
-      const localeCode = this.deviceTokenService.localeToCode(
-        input.locale ?? device.notificationLocale ?? 'EN',
+      const localeCode = resolveNotificationLocale(
+        input.locale ?? device.notificationLocale?.toString() ?? 'EN',
       );
       const result = await this.fcmService.sendToToken(device.fcmToken, {
         type: input.type,

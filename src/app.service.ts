@@ -18,14 +18,14 @@ export class AppService {
       redis: redisStatus,
     };
 
-    const healthy = dbStatus === 'connected';
+    const healthy = dbStatus === 'connected' && redisStatus === 'connected';
 
     return {
       healthy,
       services,
       timestamp: new Date().toISOString(),
       uptime: Math.floor(process.uptime()),
-      status: healthy ? (redisStatus === 'connected' ? 'ok' : 'degraded') : 'degraded',
+      status: healthy ? 'ok' : 'degraded',
     };
   }
 

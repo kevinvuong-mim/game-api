@@ -3,62 +3,68 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { PlayerExitedTop100Event } from '@/domain/events';
 import { type GameId, TOP_100_THRESHOLD } from '@/common/constants';
-import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 
 export interface ScoreUpdateContext {
   previousRank: number | null;
+  /** Rank after the score write — must be computed in the same DB transaction. */
+  currentRank: number | null;
+  currentBestScore: number | null;
   guestAtRank100BeforeGuestId: string | null;
+  displacedGuestRank: number | null;
+  displacedGuestBestScore: number | null;
 }
 
 @Injectable()
 export class LeaderboardRankTrackerService {
-  constructor(
-    private readonly eventEmitter: EventEmitter2,
-    private readonly rankResolver: LeaderboardRankResolverService,
-  ) {}
+  constructor(private readonly eventEmitter: EventEmitter2) {}
 
   async onScoreUpdated(
     gameId: GameId,
     guestId: string,
     context: ScoreUpdateContext,
   ): Promise<void> {
-    const currentRank = await this.rankResolver.resolveRank(gameId, guestId);
-    if (!currentRank) {
-      return;
-    }
-
-    this.handleSubmittingGuestExit(gameId, guestId, context.previousRank, currentRank);
-    await this.handleDisplacedGuestExit(gameId, guestId, context.guestAtRank100BeforeGuestId);
+    this.handleSubmittingGuestExit(gameId, guestId, context);
+    this.handleDisplacedGuestExit(gameId, guestId, context);
   }
 
   private handleSubmittingGuestExit(
     gameId: GameId,
     guestId: string,
-    previousRank: number | null,
-    currentRank: { rank: number; bestScore: number },
+    context: ScoreUpdateContext,
   ): void {
-    const isInTop100 = currentRank.rank <= TOP_100_THRESHOLD;
+    const { previousRank, currentRank, currentBestScore } = context;
+    if (currentRank === null || currentBestScore === null) {
+      return;
+    }
+
+    const isInTop100 = currentRank <= TOP_100_THRESHOLD;
     const wasRankedInTop100 = previousRank !== null && previousRank <= TOP_100_THRESHOLD;
 
     if (wasRankedInTop100 && !isInTop100) {
       this.eventEmitter.emit(
         PlayerExitedTop100Event.name,
-        new PlayerExitedTop100Event(gameId, guestId, currentRank.rank, currentRank.bestScore),
+        new PlayerExitedTop100Event(gameId, guestId, currentRank, currentBestScore),
       );
     }
   }
 
-  private async handleDisplacedGuestExit(
+  private handleDisplacedGuestExit(
     gameId: GameId,
     submittingGuestId: string,
-    guestAtRank100BeforeId: string | null,
-  ): Promise<void> {
-    if (!guestAtRank100BeforeId || guestAtRank100BeforeId === submittingGuestId) {
+    context: ScoreUpdateContext,
+  ): void {
+    const { guestAtRank100BeforeGuestId, displacedGuestRank, displacedGuestBestScore } = context;
+
+    if (
+      !guestAtRank100BeforeGuestId ||
+      guestAtRank100BeforeGuestId === submittingGuestId ||
+      displacedGuestRank === null ||
+      displacedGuestBestScore === null
+    ) {
       return;
     }
 
-    const displacedRank = await this.rankResolver.resolveRank(gameId, guestAtRank100BeforeId);
-    if (!displacedRank || displacedRank.rank <= TOP_100_THRESHOLD) {
+    if (displacedGuestRank <= TOP_100_THRESHOLD) {
       return;
     }
 
@@ -66,9 +72,9 @@ export class LeaderboardRankTrackerService {
       PlayerExitedTop100Event.name,
       new PlayerExitedTop100Event(
         gameId,
-        guestAtRank100BeforeId,
-        displacedRank.rank,
-        displacedRank.bestScore,
+        guestAtRank100BeforeGuestId,
+        displacedGuestRank,
+        displacedGuestBestScore,
       ),
     );
   }

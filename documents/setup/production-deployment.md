@@ -31,7 +31,7 @@ npx prisma migrate deploy && node dist/main
 
 Migration chạy **trước** khi app listen — đảm bảo schema up-to-date.
 
-> Có thể tách `prisma migrate deploy` ra Pre-Deploy Command (Render, Railway, v.v.) nếu muốn.
+> Có thể tách `prisma migrate deploy` ra Pre-Deploy Command (Render, Railway, v.v.) nếu muốn. Khi scale nhiều replica, nên chạy migrate **một lần** ở pre-deploy thay vì trong mỗi container `CMD` để tránh race.
 
 ### Port
 
@@ -59,12 +59,12 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 GET /api/health
 ```
 
-| HTTP | Ý nghĩa                                   |
-| ---- | ----------------------------------------- |
-| 200  | Postgres connected (`ok` hoặc `degraded`) |
-| 503  | Postgres disconnected                     |
+| HTTP | Ý nghĩa                                                      |
+| ---- | ------------------------------------------------------------ |
+| 200  | Postgres **và** Redis connected (`status: ok`)               |
+| 503  | Postgres và/hoặc Redis disconnected (`status: degraded`)     |
 
-Kubernetes example:
+Kubernetes example (đổi `port` nếu container listen cổng khác — khớp `containerPort` / `PORT`):
 
 ```yaml
 readinessProbe:
@@ -141,7 +141,7 @@ curl https://api.example.com/api/health
 Log quan trọng (NestJS `Logger`):
 
 - `HttpExceptionFilter` — mọi HTTP error
-- `MaintenanceService` — partition create/skip
+- `PartitionService` — partition create (partition đã tồn tại thì silent, không log skip)
 - `RankPushScheduler` — scheduled rank push batch (per-game `rankPushCron` từ `GAME_CONFIG`)
 - `Firebase is not configured` — push disabled
 

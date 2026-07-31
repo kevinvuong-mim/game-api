@@ -29,13 +29,12 @@ Không có (GET request).
 1. **Check Postgres**: Thực thi `SELECT 1` qua Prisma (`AppService.checkPostgres()`).
 2. **Check Redis**: Gửi `PING` qua Redis client (`AppService.checkRedis()`).
 3. **Evaluate health**:
-   - Postgres `connected` → HTTP **200** (service available).
-   - Postgres `disconnected` → HTTP **503** (service unavailable).
-   - `data.status`: `"ok"` khi cả Postgres và Redis connected; `"degraded"` khi Postgres OK nhưng Redis disconnected.
+   - Cả Postgres **và** Redis `connected` → HTTP **200**, `data.status: "ok"`.
+   - Postgres hoặc Redis `disconnected` → HTTP **503**, `status: "degraded"`.
 4. **Collect metadata**: Ghi `uptime` (giây) và `timestamp` (ISO 8601).
-5. **Return response**: Payload được bọc qua `ResponseInterceptor` khi healthy; khi Postgres down, throw `ServiceUnavailableException` và trả error envelope qua `HttpExceptionFilter`.
+5. **Return response**: Payload được bọc qua `ResponseInterceptor` khi healthy; khi unhealthy, throw `ServiceUnavailableException` và trả error envelope qua `HttpExceptionFilter`.
 
-> Redis down không làm API trả 503 khi Postgres OK. Rate limit và guest auth đều **fail-open** (fallback DB cho auth khi cache miss/lỗi Redis).
+> Rate limit **fail-closed**: khi Redis lỗi, các endpoint có `@RateLimit` trả **503** (`Service Temporarily Unavailable`). Guest auth vẫn fallback DB khi auth cache miss.
 
 ---
 
@@ -43,9 +42,7 @@ Không có (GET request).
 
 ### Success Response (200 OK)
 
-Trả về khi Postgres kết nối thành công.
-
-**Cả Postgres và Redis connected:**
+Trả về khi **cả** Postgres và Redis kết nối thành công.
 
 ```json
 {
@@ -66,43 +63,20 @@ Trả về khi Postgres kết nối thành công.
 }
 ```
 
-**Postgres connected, Redis disconnected (degraded):**
-
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Data retrieved successfully",
-  "data": {
-    "status": "degraded",
-    "services": {
-      "db": "connected",
-      "redis": "disconnected"
-    },
-    "timestamp": "2026-06-27T12:00:00.000Z",
-    "uptime": 12345
-  },
-  "timestamp": "2026-06-27T12:00:00.000Z",
-  "path": "/api/health"
-}
-```
-
 ### Response Data Schema (`data`)
 
-| Field          | Type   | Description                                                        |
-| -------------- | ------ | ------------------------------------------------------------------ |
-| status         | string | `ok` khi cả Postgres và Redis connected; `degraded` khi Redis down |
-| services       | object | Trạng thái từng dependency                                         |
-| services.db    | string | `connected` \| `disconnected`                                      |
-| services.redis | string | `connected` \| `disconnected`                                      |
-| timestamp      | string | Thời điểm health check (ISO 8601)                                  |
-| uptime         | number | Thời gian server đã chạy (giây, `process.uptime()`)                |
+| Field          | Type   | Description                                   |
+| -------------- | ------ | --------------------------------------------- |
+| status         | string | `ok` khi cả Postgres và Redis connected       |
+| services       | object | Trạng thái từng dependency                    |
+| services.db    | string | `connected` \| `disconnected`                 |
+| services.redis | string | `connected` \| `disconnected`                 |
+| timestamp      | string | Thời điểm health check (ISO 8601)             |
+| uptime         | number | Thời gian server đã chạy (giây)               |
 
 ### Error Responses
 
-**503 Service Unavailable - Postgres down**
-
-Trả về khi Postgres không kết nối được.
+**503 Service Unavailable — Postgres và/hoặc Redis down**
 
 ```json
 {
@@ -112,8 +86,8 @@ Trả về khi Postgres không kết nối được.
   "error": "ServiceUnavailableException",
   "status": "degraded",
   "services": {
-    "db": "disconnected",
-    "redis": "connected"
+    "db": "connected",
+    "redis": "disconnected"
   },
   "uptime": 12345,
   "timestamp": "2026-06-27T12:00:00.000Z",
@@ -121,12 +95,12 @@ Trả về khi Postgres không kết nối được.
 }
 ```
 
-Với 503, filter giữ lại `status`, `services`, `uptime` và health-check `timestamp` trong error envelope. Field `timestamp` sau cùng chính là timestamp của health check vì nó ghi đè timestamp tạo bởi filter.
+Với 503, filter giữ lại `status`, `services`, `uptime` và health-check `timestamp` trong error envelope.
 
 **Possible states**:
 
-- `services.db: "disconnected"` — Postgres không phản hồi → **503**
-- `services.redis: "disconnected"` — Redis không phản hồi → **200** với `status: "degraded"`
+- `services.db: "disconnected"` → **503**
+- `services.redis: "disconnected"` → **503** (kể cả khi Postgres OK)
 
 ---
 
@@ -134,7 +108,7 @@ Với 503, filter giữ lại `status`, `services`, `uptime` và health-check `t
 
 ### Use Case 1: Kubernetes readiness probe
 
-Probe nên coi **503** là not ready; **200** (kể cả `degraded`) là ready cho traffic cơ bản.
+Probe nên coi **503** là not ready; **200** là ready.
 
 ```bash
 curl http://localhost:3000/api/health
@@ -145,7 +119,7 @@ curl http://localhost:3000/api/health
 ### Use Case 2: Monitoring phát hiện dependency down
 
 - Postgres down → HTTP 503
-- Chỉ Redis down → HTTP 200, `data.status: "degraded"`
+- Redis down → HTTP 503
 
 ```bash
 curl -i http://localhost:3000/api/health
@@ -159,7 +133,7 @@ curl -i http://localhost:3000/api/health
 curl http://localhost:3000/api/health
 ```
 
-HTTP 200 với `services.db: "connected"` là đủ để test API nghiệp vụ.
+HTTP 200 với cả `services.db` và `services.redis` = `connected` là điều kiện để test API nghiệp vụ (rate limit cần Redis).
 
 ---
 
@@ -175,36 +149,26 @@ HTTP 200 với `services.db: "connected"` là đủ để test API nghiệp vụ
 
 ### Error: HTTP 503 Service Unavailable
 
-**Cause**: Postgres không kết nối được
+**Cause**: Postgres và/hoặc Redis không kết nối được
 
 **Solution**:
 
-- Kiểm tra `docker-compose` / database service
-- Xác minh `DATABASE_URL` trong `.env`
-
-### Error: HTTP 200 nhưng `status: "degraded"`
-
-**Cause**: Redis không kết nối
-
-**Solution**:
-
-- Kiểm tra `REDIS_URL`, `docker-compose` redis service
-- Postgres OK + Redis down → HTTP 200, `status: "degraded"`
-- Rate limit và guest auth fail-open khi Redis lỗi
+- Kiểm tra `docker-compose` / database / redis service
+- Xác minh `DATABASE_URL` và `REDIS_URL` trong `.env`
+- Endpoint có `@RateLimit` cũng trả 503 khi Redis down (fail-closed)
 
 ---
 
 ## Related Endpoints
 
-- **POST /api/guest/init**: Cần Postgres healthy
-- **GET /api/leaderboards**: Cần Postgres healthy
-- **POST /api/results**: Cần Postgres healthy
+- **POST /api/guest/init**: Cần Postgres + Redis (rate limit)
+- **GET /api/leaderboards**: Cần Postgres + Redis (rate limit)
+- **POST /api/results**: Cần Postgres + Redis (rate limit)
 
 ---
 
 ## Notes
 
 - Global prefix `/api` (`main.ts`).
-- **Healthy (200)**: Postgres connected.
-- **Unhealthy (503)**: Postgres disconnected.
-- Redis chỉ ảnh hưởng `data.status` (`ok` vs `degraded`), không quyết định HTTP 503.
+- **Healthy (200)**: Postgres **và** Redis connected.
+- **Unhealthy (503)**: Bất kỳ dependency nào disconnected.

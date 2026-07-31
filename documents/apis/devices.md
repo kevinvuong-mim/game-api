@@ -72,7 +72,7 @@ Clear `fcmToken`, `devicePlatform` và `notificationLocale`. Endpoint idempotent
 
 ## Errors and delivery behavior
 
-- Thiếu/sai Bearer token: 401; DTO invalid/field thừa: 400; vượt shared limit: 429.
+- Thiếu/sai Bearer token: 401; DTO invalid/field thừa: 400; vượt shared limit: 429; Redis lỗi trên rate limit: **503** (`Service Temporarily Unavailable`, fail-closed).
 - `fcmToken` unique toàn DB. Code chủ động chuyển ownership trước update để tránh unique conflict.
 - FCM error `messaging/registration-token-not-registered` hoặc `messaging/invalid-registration-token` clear cả ba field device.
 - Locale `VI` map sang `vi`; mọi giá trị còn lại trong delivery path fallback `en`.

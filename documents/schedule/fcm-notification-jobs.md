@@ -22,7 +22,7 @@ Example FRULOOP: `rankPushCron: '0 9 * * 6'` (Saturday 09:00 VN).
 | `rank_push`      | Per-game scheduled broadcast for token holders who have a rank | `Leaderboard` |
 | `top_100_exited` | Guest previously at #100 is displaced by another guest entering Top 100 | `Leaderboard` |
 
-FCM `data` payload: `{ type, route, ...params }` — stringified job params are merged into `data`. Rank push includes `rank` so the client can show a foreground toast with the same copy as the notification body. Rank is also interpolated into localized notification title/body (EN / VI; non-Vietnamese falls back to English).
+FCM `data` payload: `{ type, route, ...params }` — stringified job params are merged into `data`. Both `rank_push` and `top_100_exited` pass `rank` into `data`. Rank push also interpolates `rank` into localized notification title/body (EN / VI; non-Vietnamese falls back to English) so the client can show a matching foreground toast.
 
 Android uses high priority and channel `game_alerts`; APNs requests default sound.
 

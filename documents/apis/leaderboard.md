@@ -32,14 +32,14 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 | ------- | ------ | -------- | ----------------------- | ------- | ------------------------------------------------- |
 | gameId  | string | Yes      | Phải là `GameId` hợp lệ | -       | Mã game (`FRULOOP`)                               |
 | page    | number | No       | Min: 1, integer         | `1`     | Trang hiện tại (1-based)                          |
-| limit   | number | No       | Min: 1, Max: 100        | `20`    | Số entry mỗi trang (server cap tối đa 100)        |
+| limit   | number | No       | Min: 1, Max: 100 (`@Max(100)` → 400 nếu vượt) | `20` | Số entry mỗi trang |
 | guestId | string | No       | UUID (`@IsUUID()`, không khóa version) | - | Guest ID để lấy rank và best score của chính mình |
 
 ### Business Logic
 
 1. **Validate query**: `@IsEnum(GameId)` trả 400 cho game không hợp lệ; service gọi `validateGameId()` sau DTO validation.
 2. **Rate limit check**: Giới hạn theo IP (`rate:lb:{ip}`).
-3. **Pagination**: Tính `offset = (page - 1) * limit`, cap `limit` tối đa 100.
+3. **Pagination**: Tính `offset = (page - 1) * limit`. `limit > 100` bị DTO reject (400), service không clamp.
 4. **Count total**: Đếm tổng entry trong bảng `leaderboards` theo `gameId`.
 5. **Fetch items**: Query PostgreSQL `leaderboards` với `ORDER BY bestScore DESC, guestId ASC`, `SKIP`/`TAKE` theo pagination.
 6. **Resolve names**: Batch query `GuestPlayer.name` cho các `guestId` trong trang hiện tại.
@@ -139,7 +139,20 @@ Trả về khi query params không hợp lệ (thiếu `gameId`, `page` < 1, `li
   "success": false,
   "statusCode": 429,
   "message": "Too Many Requests",
-  "error": "Too Many Requests",
+  "error": "HttpException",
+  "timestamp": "2026-06-27T12:00:00.000Z",
+  "path": "/api/leaderboards?gameId=FRULOOP"
+}
+```
+
+**503 Service Unavailable - Redis lỗi (rate limit fail-closed)**
+
+```json
+{
+  "success": false,
+  "statusCode": 503,
+  "message": "Service Temporarily Unavailable",
+  "error": "HttpException",
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/leaderboards?gameId=FRULOOP"
 }
@@ -210,7 +223,20 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&guestId=a1b2c3d4-e5f
     "total": 150,
     "page": 1,
     "limit": 20,
-    "items": [],
+    "items": [
+      {
+        "rank": 1,
+        "guestId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "bestScore": 9999,
+        "name": "PlayerOne"
+      },
+      {
+        "rank": 2,
+        "guestId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+        "bestScore": 8500,
+        "name": null
+      }
+    ],
     "self": {
       "rank": 12,
       "bestScore": 5000
@@ -299,4 +325,4 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 - Xếp hạng theo `bestScore` giảm dần; tie-break: `guestId ASC` (cùng score → guestId nhỏ hơn xếp trước).
 - `name` resolve từ bảng `GuestPlayer` — có thể `null` nếu chưa gọi `PATCH /api/guest/name`.
 - Rate limit: `30/60s` per IP.
-- API default `limit` = 20 (max 100). Client `game-starter-kit` gọi với `limit=10` (`LEADERBOARD_LIMIT`).
+- API default `limit` = 20 (`@Max(100)`). Client `game-starter-kit` gọi với `limit=100` (`LEADERBOARD_LIMIT`).

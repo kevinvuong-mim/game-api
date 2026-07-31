@@ -48,9 +48,4 @@ export class DeviceTokenService {
   async markTokenInvalid(token: string) {
     await this.deviceTokenRepository.markTokenInvalid(token);
   }
-
-  localeToCode(locale: { toString(): string }): 'en' | 'vi' {
-    const value = locale.toString().trim().toLowerCase();
-    return value === 'vi' || value.startsWith('vi') ? 'vi' : 'en';
-  }
 }

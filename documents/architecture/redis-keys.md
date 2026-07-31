@@ -21,19 +21,20 @@ Connection: `REDIS_URL`.
 
 Pattern: `{prefix}{suffix}` — suffix is client IP or `guestId`.
 
-| Prefix         | Suffix  | Limit / 60s | Endpoint            |
-| -------------- | ------- | ----------- | ------------------- |
-| `rate:init:`   | IP      | 5           | `POST /guest/init`  |
-| `rate:name:`   | guestId | 10          | `PATCH /guest/name` |
-| `rate:result:` | guestId | 20          | `POST /results`     |
-| `rate:lb:`     | IP      | 30          | `GET /leaderboards` |
-| `rate:device:` | guestId | 10          | Shared by POST/PATCH/DELETE `/devices` |
+| Prefix          | Suffix  | Limit / window     | Endpoint            |
+| --------------- | ------- | -------------------- | ------------------- |
+| `rate:init:`    | IP      | 3 / 60s              | `POST /guest/init`  |
+| `rate:init:h:`  | IP      | 15 / 3600s           | `POST /guest/init`  |
+| `rate:name:`    | guestId | 10 / 60s             | `PATCH /guest/name` |
+| `rate:result:`  | guestId | 20 / 60s             | `POST /results`     |
+| `rate:lb:`      | IP      | 30 / 60s             | `GET /leaderboards` |
+| `rate:device:`  | guestId | 10 / 60s             | Shared by POST/PATCH/DELETE `/devices` |
 
-Implementation: **atomic Lua** `INCR` + `EXPIRE` (fixed 60s window). Also re-applies TTL if a key somehow lost it.
+Implementation: **atomic Lua** `INCR` + `EXPIRE` (fixed window). Also re-applies TTL if a key somehow lost it.
 
 Client IP comes from Express `request.ip` with `trust proxy = 1` in `main.ts` (do **not** read raw `X-Forwarded-For` in the guard).
 
-**Fail-open:** if Redis errors, rate-limit and auth-cache guards allow the request (auth falls back to DB).
+**Fail-closed:** if Redis errors while evaluating a rate limit, the guard rejects the request with **503** (`Service Temporarily Unavailable`). Auth cache miss still falls back to DB.
 
 ## BullMQ
 
@@ -65,6 +66,6 @@ KEYS rate:*
 `src/common/constants/runtime.constants.ts`:
 
 ```ts
-RATE_LIMITS = { init: 5, name: 10, device: 10, result: 20, leaderboard: 30 };
+RATE_LIMITS = { init: 3, initHourly: 15, name: 10, device: 10, result: 20, leaderboard: 30 };
 AUTH_TOKEN_CACHE_TTL_SECONDS = 300;
 ```

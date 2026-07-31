@@ -5,9 +5,11 @@ import {
   Matches,
   IsString,
   MaxLength,
+  IsNotEmpty,
   IsISO8601,
   IsOptional,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 import { IsValidMetadata } from '@/common/validators';
 
@@ -15,7 +17,9 @@ import { IsValidMetadata } from '@/common/validators';
 const MAX_RESULT_SCORE = 2_147_483_647;
 
 export class SubmitResultDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
+  @IsNotEmpty()
   @MaxLength(128)
   clientResultId!: string;
 

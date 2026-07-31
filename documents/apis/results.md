@@ -46,7 +46,7 @@ Content-Type: application/json
 | ---------------------- | ------ | -------- | --------------------------------- | ---------------------------------------------------- |
 | gameId                 | string | Yes      | `@IsEnum(GameId)`                 | Mã game (`FRULOOP`). Phải khớp game của guest token. |
 | items                  | array  | Yes      | Min: 1, Max: 50 items             | Danh sách kết quả cần gửi                            |
-| items[].clientResultId | string | Yes      | `@MaxLength(128)` (DTO không đặt min length) | ID do client tạo; dùng làm dedup key trong guest/game |
+| items[].clientResultId | string | Yes      | `@Transform(trim)` + `@IsNotEmpty()` + `@MaxLength(128)` | ID do client tạo; dùng làm dedup key trong guest/game |
 | items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647  | Điểm số (khớp Prisma `Int` / PG `integer`)           |
 | items[].playedAt       | string | No       | ISO 8601 strict                   | Thời điểm chơi                                       |
 | items[].metadata       | object | No       | `@IsValidMetadata` (xem bên dưới) | Metadata bổ sung (flat object)                       |
@@ -185,7 +185,20 @@ Trả về khi `gameId` trong body khác với game của guest token.
   "success": false,
   "statusCode": 429,
   "message": "Too Many Requests",
-  "error": "Too Many Requests",
+  "error": "HttpException",
+  "timestamp": "2026-06-27T12:00:00.000Z",
+  "path": "/api/results"
+}
+```
+
+**503 Service Unavailable - Redis lỗi (rate limit fail-closed)**
+
+```json
+{
+  "success": false,
+  "statusCode": 503,
+  "message": "Service Temporarily Unavailable",
+  "error": "HttpException",
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/results"
 }
@@ -382,7 +395,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 
 ### Error: Rate limit exceeded
 
-**Cause**: Quá 20 requests/phút per guest
+**Cause**: Quá 20 requests/60s per guest
 
 **Solution**:
 

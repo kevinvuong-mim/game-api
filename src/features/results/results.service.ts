@@ -61,7 +61,11 @@ export class ResultsService {
     ) {
       await this.rankTracker.onScoreUpdated(gameId, guest.guestId, {
         previousRank: batchResult.previousRank,
+        currentRank: batchResult.currentRank,
+        currentBestScore: batchResult.newBest,
         guestAtRank100BeforeGuestId: batchResult.guestAtRank100BeforeGuestId,
+        displacedGuestRank: batchResult.displacedGuestRank,
+        displacedGuestBestScore: batchResult.displacedGuestBestScore,
       });
     }
 

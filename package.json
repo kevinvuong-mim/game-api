@@ -13,6 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"src/**/*.ts\" --fix",
+    "test": "tsc --noEmit -p tsconfig.build.json",
     "prisma:reset": "prisma migrate reset",
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate"

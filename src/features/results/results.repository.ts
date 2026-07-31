@@ -15,7 +15,12 @@ export interface BatchSubmitResult {
   newBest: number | null;
   previousBest: number | null;
   previousRank: number | null;
+  /** Submitting guest rank after this batch (computed inside the same TX). */
+  currentRank: number | null;
   guestAtRank100BeforeGuestId: string | null;
+  /** Rank of the pre-update #100 guest after this batch (same TX), if tracked. */
+  displacedGuestRank: number | null;
+  displacedGuestBestScore: number | null;
 }
 
 @Injectable()
@@ -31,13 +36,7 @@ export class ResultsRepository {
     items: ValidatedResultItem[],
   ): Promise<BatchSubmitResult> {
     if (items.length === 0) {
-      return {
-        newBest: null,
-        insertedCount: 0,
-        previousBest: null,
-        previousRank: null,
-        guestAtRank100BeforeGuestId: null,
-      };
+      return emptyBatchResult();
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -57,6 +56,7 @@ export class ResultsRepository {
             clientResultId: item.clientResultId,
           },
           select: { id: true },
+          orderBy: { createdAt: 'desc' },
         });
 
         if (existing) {
@@ -80,13 +80,7 @@ export class ResultsRepository {
       }
 
       if (insertedCount === 0) {
-        return {
-          newBest: null,
-          insertedCount: 0,
-          previousBest: null,
-          previousRank: null,
-          guestAtRank100BeforeGuestId: null,
-        };
+        return emptyBatchResult();
       }
 
       const previousRow = await tx.leaderboard.findUnique({
@@ -97,15 +91,7 @@ export class ResultsRepository {
       // Same tie-break as countBetterRanks: bestScore DESC, guestId ASC.
       const previousRank =
         previousBest !== null
-          ? (await tx.leaderboard.count({
-              where: {
-                gameId,
-                OR: [
-                  { bestScore: { gt: previousBest } },
-                  { bestScore: previousBest, guestId: { lt: guestId } },
-                ],
-              },
-            })) + 1
+          ? (await countBetterRanksTx(tx, gameId, guestId, previousBest)) + 1
           : null;
       const guestAtRank100 = await tx.leaderboard.findMany({
         take: 1,
@@ -132,13 +118,39 @@ export class ResultsRepository {
         where: { gameId_guestId: { gameId, guestId } },
         select: { bestScore: true },
       });
+      const newBest = row?.bestScore ?? maxScore;
+      const currentRank = (await countBetterRanksTx(tx, gameId, guestId, newBest)) + 1;
+
+      let displacedGuestRank: number | null = null;
+      let displacedGuestBestScore: number | null = null;
+      if (guestAtRank100BeforeGuestId && guestAtRank100BeforeGuestId !== guestId) {
+        const displaced = await tx.leaderboard.findUnique({
+          where: {
+            gameId_guestId: { gameId, guestId: guestAtRank100BeforeGuestId },
+          },
+          select: { bestScore: true },
+        });
+        if (displaced) {
+          displacedGuestBestScore = displaced.bestScore;
+          displacedGuestRank =
+            (await countBetterRanksTx(
+              tx,
+              gameId,
+              guestAtRank100BeforeGuestId,
+              displaced.bestScore,
+            )) + 1;
+        }
+      }
 
       return {
         previousBest,
         previousRank,
+        currentRank,
         insertedCount,
         guestAtRank100BeforeGuestId,
-        newBest: row?.bestScore ?? maxScore,
+        displacedGuestRank,
+        displacedGuestBestScore,
+        newBest,
       };
     });
   }
@@ -163,4 +175,31 @@ export class ResultsRepository {
       },
     });
   }
+}
+
+function emptyBatchResult(): BatchSubmitResult {
+  return {
+    newBest: null,
+    insertedCount: 0,
+    previousBest: null,
+    previousRank: null,
+    currentRank: null,
+    guestAtRank100BeforeGuestId: null,
+    displacedGuestRank: null,
+    displacedGuestBestScore: null,
+  };
+}
+
+function countBetterRanksTx(
+  tx: Prisma.TransactionClient,
+  gameId: GameId,
+  guestId: string,
+  bestScore: number,
+) {
+  return tx.leaderboard.count({
+    where: {
+      gameId,
+      OR: [{ bestScore: { gt: bestScore } }, { bestScore, guestId: { lt: guestId } }],
+    },
+  });
 }
