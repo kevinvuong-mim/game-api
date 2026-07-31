@@ -28,12 +28,12 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 
 ### Query Parameters Schema
 
-| Field   | Type   | Required | Validation              | Default | Description                                       |
-| ------- | ------ | -------- | ----------------------- | ------- | ------------------------------------------------- |
-| gameId  | string | Yes      | Phải là `GameId` hợp lệ | -       | Mã game (`FRULOOP`)                               |
-| page    | number | No       | Min: 1, integer         | `1`     | Trang hiện tại (1-based)                          |
-| limit   | number | No       | Min: 1, Max: 100 (`@Max(100)` → 400 nếu vượt) | `20` | Số entry mỗi trang |
-| guestId | string | No       | UUID (`@IsUUID()`, không khóa version) | - | Guest ID để lấy rank và best score của chính mình |
+| Field   | Type   | Required | Validation                                    | Default | Description                                       |
+| ------- | ------ | -------- | --------------------------------------------- | ------- | ------------------------------------------------- |
+| gameId  | string | Yes      | Phải là `GameId` hợp lệ                       | -       | Mã game (`FRULOOP`)                               |
+| page    | number | No       | Min: 1, integer                               | `1`     | Trang hiện tại (1-based)                          |
+| limit   | number | No       | Min: 1, Max: 100 (`@Max(100)` → 400 nếu vượt) | `20`    | Số entry mỗi trang                                |
+| guestId | string | No       | UUID (`@IsUUID()`, không khóa version)        | -       | Guest ID để lấy rank và best score của chính mình |
 
 ### Business Logic
 
@@ -298,7 +298,7 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 
 **Cause**: Leaderboard đọc trực tiếp PostgreSQL (không có Redis cache)
 
-**Solution**: Client cache response (game-starter-kit dùng stale-while-revalidate 60s); giảm polling frequency
+**Solution**: Client cache response (game-apps dùng stale-while-revalidate 60s); giảm polling frequency
 
 ### Error: Rate limit exceeded
 
@@ -325,4 +325,4 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 - Xếp hạng theo `bestScore` giảm dần; tie-break: `guestId ASC` (cùng score → guestId nhỏ hơn xếp trước).
 - `name` resolve từ bảng `GuestPlayer` — có thể `null` nếu chưa gọi `PATCH /api/guest/name`.
 - Rate limit: `30/60s` per IP.
-- API default `limit` = 20 (`@Max(100)`). Client `game-starter-kit` gọi với `limit=100` (`LEADERBOARD_LIMIT`).
+- API default `limit` = 20 (`@Max(100)`). Client `game-apps` gọi với `limit=100` (`LEADERBOARD_LIMIT`).

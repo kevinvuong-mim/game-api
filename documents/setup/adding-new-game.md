@@ -10,7 +10,7 @@ Game được khai báo **trong source code** (type-safe), không có bảng `ga
 2. **`GAME_CONFIG`** — thêm entry trong `src/common/constants/game.constants.ts` (`replaySecret`, optional `rankPushCron`)
 3. **Migrate** — `npm run prisma:migrate` (và `prisma:generate`) rồi deploy
 
-Client (`game-starter-kit`) chỉ đổi `VITE_GAME_ID` + `VITE_REPLAY_SECRET` **sau** khi PR API đã merge/deploy. Không thể “chỉ clone kit” mà bỏ qua PR API — các DTO `@IsEnum(GameId)` sẽ từ chối game chưa có bằng HTTP 400.
+Client (`game-apps`) chỉ đổi `VITE_GAME_ID` + `VITE_REPLAY_SECRET` **sau** khi PR API đã merge/deploy. Không thể “chỉ clone kit” mà bỏ qua PR API — các DTO `@IsEnum(GameId)` sẽ từ chối game chưa có bằng HTTP 400.
 
 Thêm game mới luôn yêu cầu deploy backend **và** cập nhật client (coordinated release).
 
@@ -93,14 +93,14 @@ Các module sau tự động hỗ trợ game mới qua `GameId` enum:
 
 Module `ResultsDataModule` export `ResultsRepository` dùng chung — không cần sửa khi thêm game.
 
-## 4. Client — game-starter-kit
+## 4. Client — game-apps
 
 ```env
 VITE_GAME_ID=MYGAME
 VITE_REPLAY_SECRET=<cùng replaySecret với GAME_CONFIG>
 ```
 
-Client đọc game env qua [`game-starter-kit/src/game/config.ts`](../../../game-starter-kit/src/game/config.ts) (`id`, `replaySecret`). Runtime config cũng đọc hai biến này; API URL hiện lấy từ preset `VITE_APP_ENV` trong [`game-starter-kit/src/platform/core/config/index.ts`](../../../game-starter-kit/src/platform/core/config/index.ts), không đọc `VITE_API_URL`.
+Client đọc game env qua [`game-apps/src/game/config.ts`](../../../game-apps/src/game/config.ts) (`id`, `replaySecret`). Runtime config cũng đọc hai biến này; API URL hiện lấy từ preset `VITE_APP_ENV` trong [`game-apps/src/platform/core/config/index.ts`](../../../game-apps/src/platform/core/config/index.ts), không đọc `VITE_API_URL`.
 
 HMAC payload phải khớp backend:
 
@@ -129,5 +129,5 @@ curl "https://api.example.com/api/leaderboards?gameId=MYGAME"
 ## Related
 
 - HMAC chi tiết: [apis/results.md](../apis/results.md)
-- Frontend sync: [game-starter-kit/documents/modules/game-result-sync.md](../../../game-starter-kit/documents/modules/game-result-sync.md)
+- Frontend sync: [game-apps/documents/modules/game-result-sync.md](../../../game-apps/documents/modules/game-result-sync.md)
 - Push jobs: [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md)

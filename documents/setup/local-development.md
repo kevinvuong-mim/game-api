@@ -111,7 +111,7 @@ Lưu `secretToken` và `guestId` từ response.
 
 ### Submit result (cần HMAC)
 
-Client game-starter-kit tự ký HMAC. Để test thủ công, dùng `replaySecret` khớp `GAME_CONFIG` trong `src/common/constants/game.constants.ts` (và `VITE_REPLAY_SECRET` trên client).
+Client game-apps tự ký HMAC. Để test thủ công, dùng `replaySecret` khớp `GAME_CONFIG` trong `src/common/constants/game.constants.ts` (và `VITE_REPLAY_SECRET` trên client).
 
 ### Leaderboard
 
@@ -140,7 +140,7 @@ npx prisma studio
 
 Mở UI tại `http://localhost:5555` để xem/edit data.
 
-## Kết nối với game-starter-kit
+## Kết nối với game-apps
 
 Trên client, set:
 
@@ -150,16 +150,16 @@ VITE_GAME_ID=FRULOOP
 VITE_REPLAY_SECRET=<khớp GAME_CONFIG replaySecret>
 ```
 
-Preset `dev` trong [`game-starter-kit/src/platform/core/config/index.ts`](../../../game-starter-kit/src/platform/core/config/index.ts) dùng `https://game-api-s5kn.onrender.com/api` (cùng URL production). Client không đọc `VITE_API_URL`. Để trỏ local API, tạm sửa preset `apiUrl` trong `config/index.ts`.
+Preset `dev` trong [`game-apps/src/platform/core/config/index.ts`](../../../game-apps/src/platform/core/config/index.ts) dùng `https://game-api-s5kn.onrender.com/api` (cùng URL production). Client không đọc `VITE_API_URL`. Để trỏ local API, tạm sửa preset `apiUrl` trong `config/index.ts`.
 
 ## Troubleshooting
 
-| Vấn đề                   | Giải pháp                                                                           |
-| ------------------------ | ----------------------------------------------------------------------------------- |
-| `EADDRINUSE :3000`       | Đổi `PORT` hoặc kill process: `lsof -i :3000`                                       |
-| Health 503               | Kiểm tra Postgres (`DATABASE_URL`) **và** Redis (`REDIS_URL`, `docker-compose`) — cả hai phải connected |
+| Vấn đề                      | Giải pháp                                                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `EADDRINUSE :3000`          | Đổi `PORT` hoặc kill process: `lsof -i :3000`                                                              |
+| Health 503                  | Kiểm tra Postgres (`DATABASE_URL`) **và** Redis (`REDIS_URL`, `docker-compose`) — cả hai phải connected    |
 | Validation 400 cho `gameId` | Dùng `FRULOOP` hoặc thêm game vào Prisma enum + `GAME_CONFIG` — [adding-new-game.md](./adding-new-game.md) |
-| HMAC invalid             | Đảm bảo `replaySecret` client = backend `GAME_CONFIG`                               |
-| Push không gửi           | Kiểm tra đủ `FIREBASE_*`, guest có `fcmToken`, có leaderboard rank; backend không có status/mute |
+| HMAC invalid                | Đảm bảo `replaySecret` client = backend `GAME_CONFIG`                                                      |
+| Push không gửi              | Kiểm tra đủ `FIREBASE_*`, guest có `fcmToken`, có leaderboard rank; backend không có status/mute           |
 
 Xem thêm troubleshooting env: [environment-variables.md](./environment-variables.md).

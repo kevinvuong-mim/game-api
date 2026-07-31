@@ -175,7 +175,7 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 - Rank-push BullMQ: week-key `jobId` dedupe + `attempts: 3` / exponential backoff (xem [fcm-notification-jobs.md](./documents/schedule/fcm-notification-jobs.md))
 - Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động
 
-Client setup: [game-starter-kit/documents/setup/firebase-native.md](../game-starter-kit/documents/setup/firebase-native.md).
+Client setup: [game-apps/documents/setup/firebase-native.md](../game-apps/documents/setup/firebase-native.md).
 
 ## Supported Games
 
@@ -233,7 +233,7 @@ Errors use `HttpExceptionFilter` with `success: false`.
 
 ## Related Projects
 
-- [game-starter-kit](../game-starter-kit/) — Phaser 3 + Capacitor client (`guest`, `game-sync`, `leaderboard`, `notifications` modules).
+- [game-apps](../game-apps/) — Phaser 3 + Capacitor client (`guest`, `game-sync`, `leaderboard`, `notifications` modules).
 
 ## License
 

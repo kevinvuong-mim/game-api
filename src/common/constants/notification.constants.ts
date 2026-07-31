@@ -1,4 +1,4 @@
-/** Must match Android notification channel created by game-starter-kit client. */
+/** Must match Android notification channel created by game-apps client. */
 export const FCM_ANDROID_CHANNEL_ID = 'game_alerts';
 
 export const TOP_100_THRESHOLD = 100;
