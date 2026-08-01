@@ -8,7 +8,7 @@ import {
   NOTIFICATION_CRON,
   getGamesWithRankPushCron,
 } from '@/common/constants';
-import { RankPushCronService } from '@/features/notifications/jobs/rank-push.job';
+import { RankPushEnqueueService } from '@/features/notifications/jobs/rank-push.enqueue';
 
 @Injectable()
 export class RankPushScheduler implements OnModuleInit {
@@ -16,7 +16,7 @@ export class RankPushScheduler implements OnModuleInit {
 
   constructor(
     private readonly schedulerRegistry: SchedulerRegistry,
-    private readonly rankPushCronService: RankPushCronService,
+    private readonly rankPushEnqueue: RankPushEnqueueService,
   ) {}
 
   onModuleInit(): void {
@@ -43,6 +43,6 @@ export class RankPushScheduler implements OnModuleInit {
 
   private async handleRankPushBroadcast(gameId: GameId): Promise<void> {
     this.logger.log(`Starting rank push notification broadcast for ${gameId}`);
-    await this.rankPushCronService.enqueueRankPushBroadcast(gameId);
+    await this.rankPushEnqueue.enqueueRankPushBroadcast(gameId);
   }
 }

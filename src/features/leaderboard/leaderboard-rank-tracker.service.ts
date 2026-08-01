@@ -18,11 +18,7 @@ export interface ScoreUpdateContext {
 export class LeaderboardRankTrackerService {
   constructor(private readonly eventEmitter: EventEmitter2) {}
 
-  async onScoreUpdated(
-    gameId: GameId,
-    guestId: string,
-    context: ScoreUpdateContext,
-  ): Promise<void> {
+  onScoreUpdated(gameId: GameId, guestId: string, context: ScoreUpdateContext): void {
     this.handleSubmittingGuestExit(gameId, guestId, context);
     this.handleDisplacedGuestExit(gameId, guestId, context);
   }
@@ -42,7 +38,7 @@ export class LeaderboardRankTrackerService {
 
     if (wasRankedInTop100 && !isInTop100) {
       this.eventEmitter.emit(
-        PlayerExitedTop100Event.name,
+        PlayerExitedTop100Event.EVENT,
         new PlayerExitedTop100Event(gameId, guestId, currentRank, currentBestScore),
       );
     }
@@ -69,7 +65,7 @@ export class LeaderboardRankTrackerService {
     }
 
     this.eventEmitter.emit(
-      PlayerExitedTop100Event.name,
+      PlayerExitedTop100Event.EVENT,
       new PlayerExitedTop100Event(
         gameId,
         guestAtRank100BeforeGuestId,

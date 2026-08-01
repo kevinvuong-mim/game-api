@@ -1,7 +1,7 @@
 import { type GameId } from '@/common/constants';
 
 export class PlayerExitedTop100Event {
-  static readonly name = 'player.exited.top100';
+  static readonly EVENT = 'player.exited.top100';
 
   constructor(
     public readonly gameId: GameId,

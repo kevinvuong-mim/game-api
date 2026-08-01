@@ -5,6 +5,7 @@ import { dedupLockKey } from '@/common/utils';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { PartitionService } from '@/infra/maintenance/partition.service';
 import type { SubmitResultDto } from '@/features/results/dto/submit-result.dto';
+import { LeaderboardRepository } from '@/features/leaderboard/leaderboard.repository';
 
 export interface ValidatedResultItem extends SubmitResultDto {
   signature: string;
@@ -28,6 +29,7 @@ export class ResultsRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly partitionService: PartitionService,
+    private readonly leaderboardRepository: LeaderboardRepository,
   ) {}
 
   async submitValidatedBatch(
@@ -83,57 +85,41 @@ export class ResultsRepository {
         return emptyBatchResult();
       }
 
-      const previousRow = await tx.leaderboard.findUnique({
-        where: { gameId_guestId: { gameId, guestId } },
-        select: { bestScore: true },
-      });
+      const previousRow = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
       const previousBest = previousRow?.bestScore ?? null;
-      // Same tie-break as countBetterRanks: bestScore DESC, guestId ASC.
       const previousRank =
         previousBest !== null
-          ? (await countBetterRanksTx(tx, gameId, guestId, previousBest)) + 1
+          ? (await this.leaderboardRepository.countBetterRanksTx(
+              tx,
+              gameId,
+              guestId,
+              previousBest,
+            )) + 1
           : null;
-      const guestAtRank100 = await tx.leaderboard.findMany({
-        take: 1,
-        skip: 99,
-        where: { gameId },
-        select: { guestId: true },
-        orderBy: [{ bestScore: 'desc' }, { guestId: 'asc' }],
-      });
+
+      const guestAtRank100 = await this.leaderboardRepository.findGuestAtRankTx(tx, gameId, 100);
       const guestAtRank100BeforeGuestId = guestAtRank100[0]?.guestId ?? null;
 
       const maxScore = Math.max(...insertedScores);
+      await this.leaderboardRepository.upsertBestScoreTx(tx, gameId, guestId, maxScore);
 
-      await tx.$executeRaw`
-        INSERT INTO leaderboards ("gameId", "guestId", "bestScore", "updatedAt")
-        VALUES (${gameId}::"GameId", ${guestId}, ${maxScore}, now())
-        ON CONFLICT ("gameId", "guestId")
-        DO UPDATE SET
-          "bestScore" = GREATEST(leaderboards."bestScore", EXCLUDED."bestScore"),
-          "updatedAt" = now()
-        WHERE EXCLUDED."bestScore" > leaderboards."bestScore"
-      `;
-
-      const row = await tx.leaderboard.findUnique({
-        where: { gameId_guestId: { gameId, guestId } },
-        select: { bestScore: true },
-      });
+      const row = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
       const newBest = row?.bestScore ?? maxScore;
-      const currentRank = (await countBetterRanksTx(tx, gameId, guestId, newBest)) + 1;
+      const currentRank =
+        (await this.leaderboardRepository.countBetterRanksTx(tx, gameId, guestId, newBest)) + 1;
 
       let displacedGuestRank: number | null = null;
       let displacedGuestBestScore: number | null = null;
       if (guestAtRank100BeforeGuestId && guestAtRank100BeforeGuestId !== guestId) {
-        const displaced = await tx.leaderboard.findUnique({
-          where: {
-            gameId_guestId: { gameId, guestId: guestAtRank100BeforeGuestId },
-          },
-          select: { bestScore: true },
-        });
+        const displaced = await this.leaderboardRepository.getGuestBestScoreTx(
+          tx,
+          gameId,
+          guestAtRank100BeforeGuestId,
+        );
         if (displaced) {
           displacedGuestBestScore = displaced.bestScore;
           displacedGuestRank =
-            (await countBetterRanksTx(
+            (await this.leaderboardRepository.countBetterRanksTx(
               tx,
               gameId,
               guestAtRank100BeforeGuestId,
@@ -154,27 +140,6 @@ export class ResultsRepository {
       };
     });
   }
-
-  countLeaderboard(gameId: GameId) {
-    return this.prisma.leaderboard.count({ where: { gameId } });
-  }
-
-  getGuestBestScore(gameId: GameId, guestId: string) {
-    return this.prisma.leaderboard.findUnique({
-      where: { gameId_guestId: { gameId, guestId } },
-      select: { bestScore: true },
-    });
-  }
-
-  /** Ranks ahead of this guest under (bestScore DESC, guestId ASC). */
-  countBetterRanks(gameId: GameId, guestId: string, bestScore: number) {
-    return this.prisma.leaderboard.count({
-      where: {
-        gameId,
-        OR: [{ bestScore: { gt: bestScore } }, { bestScore, guestId: { lt: guestId } }],
-      },
-    });
-  }
 }
 
 function emptyBatchResult(): BatchSubmitResult {
@@ -188,18 +153,4 @@ function emptyBatchResult(): BatchSubmitResult {
     displacedGuestRank: null,
     displacedGuestBestScore: null,
   };
-}
-
-function countBetterRanksTx(
-  tx: Prisma.TransactionClient,
-  gameId: GameId,
-  guestId: string,
-  bestScore: number,
-) {
-  return tx.leaderboard.count({
-    where: {
-      gameId,
-      OR: [{ bestScore: { gt: bestScore } }, { bestScore, guestId: { lt: guestId } }],
-    },
-  });
 }

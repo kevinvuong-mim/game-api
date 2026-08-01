@@ -97,19 +97,18 @@ game-api/
 │   ├── app.module.ts
 │   ├── app.controller.ts          # GET /api/health
 │   ├── common/
-│   │   ├── constants/             # GameId, rate limits, cron
+│   │   ├── constants/             # GameId, leaderboard, notifications, rate limits
 │   │   ├── decorators/            # @Guest, @RateLimit
 │   │   ├── filters/               # HttpExceptionFilter
-│   │   ├── guards/                # GuestAuthGuard, RateLimitGuard
+│   │   ├── guards/                # GuestAuthGuard, RateLimitGuard (via CommonModule)
 │   │   ├── interceptors/          # ResponseInterceptor (standard envelope)
-│   │   ├── utils/                 # HMAC, token hashing
-│   │   └── validators/
+│   │   ├── utils/                 # HMAC, token hashing, requireGameId
+│   │   └── common.module.ts       # Global: GuestRepository + auth/rate guards
 │   ├── features/
-│   │   ├── guest/                 # Guest init + name
-│   │   ├── results/               # Result submission + dedup
-│   │   │   └── results-data.module.ts  # Shared ResultsRepository
-│   │   ├── leaderboard/           # Leaderboard query + rank resolver
-│   │   └── notifications/         # FCM + per-game scheduled BullMQ batches
+│   │   ├── guest/                 # Guest HTTP (init + name)
+│   │   ├── results/               # HMAC submit; ResultsRepository + ResultsDataModule
+│   │   ├── leaderboard/           # LeaderboardRepository, query, rank resolver/tracker
+│   │   └── notifications/         # Devices, FCM delivery, rank-push jobs
 │   ├── infra/
 │   │   ├── prisma/
 │   │   ├── redis/
@@ -120,6 +119,8 @@ game-api/
 ├── documents/                     # API, setup, architecture, schedule docs
 └── docker-compose.yml
 ```
+
+Module boundaries: [documents/architecture/module-ownership.md](./documents/architecture/module-ownership.md).
 
 ## Path Alias
 
@@ -134,6 +135,7 @@ game-api/
 - `POST /guest/init` returns a permanent `secretToken` (plain text, once).
 - Server stores only SHA-256 hash. Subsequent requests use `Authorization: Bearer <token>`.
 - Token cached in Redis (TTL 5 min) to avoid DB lookup on every request.
+- `GuestAuthGuard` is provided by global `CommonModule` (uses `GuestRepository`).
 
 ### HMAC verification and deduplication
 
@@ -158,8 +160,11 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 
 ### Leaderboard
 
+- Owned by `LeaderboardRepository` (`LeaderboardDataModule`)
 - Query PostgreSQL `leaderboards` with `ORDER BY bestScore DESC, guestId ASC`
 - Self / submit / FCM ranks use the same tie-break (`countBetterRanks`)
+- Result submit upserts best score via the same repository inside the results TX
+- Guest display names resolved via `GuestRepository.findNamesByIds`
 - No Redis sorted-set cache
 
 ### Result deduplication
@@ -176,13 +181,12 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 ### Push notifications
 
-- Device fields are stored on `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`)
-- `POST /api/devices` — client registers FCM token after guest init
-- **Top 100 exit**: khi một guest từ ngoài đi vào Top 100 nhờ best score mới, guest #100 cũ bị đẩy xuống >100 nhận FCM qua async in-process event listener (`top_100_exited`). Tracker cũng bắt trường hợp submitter chuyển từ ≤100 xuống >100 giữa hai snapshot do cập nhật concurrent. Submit response không chờ delivery; không có push “entered Top 100”.
-- **Scheduled rank push**: Cron per-game `GAME_CONFIG.rankPushCron` → BullMQ batch → FCM inline (`rank_push`); chỉ guest có token và có rank
-- **Rank sau submit**: `POST /api/results` trả `rank`, `bestScore` khi guest có entry trên leaderboard
-- FCM payload `data`: `{ type, route, ...params }` — ví dụ rank push có thêm `rank`; client dùng in-app navigation, không phải deeplink URL
-- Rank-push BullMQ: week-key `jobId` dedupe + `attempts: 3` / exponential backoff (xem [fcm-notification-jobs.md](./documents/schedule/fcm-notification-jobs.md))
+- Device fields are stored on `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`) via `GuestRepository`
+- `POST /api/devices` — client registers FCM token after guest init (`DeviceTokenService`)
+- **Top 100 exit**: guest #100 displaced (or submitter falling out) → `PlayerExitedTop100Event.EVENT` → `NotificationDeliveryService.sendTop100Exited`
+- **Scheduled rank push**: Cron → `RankPushEnqueueService` → BullMQ `RankPushProcessor` → `sendRankPush`; Redis send markers prevent duplicate FCM on retry
+- **Rank sau submit**: prefer `currentRank`/`newBest` from the submit TX; fallback `LeaderboardRankResolverService` when nothing was inserted
+- FCM payload `data`: `{ type, route, ...params }`
 - Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động
 
 Client setup: [game-apps/documents/setup/firebase-native.md](../game-apps/documents/setup/firebase-native.md).
@@ -236,6 +240,7 @@ Errors use `HttpExceptionFilter` with `success: false`.
 | Production deployment | [documents/setup/production-deployment.md](./documents/setup/production-deployment.md)         |
 | Adding a new game     | [documents/setup/adding-new-game.md](./documents/setup/adding-new-game.md)                     |
 | Database schema       | [documents/architecture/database-schema.md](./documents/architecture/database-schema.md)       |
+| Module ownership      | [documents/architecture/module-ownership.md](./documents/architecture/module-ownership.md)     |
 | Redis keys            | [documents/architecture/redis-keys.md](./documents/architecture/redis-keys.md)                 |
 | Partition maintenance | [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md) |
 | FCM / push jobs       | [documents/schedule/fcm-notification-jobs.md](./documents/schedule/fcm-notification-jobs.md)   |

@@ -2,7 +2,7 @@
 
 ## Overview
 
-API quản lý một FCM token cho mỗi guest. Dữ liệu nằm trực tiếp trên `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`); không có bảng device riêng, status, mute hay heartbeat endpoint.
+API quản lý một FCM token cho mỗi guest. Dữ liệu nằm trực tiếp trên `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`) qua **`GuestRepository`** (không có `DeviceTokenRepository` / bảng device riêng).
 
 **Base URL:** `/api/devices`  
 **Authentication:** `Authorization: Bearer <secretToken>` cho cả ba endpoint  

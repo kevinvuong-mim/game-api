@@ -10,8 +10,6 @@ import { Request, Response } from 'express';
 
 import { ErrorResponse } from '@/common/interfaces';
 
-const HEALTH_DETAIL_KEYS = ['status', 'services', 'uptime', 'timestamp'] as const;
-
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
@@ -28,11 +26,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     let error = 'Internal Server Error';
     let message = 'Internal server error';
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    const healthDetails: Partial<
-      Pick<ErrorResponse, 'status' | 'uptime' | 'services' | 'timestamp'>
-    > = {};
 
-    // Handle HttpException
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
@@ -45,29 +39,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = (typeof res.message === 'string' ? res.message : undefined) || exception.message;
         error = (typeof res.error === 'string' ? res.error : undefined) || exception.name;
 
-        // Handle validation errors from class-validator
         if (Array.isArray(res.message)) {
           validationErrors = res.message;
           message = 'Validation failed';
         }
-
-        if (status === HttpStatus.SERVICE_UNAVAILABLE) {
-          for (const key of HEALTH_DETAIL_KEYS) {
-            if (key in res) {
-              healthDetails[key] = res[key] as never;
-            }
-          }
-        }
       }
     } else if (exception instanceof Error) {
-      // Production: never leak internal exception messages (Prisma/DB/etc.).
       if (isDevelopment) {
         message = exception.message;
         error = exception.name;
       }
     }
 
-    // Log real error details for monitoring (even when response is sanitized).
     const logMessage = exception instanceof Error ? exception.message : message;
     this.logger.error(
       `${request.method} ${request.url} - ${status} - ${logMessage}`,
@@ -81,7 +64,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       path: request.url,
       statusCode: status,
       timestamp: new Date().toISOString(),
-      ...healthDetails,
     };
 
     if (validationErrors) errorResponse.errors = validationErrors;

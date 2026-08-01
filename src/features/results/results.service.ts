@@ -1,9 +1,9 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 
 import type { AuthenticatedGuest } from '@/common/decorators';
-import { getGameConfig, validateGameId } from '@/common/constants';
+import { getGameConfig } from '@/common/constants';
+import { requireGameId, buildReplayPayload, verifyReplaySignature } from '@/common/utils';
 import { ResultsRepository } from '@/features/results/results.repository';
-import { buildReplayPayload, verifyReplaySignature } from '@/common/utils';
 import { SubmitResultBatchDto } from '@/features/results/dto/submit-result-batch.dto';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
@@ -22,7 +22,7 @@ export class ResultsService {
   ) {}
 
   async submitResults(guest: AuthenticatedGuest, dto: SubmitResultBatchDto) {
-    const gameId = validateGameId(dto.gameId);
+    const gameId = requireGameId(dto.gameId);
 
     if (guest.gameId !== gameId) {
       throw new ForbiddenException('Guest does not belong to this game');
@@ -60,7 +60,7 @@ export class ResultsService {
       batchResult.insertedCount > 0 &&
       batchResult.newBest > (batchResult.previousBest ?? -Infinity)
     ) {
-      await this.rankTracker.onScoreUpdated(gameId, guest.guestId, {
+      this.rankTracker.onScoreUpdated(gameId, guest.guestId, {
         previousRank: batchResult.previousRank,
         currentRank: batchResult.currentRank,
         currentBestScore: batchResult.newBest,
@@ -70,7 +70,11 @@ export class ResultsService {
       });
     }
 
-    const rankInfo = await this.rankResolver.resolveRank(gameId, guest.guestId);
+    // Prefer ranks computed inside the submit TX; fall back when nothing inserted.
+    const rankInfo =
+      batchResult.currentRank !== null && batchResult.newBest !== null
+        ? { rank: batchResult.currentRank, bestScore: batchResult.newBest }
+        : await this.rankResolver.resolveRank(gameId, guest.guestId);
 
     return {
       rejectedCount: rejected.length,

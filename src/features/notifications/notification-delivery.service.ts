@@ -2,14 +2,20 @@ import { Logger, Injectable } from '@nestjs/common';
 
 import { FcmService } from '@/features/notifications/fcm.service';
 import { DeviceTokenService } from '@/features/notifications/device-token.service';
-import { type GameId, type NotificationType, resolveNotificationLocale } from '@/common/constants';
+import {
+  type GameId,
+  NOTIFICATION_ROUTES,
+  NOTIFICATION_TYPES,
+  resolveNotificationLocale,
+  toNotificationLocaleCode,
+} from '@/common/constants';
 
 export interface DeliverNotificationInput {
   route: string;
   gameId: GameId;
   guestId: string;
   locale?: string | null;
-  type: NotificationType;
+  type: (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
   params?: Record<string, string | number>;
 }
 
@@ -22,6 +28,32 @@ export class NotificationDeliveryService {
     private readonly deviceTokenService: DeviceTokenService,
   ) {}
 
+  async sendTop100Exited(gameId: GameId, guestId: string, rank: number): Promise<boolean> {
+    return this.deliver({
+      gameId,
+      guestId,
+      params: { rank },
+      route: NOTIFICATION_ROUTES.LEADERBOARD,
+      type: NOTIFICATION_TYPES.TOP_100_EXITED,
+    });
+  }
+
+  async sendRankPush(
+    gameId: GameId,
+    guestId: string,
+    rank: number,
+    locale?: string | null,
+  ): Promise<boolean> {
+    return this.deliver({
+      locale,
+      gameId,
+      guestId,
+      params: { rank },
+      type: NOTIFICATION_TYPES.RANK_PUSH,
+      route: NOTIFICATION_ROUTES.LEADERBOARD,
+    });
+  }
+
   async deliver(input: DeliverNotificationInput): Promise<boolean> {
     try {
       if (!this.fcmService.isEnabled()) {
@@ -33,9 +65,11 @@ export class NotificationDeliveryService {
         return false;
       }
 
-      const localeCode = resolveNotificationLocale(
-        input.locale ?? device.notificationLocale?.toString() ?? 'EN',
-      );
+      const localeCode =
+        input.locale != null && input.locale !== ''
+          ? toNotificationLocaleCode(input.locale)
+          : resolveNotificationLocale(device.notificationLocale?.toString() ?? 'EN');
+
       const result = await this.fcmService.sendToToken(device.fcmToken, {
         type: input.type,
         locale: localeCode,

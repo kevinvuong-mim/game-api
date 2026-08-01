@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { type GameId } from '@/common/constants';
-import { ResultsRepository } from '@/features/results/results.repository';
+import { LeaderboardRepository } from '@/features/leaderboard/leaderboard.repository';
 
 export interface GuestRankInfo {
   rank: number;
@@ -10,16 +10,15 @@ export interface GuestRankInfo {
 
 @Injectable()
 export class LeaderboardRankResolverService {
-  constructor(private readonly resultsRepository: ResultsRepository) {}
+  constructor(private readonly leaderboardRepository: LeaderboardRepository) {}
 
   async resolveRank(gameId: GameId, guestId: string): Promise<GuestRankInfo | null> {
-    const row = await this.resultsRepository.getGuestBestScore(gameId, guestId);
+    const row = await this.leaderboardRepository.getGuestBestScore(gameId, guestId);
     if (!row) {
       return null;
     }
 
-    // Match list ordering: bestScore DESC, guestId ASC (ties broken by guestId).
-    const betterCount = await this.resultsRepository.countBetterRanks(
+    const betterCount = await this.leaderboardRepository.countBetterRanks(
       gameId,
       guestId,
       row.bestScore,

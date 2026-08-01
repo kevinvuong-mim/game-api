@@ -8,7 +8,6 @@ import {
 import { Request } from 'express';
 
 import { hashSecretToken } from '@/common/utils';
-import { validateGameId } from '@/common/constants';
 import { RedisService } from '@/infra/redis/redis.service';
 import { GuestRepository } from '@/features/guest/guest.repository';
 import type { AuthenticatedGuest } from '@/common/decorators/guest.decorator';
@@ -47,7 +46,7 @@ export class GuestAuthGuard implements CanActivate {
 
     const user: AuthenticatedGuest = {
       guestId: guest.id,
-      gameId: validateGameId(guest.gameId),
+      gameId: guest.gameId,
     };
 
     await this.cacheGuest(tokenHash, user);

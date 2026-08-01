@@ -32,7 +32,7 @@ Không có (GET request).
    - Cả Postgres **và** Redis `connected` → HTTP **200**, `data.status: "ok"`.
    - Postgres hoặc Redis `disconnected` → HTTP **503**, `status: "degraded"`.
 4. **Collect metadata**: Ghi `uptime` (giây) và `timestamp` (ISO 8601).
-5. **Return response**: Payload được bọc qua `ResponseInterceptor` khi healthy; khi unhealthy, throw `ServiceUnavailableException` và trả error envelope qua `HttpExceptionFilter`.
+5. **Return response**: Always returns the health payload via `ResponseInterceptor`. When unhealthy, the controller sets HTTP **503** with `passthrough` (`res.status(503)`) — no `ServiceUnavailableException` / filter special-case.
 
 > Rate limit **fail-closed**: khi Redis lỗi, các endpoint có `@RateLimit` trả **503** (`Service Temporarily Unavailable`). Guest auth vẫn fallback DB khi auth cache miss.
 

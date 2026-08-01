@@ -1,5 +1,5 @@
 import { Job, Queue } from 'bullmq';
-import { Logger, Injectable } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
 
 import {
@@ -7,68 +7,19 @@ import {
   NOTIFICATION_JOB,
   NOTIFICATION_QUEUE,
   RANK_PUSH_BATCH_SIZE,
-  NOTIFICATION_CRON,
 } from '@/common/constants';
 import { RedisService } from '@/infra/redis/redis.service';
-import { DeviceTokenRepository } from '@/features/notifications/device-token.repository';
+import { DeviceTokenService } from '@/features/notifications/device-token.service';
+import { getRankPushWeekKey } from '@/features/notifications/jobs/rank-push-week.util';
+import { RANK_PUSH_JOB_DEFAULTS } from '@/features/notifications/jobs/rank-push.enqueue';
+import { toNotificationLocaleCode } from '@/common/constants/notification.constants';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
-import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
+import { NotificationDeliveryService } from '@/features/notifications/notification-delivery.service';
 
 interface RankPushBatchPayload {
   gameId: GameId;
   cursor?: string;
   weekKey: string;
-}
-
-const JOB_DEFAULTS = {
-  attempts: 3,
-  backoff: { type: 'exponential' as const, delay: 5_000 },
-  removeOnComplete: true,
-  removeOnFail: 100,
-};
-
-/** Calendar week key in the notification timezone — used for BullMQ jobId dedupe. */
-export function getRankPushWeekKey(now = new Date()): string {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: NOTIFICATION_CRON.TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const parts = formatter.formatToParts(now);
-  const year = Number(parts.find((p) => p.type === 'year')?.value);
-  const month = Number(parts.find((p) => p.type === 'month')?.value);
-  const day = Number(parts.find((p) => p.type === 'day')?.value);
-  const utc = Date.UTC(year, month - 1, day);
-  const date = new Date(utc);
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
-  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
-}
-
-@Injectable()
-export class RankPushCronService {
-  private readonly logger = new Logger(RankPushCronService.name);
-
-  constructor(
-    @InjectQueue(NOTIFICATION_QUEUE.RANK_PUSH)
-    private readonly rankPushQueue: Queue,
-  ) {}
-
-  async enqueueRankPushBroadcast(gameId: GameId): Promise<void> {
-    const weekKey = getRankPushWeekKey();
-    await this.rankPushQueue.add(
-      NOTIFICATION_JOB.START_RANK_PUSH_BROADCAST,
-      { gameId, weekKey },
-      {
-        ...JOB_DEFAULTS,
-        jobId: `rank-push-start-${gameId}-${weekKey}`,
-      },
-    );
-    this.logger.log(`Rank push broadcast enqueued for ${gameId} (${weekKey})`);
-  }
 }
 
 @Processor(NOTIFICATION_QUEUE.RANK_PUSH)
@@ -78,9 +29,9 @@ export class RankPushProcessor extends WorkerHost {
   constructor(
     @InjectQueue(NOTIFICATION_QUEUE.RANK_PUSH)
     private readonly rankPushQueue: Queue,
-    private readonly deviceTokenRepository: DeviceTokenRepository,
+    private readonly deviceTokenService: DeviceTokenService,
     private readonly rankResolver: LeaderboardRankResolverService,
-    private readonly notificationDispatcher: NotificationDispatcherService,
+    private readonly notificationDelivery: NotificationDeliveryService,
     private readonly redisService: RedisService,
   ) {
     super();
@@ -94,7 +45,7 @@ export class RankPushProcessor extends WorkerHost {
         NOTIFICATION_JOB.SEND_RANK_PUSH_BATCH,
         { gameId: job.data.gameId, weekKey },
         {
-          ...JOB_DEFAULTS,
+          ...RANK_PUSH_JOB_DEFAULTS,
           jobId: `rank-push-batch-${job.data.gameId}-${weekKey}-start`,
         },
       );
@@ -106,7 +57,7 @@ export class RankPushProcessor extends WorkerHost {
     }
 
     const { gameId, cursor } = job.data;
-    const devices = await this.deviceTokenRepository.findActiveTokenBatch(
+    const devices = await this.deviceTokenService.findActiveTokenBatch(
       gameId,
       cursor,
       RANK_PUSH_BATCH_SIZE,
@@ -118,7 +69,6 @@ export class RankPushProcessor extends WorkerHost {
     }
 
     for (const device of devices) {
-      // Claim send slot before FCM so BullMQ retries cannot re-notify the same guest.
       const claimed = await this.redisService.tryMarkRankPushSent(gameId, weekKey, device.id);
       if (!claimed) {
         continue;
@@ -130,11 +80,11 @@ export class RankPushProcessor extends WorkerHost {
         continue;
       }
 
-      const sent = await this.notificationDispatcher.sendRankPush(
+      const sent = await this.notificationDelivery.sendRankPush(
         device.gameId as GameId,
         device.id,
         rankInfo.rank,
-        device.notificationLocale === 'VI' ? 'vi' : 'en',
+        toNotificationLocaleCode(device.notificationLocale),
       );
 
       if (!sent) {
@@ -151,7 +101,7 @@ export class RankPushProcessor extends WorkerHost {
         cursor: lastDevice.id,
       },
       {
-        ...JOB_DEFAULTS,
+        ...RANK_PUSH_JOB_DEFAULTS,
         jobId: `rank-push-batch-${gameId}-${weekKey}-${lastDevice.id}`,
       },
     );

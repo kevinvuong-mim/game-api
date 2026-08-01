@@ -1,8 +1,6 @@
 /** Must match Android notification channel created by game-apps client. */
 export const FCM_ANDROID_CHANNEL_ID = 'game_alerts';
 
-export const TOP_100_THRESHOLD = 100;
-
 export const NOTIFICATION_CRON = {
   TIMEZONE: 'Asia/Ho_Chi_Minh',
 } as const;
@@ -63,7 +61,13 @@ const NOTIFICATION_I18N: Record<
 };
 
 export function resolveNotificationLocale(locale?: string | null): NotificationLocaleCode {
-  const code = locale?.split('-')[0]?.toLowerCase();
+  return toNotificationLocaleCode(locale);
+}
+
+/** Map Prisma EN/VI, BCP-47, or lowercase codes to notification locale. */
+export function toNotificationLocaleCode(locale?: string | null): NotificationLocaleCode {
+  if (!locale) return 'en';
+  const code = locale.trim().split(/[-_]/)[0]?.toLowerCase();
   return code === 'vi' ? 'vi' : 'en';
 }
 

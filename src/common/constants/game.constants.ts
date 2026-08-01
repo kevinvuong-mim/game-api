@@ -1,5 +1,4 @@
 import { GameId } from '@prisma/client';
-import { NotFoundException } from '@nestjs/common';
 
 export { GameId };
 
@@ -15,15 +14,23 @@ export const GAME_CONFIG: Record<GameId, GameConfigEntry> = {
   },
 };
 
+export class UnsupportedGameError extends Error {
+  constructor(gameId: string) {
+    super(`Game "${gameId}" not supported`);
+    this.name = 'UnsupportedGameError';
+  }
+}
+
 export function getGamesWithRankPushCron(): GameId[] {
   return Object.entries(GAME_CONFIG)
     .filter(([, config]) => config.rankPushCron)
     .map(([gameId]) => gameId as GameId);
 }
 
+/** Pure parse — no HTTP coupling. Throws UnsupportedGameError when invalid. */
 export function validateGameId(gameId: string): GameId {
   if (!Object.values(GameId).includes(gameId as GameId)) {
-    throw new NotFoundException(`Game "${gameId}" not supported`);
+    throw new UnsupportedGameError(gameId);
   }
 
   return gameId as GameId;
