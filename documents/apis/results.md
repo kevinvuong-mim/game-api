@@ -96,7 +96,7 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
    - Insert vào `game_results` nếu chưa có.
 6. **Update leaderboard** (cùng transaction với insert):
    - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
-7. **Track Top 100**: Chỉ khi batch insert ít nhất một item và tạo best score mới cao hơn best cũ. Nếu submitter đi từ ngoài vào Top 100, guest ở #100 trước update được resolve lại; nếu đã xuống >100 thì phát event exit cho guest đó. Tracker cũng phát exit cho submitter nếu snapshot trước là ≤100 nhưng rank resolve sau update là >100 (own score không làm rank xấu đi, nhưng thay đổi concurrent có thể).
+7. **Track Top 100**: Chỉ khi batch insert ít nhất một item và tạo best score mới cao hơn best cũ. Guest ở #100 trước update được resolve lại trong cùng TX (có advisory lock theo game); nếu đã xuống >100 thì phát event exit cho guest đó. Submitter không phát exit — `bestScore` chỉ tăng/`GREATEST`.
 8. **Resolve rank**: Trả `rank` và `bestScore` khi guest có entry trên leaderboard.
 9. **Return summary**: `insertedCount`, `rejectedCount`, `rejected`, `rank?`, `bestScore?` trong `data` envelope.
 

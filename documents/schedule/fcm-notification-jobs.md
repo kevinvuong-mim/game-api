@@ -66,9 +66,9 @@ Source files: `rank-push-week.util.ts`, `rank-push.enqueue.ts`, `rank-push.proce
 ## Top 100 exit flow
 
 1. `POST /results` inserts at least one valid, non-duplicate result and raises the submitter's best score
-2. Before upsert, capture submitter `previousRank` and the guest at #100 using the public tie-break (`bestScore DESC`, `guestId ASC`)
-3. After upsert, resolve both ranks. Normally a submitter entering Top 100 displaces the previous #100; concurrent updates can also move the submitter from an old ≤100 snapshot to a newly resolved rank >100
-4. Emit `PlayerExitedTop100Event` only for a guest whose old rank was ≤100 and new rank is >100; there is no Top-100-entry event or push
+2. Before upsert (under a per-game advisory lock), capture the guest at #100 using the public tie-break (`bestScore DESC`, `guestId ASC`)
+3. After upsert, resolve the former #100 guest's new rank. If they fell to >100, emit `PlayerExitedTop100Event` for that guest (not for the submitter — best scores only increase via `GREATEST`)
+4. There is no Top-100-entry event or push
 5. Event → `Top100ExitNotificationListener` → FCM `top_100_exited`
 
 `@OnEvent(..., { async: true })` listener trả Promise nhưng publisher dùng `eventEmitter.emit()`, nên request submit không await kết quả FCM.

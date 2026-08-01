@@ -183,7 +183,7 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 - Device fields are stored on `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`) via `GuestRepository`
 - `POST /api/devices` — client registers FCM token after guest init (`DeviceTokenService`)
-- **Top 100 exit**: guest #100 displaced (or submitter falling out) → `PlayerExitedTop100Event.EVENT` → `NotificationDeliveryService.sendTop100Exited`
+- **Top 100 exit**: guest #100 displaced → `PlayerExitedTop100Event.EVENT` → `NotificationDeliveryService.sendTop100Exited`
 - **Scheduled rank push**: Cron → `RankPushEnqueueService` → BullMQ `RankPushProcessor` → `sendRankPush`; Redis send markers prevent duplicate FCM on retry
 - **Rank sau submit**: prefer `currentRank`/`newBest` from the submit TX; fallback `LeaderboardRankResolverService` when nothing was inserted
 - FCM payload `data`: `{ type, route, ...params }`
