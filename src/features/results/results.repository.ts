@@ -17,7 +17,6 @@ export interface BatchSubmitResult {
   /** Submitting guest rank after this batch (computed inside the same TX). */
   currentRank: number | null;
   previousBest: number | null;
-  previousRank: number | null;
   /** Rank of the pre-update #100 guest after this batch (same TX), if tracked. */
   displacedGuestRank: number | null;
   displacedGuestBestScore: number | null;
@@ -105,11 +104,10 @@ function emptyBatchResult(): BatchSubmitResult {
   return {
     newBest: null,
     insertedCount: 0,
-    previousBest: null,
-    previousRank: null,
     currentRank: null,
-    guestAtRank100BeforeGuestId: null,
+    previousBest: null,
     displacedGuestRank: null,
     displacedGuestBestScore: null,
+    guestAtRank100BeforeGuestId: null,
   };
 }

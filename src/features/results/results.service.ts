@@ -38,8 +38,8 @@ export class ResultsService {
         score: item.score,
         guestId: guest.guestId,
         playedAt: item.playedAt,
-        clientResultId: item.clientResultId,
         metadata: item.metadata,
+        clientResultId: item.clientResultId,
       });
 
       if (verifyReplaySignature(replaySecret, payload, item.signature)) {
@@ -61,12 +61,9 @@ export class ResultsService {
       batchResult.newBest > (batchResult.previousBest ?? -Infinity)
     ) {
       this.rankTracker.onScoreUpdated(gameId, guest.guestId, {
-        previousRank: batchResult.previousRank,
-        currentRank: batchResult.currentRank,
-        currentBestScore: batchResult.newBest,
-        guestAtRank100BeforeGuestId: batchResult.guestAtRank100BeforeGuestId,
         displacedGuestRank: batchResult.displacedGuestRank,
         displacedGuestBestScore: batchResult.displacedGuestBestScore,
+        guestAtRank100BeforeGuestId: batchResult.guestAtRank100BeforeGuestId,
       });
     }
 

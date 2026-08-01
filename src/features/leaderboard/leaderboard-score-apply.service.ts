@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GameId, Prisma } from '@prisma/client';
 
+import { leaderboardLockKey } from '@/common/utils';
 import { TOP_100_THRESHOLD } from '@/common/constants';
 import { LeaderboardRepository } from '@/features/leaderboard/leaderboard.repository';
 
@@ -8,7 +9,6 @@ export interface LeaderboardScoreDelta {
   newBest: number;
   currentRank: number;
   previousBest: number | null;
-  previousRank: number | null;
   displacedGuestRank: number | null;
   displacedGuestBestScore: number | null;
   guestAtRank100BeforeGuestId: string | null;
@@ -28,12 +28,12 @@ export class LeaderboardScoreApplyService {
     guestId: string,
     candidateScore: number,
   ): Promise<LeaderboardScoreDelta> {
+    // Serialize Top-100 snapshots + upserts per game so concurrent submits cannot
+    // both read the same #100 guest and emit duplicate exit notifications.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${leaderboardLockKey(gameId)})`;
+
     const previousRow = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
     const previousBest = previousRow?.bestScore ?? null;
-    const previousRank =
-      previousBest !== null
-        ? await this.resolveRankFromScoreTx(tx, gameId, guestId, previousBest)
-        : null;
 
     const guestAtRank100 = await this.leaderboardRepository.findGuestAtRankTx(
       tx,
@@ -68,13 +68,12 @@ export class LeaderboardScoreApplyService {
     }
 
     return {
-      previousBest,
-      previousRank,
+      newBest,
       currentRank,
-      guestAtRank100BeforeGuestId,
+      previousBest,
       displacedGuestRank,
       displacedGuestBestScore,
-      newBest,
+      guestAtRank100BeforeGuestId,
     };
   }
 

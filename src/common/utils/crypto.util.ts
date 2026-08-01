@@ -32,3 +32,10 @@ export function dedupLockKey(gameId: string, guestId: string, clientResultId: st
 
   return hash.readBigInt64BE(0);
 }
+
+/** Serializes Top-100 displacement reads + score upserts for one game. */
+export function leaderboardLockKey(gameId: string): bigint {
+  const hash = createHash('sha256').update(`leaderboard|${gameId}`).digest();
+
+  return hash.readBigInt64BE(0);
+}
