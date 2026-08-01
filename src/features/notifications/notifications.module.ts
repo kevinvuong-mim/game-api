@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 
 import { NOTIFICATION_QUEUE } from '@/common/constants';
 import { FcmService } from '@/features/notifications/fcm.service';
+import { GuestDataModule } from '@/features/guest/guest-data.module';
 import { LeaderboardModule } from '@/features/leaderboard/leaderboard.module';
 import { DevicesController } from '@/features/notifications/devices.controller';
 import { DeviceTokenService } from '@/features/notifications/device-token.service';
@@ -24,6 +25,7 @@ import { Top100ExitNotificationListener } from '@/features/notifications/top100-
   ],
   controllers: [DevicesController],
   imports: [
+    GuestDataModule,
     LeaderboardModule,
     BullModule.registerQueue({
       name: NOTIFICATION_QUEUE.RANK_PUSH,

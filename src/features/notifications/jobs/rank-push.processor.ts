@@ -68,13 +68,18 @@ export class RankPushProcessor extends WorkerHost {
       return;
     }
 
+    const ranksByGuestId = await this.rankResolver.resolveRanks(
+      gameId,
+      devices.map((device) => device.id),
+    );
+
     for (const device of devices) {
       const claimed = await this.redisService.tryMarkRankPushSent(gameId, weekKey, device.id);
       if (!claimed) {
         continue;
       }
 
-      const rankInfo = await this.rankResolver.resolveRank(device.gameId as GameId, device.id);
+      const rankInfo = ranksByGuestId.get(device.id);
       if (!rankInfo) {
         await this.redisService.clearRankPushSent(gameId, weekKey, device.id);
         continue;

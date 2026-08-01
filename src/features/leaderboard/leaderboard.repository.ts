@@ -86,4 +86,41 @@ export class LeaderboardRepository {
       WHERE EXCLUDED."bestScore" > leaderboards."bestScore"
     `;
   }
+
+  /**
+   * Batch-resolve ranks for many guests in one query (same tie-break as countBetterRanks).
+   */
+  async resolveRanksForGuests(
+    gameId: GameId,
+    guestIds: string[],
+  ): Promise<Array<{ guestId: string; bestScore: number; rank: number }>> {
+    if (guestIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.prisma.$queryRaw<
+      Array<{ guestId: string; bestScore: number; rank: number | bigint }>
+    >`
+      SELECT
+        s."guestId" AS "guestId",
+        s."bestScore" AS "bestScore",
+        (
+          SELECT COUNT(*)::int FROM leaderboards l
+          WHERE l."gameId" = s."gameId"
+            AND (
+              l."bestScore" > s."bestScore"
+              OR (l."bestScore" = s."bestScore" AND l."guestId" < s."guestId")
+            )
+        ) + 1 AS rank
+      FROM leaderboards s
+      WHERE s."gameId" = ${gameId}::"GameId"
+        AND s."guestId" IN (${Prisma.join(guestIds)})
+    `;
+
+    return rows.map((row) => ({
+      guestId: row.guestId,
+      bestScore: Number(row.bestScore),
+      rank: Number(row.rank),
+    }));
+  }
 }

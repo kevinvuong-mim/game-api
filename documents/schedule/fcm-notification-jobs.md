@@ -56,9 +56,9 @@ Stable `jobId`s (week key in `Asia/Ho_Chi_Minh` via `getRankPushWeekKey()`):
 1. `RankPushScheduler.onModuleInit()` registers per-game cron from `GAME_CONFIG`
 2. Cron → `RankPushEnqueueService.enqueueRankPushBroadcast` with `{ gameId, weekKey }` and the start `jobId`
 3. Start job chains `SEND_RANK_PUSH_BATCH` jobs (`RankPushProcessor`); each loads up to 500 guests with `fcmToken`, ordered/cursored by guest ID
-4. `resolveRank` (same order as leaderboard: `bestScore DESC`, `guestId ASC`)
-5. Guests without a leaderboard entry are skipped; remaining guests are sent via `NotificationDeliveryService.sendRankPush`
-6. Before each FCM send, claim Redis key `rank-push:sent:{gameId}:{weekKey}:{guestId}` (`SET NX`, TTL 8 days). Already claimed → skip (idempotent across BullMQ retries). Send failure clears the key so a later attempt can retry.
+4. `resolveRanks` for the whole device page in one SQL (same order as leaderboard: `bestScore DESC`, `guestId ASC`)
+5. For each device: claim Redis key `rank-push:sent:{gameId}:{weekKey}:{guestId}` (`SET NX`, TTL 8 days) — skip if already claimed; guests without a leaderboard entry are skipped
+6. `sendRankPush` with resolved rank; clear marker on FCM failure so a later attempt can retry
 7. Every non-empty batch enqueues the next cursor batch; the first empty batch completes the broadcast
 
 Source files: `rank-push-week.util.ts`, `rank-push.enqueue.ts`, `rank-push.processor.ts`, `rank-push.scheduler.ts`.

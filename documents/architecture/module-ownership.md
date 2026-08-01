@@ -6,27 +6,32 @@ After the ownership refactor, each Nest feature owns a clear data boundary.
 
 | Module | Owns | Exported for |
 | --- | --- | --- |
-| `CommonModule` (global) | `GuestRepository`, `GuestAuthGuard`, `RateLimitGuard` | All features (auth + guest_players access) |
-| `LeaderboardDataModule` | `LeaderboardRepository` | Rank reads/writes, page queries, TX helpers |
-| `ResultsDataModule` | `ResultsRepository` (+ imports LeaderboardData) | Result insert + leaderboard upsert inside one TX |
+| `GuestDataModule` | `GuestRepository` | Auth, guest HTTP, devices/FCM, leaderboard names |
+| `LeaderboardDataModule` | `LeaderboardRepository`, `LeaderboardScoreApplyService` | Rank reads/writes, TX score-apply + rank delta |
+| `ResultsDataModule` | `ResultsRepository` (+ imports LeaderboardData) | Result insert/dedup; calls score-apply inside same TX |
+| `CommonModule` (global) | `GuestAuthGuard`, `RateLimitGuard`; re-exports `GuestDataModule` | All features (auth without importing GuestModule) |
 
 ## Feature modules
 
 | Module | Responsibility |
 | --- | --- |
-| `GuestModule` | HTTP guest init/name only (`GuestService` + controller) |
+| `GuestModule` | HTTP guest init/name (`GuestService` + controller); imports `GuestDataModule` |
 | `ResultsModule` | HMAC verify + submit batch + rank tracker side-effects |
 | `LeaderboardModule` | Public leaderboard query + rank resolver/tracker |
-| `NotificationsModule` | Devices HTTP + FCM delivery + rank-push BullMQ |
+| `NotificationsModule` | Devices HTTP + FCM delivery + rank-push BullMQ; imports `GuestDataModule` |
 
 ## Guest table (`guest_players`)
 
-All reads/writes go through **`GuestRepository`** (provided by global `CommonModule`):
+All reads/writes go through **`GuestRepository`** (provided by **`GuestDataModule`**):
 
 - Auth / name: `findByAuthTokenHash`, `create`, `updateName`, `findNamesByIds`
 - FCM columns: `registerFcmToken`, `updateFcmToken`, `unregisterFcmToken`, `findActiveFcmToken*`, `markFcmTokenInvalid`
 
 `DeviceTokenService` maps domain errors (`FcmTokenConflictError`, null) to HTTP. There is no separate `DeviceTokenRepository`.
+
+## Results vs leaderboard TX
+
+`ResultsRepository.submitValidatedBatch` inserts/dedups results only, then calls `LeaderboardScoreApplyService.applyBestScoreAndCollectDelta` inside the same Prisma transaction. Top-100 snapshot uses `TOP_100_THRESHOLD`. Rank formula is shared via `resolveRankFromScoreTx` / `LeaderboardRankResolverService.resolveRankTx`.
 
 ## Auth wiring
 
@@ -37,9 +42,11 @@ All reads/writes go through **`GuestRepository`** (provided by global `CommonMod
 ```
 Listener / RankPushProcessor
   → NotificationDeliveryService.sendTop100Exited | sendRankPush | deliver
-  → DeviceTokenService → GuestRepository
-  → FcmService
+    → DeviceTokenService → GuestRepository
+    → FcmService
 ```
+
+Rank-push batch jobs call `LeaderboardRankResolverService.resolveRanks(gameId, guestIds)` (one SQL for the page) before the per-device send loop.
 
 Rank-push files:
 

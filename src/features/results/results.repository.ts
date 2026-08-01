@@ -5,7 +5,7 @@ import { dedupLockKey } from '@/common/utils';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 import { PartitionService } from '@/infra/maintenance/partition.service';
 import type { SubmitResultDto } from '@/features/results/dto/submit-result.dto';
-import { LeaderboardRepository } from '@/features/leaderboard/leaderboard.repository';
+import { LeaderboardScoreApplyService } from '@/features/leaderboard/leaderboard-score-apply.service';
 
 export interface ValidatedResultItem extends SubmitResultDto {
   signature: string;
@@ -29,7 +29,7 @@ export class ResultsRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly partitionService: PartitionService,
-    private readonly leaderboardRepository: LeaderboardRepository,
+    private readonly leaderboardScoreApply: LeaderboardScoreApplyService,
   ) {}
 
   async submitValidatedBatch(
@@ -85,58 +85,17 @@ export class ResultsRepository {
         return emptyBatchResult();
       }
 
-      const previousRow = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
-      const previousBest = previousRow?.bestScore ?? null;
-      const previousRank =
-        previousBest !== null
-          ? (await this.leaderboardRepository.countBetterRanksTx(
-              tx,
-              gameId,
-              guestId,
-              previousBest,
-            )) + 1
-          : null;
-
-      const guestAtRank100 = await this.leaderboardRepository.findGuestAtRankTx(tx, gameId, 100);
-      const guestAtRank100BeforeGuestId = guestAtRank100[0]?.guestId ?? null;
-
       const maxScore = Math.max(...insertedScores);
-      await this.leaderboardRepository.upsertBestScoreTx(tx, gameId, guestId, maxScore);
-
-      const row = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
-      const newBest = row?.bestScore ?? maxScore;
-      const currentRank =
-        (await this.leaderboardRepository.countBetterRanksTx(tx, gameId, guestId, newBest)) + 1;
-
-      let displacedGuestRank: number | null = null;
-      let displacedGuestBestScore: number | null = null;
-      if (guestAtRank100BeforeGuestId && guestAtRank100BeforeGuestId !== guestId) {
-        const displaced = await this.leaderboardRepository.getGuestBestScoreTx(
-          tx,
-          gameId,
-          guestAtRank100BeforeGuestId,
-        );
-        if (displaced) {
-          displacedGuestBestScore = displaced.bestScore;
-          displacedGuestRank =
-            (await this.leaderboardRepository.countBetterRanksTx(
-              tx,
-              gameId,
-              guestAtRank100BeforeGuestId,
-              displaced.bestScore,
-            )) + 1;
-        }
-      }
+      const delta = await this.leaderboardScoreApply.applyBestScoreAndCollectDelta(
+        tx,
+        gameId,
+        guestId,
+        maxScore,
+      );
 
       return {
-        previousBest,
-        previousRank,
-        currentRank,
         insertedCount,
-        guestAtRank100BeforeGuestId,
-        displacedGuestRank,
-        displacedGuestBestScore,
-        newBest,
+        ...delta,
       };
     });
   }
