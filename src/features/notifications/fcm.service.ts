@@ -6,7 +6,7 @@ import {
   type NotificationType,
   FCM_ANDROID_CHANNEL_ID,
   getLocalizedNotification,
-  resolveNotificationLocale,
+  toNotificationLocaleCode,
 } from '@/common/constants';
 
 export interface PushNotificationPayload {
@@ -63,7 +63,7 @@ export class FcmService implements OnModuleInit {
       return { success: false };
     }
 
-    const locale = resolveNotificationLocale(payload.locale);
+    const locale = toNotificationLocaleCode(payload.locale);
     const content = getLocalizedNotification(payload.type, locale, payload.params);
 
     try {

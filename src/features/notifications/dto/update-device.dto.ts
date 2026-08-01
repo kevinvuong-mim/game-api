@@ -5,7 +5,7 @@ import { NotificationLocale } from '@prisma/client';
 export class UpdateDeviceDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(512)
+  @MaxLength(4096)
   token!: string;
 
   @IsEnum(NotificationLocale)

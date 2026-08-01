@@ -48,7 +48,6 @@ async function bootstrap() {
           return Object.entries(error.constraints).map(([key, message]) => ({
             constraint: key,
             message: message,
-            value: error.value,
             field: error.property,
           }));
         });

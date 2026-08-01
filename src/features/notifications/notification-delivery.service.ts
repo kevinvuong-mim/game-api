@@ -6,7 +6,6 @@ import {
   type GameId,
   NOTIFICATION_ROUTES,
   NOTIFICATION_TYPES,
-  resolveNotificationLocale,
   toNotificationLocaleCode,
 } from '@/common/constants';
 
@@ -68,7 +67,7 @@ export class NotificationDeliveryService {
       const localeCode =
         input.locale != null && input.locale !== ''
           ? toNotificationLocaleCode(input.locale)
-          : resolveNotificationLocale(device.notificationLocale?.toString() ?? 'EN');
+          : toNotificationLocaleCode(device.notificationLocale?.toString() ?? 'EN');
 
       const result = await this.fcmService.sendToToken(device.fcmToken, {
         type: input.type,

@@ -23,7 +23,7 @@ API quản lý một FCM token cho mỗi guest. Dữ liệu nằm trực tiếp 
 
 | Field | Required | Validation |
 | --- | --- | --- |
-| `token` | Yes | non-empty string, `@MaxLength(512)` |
+| `token` | Yes | non-empty string, `@MaxLength(4096)` |
 | `platform` | Yes | `IOS` hoặc `ANDROID` |
 | `locale` | Yes | `EN` hoặc `VI` |
 
@@ -53,7 +53,7 @@ Cập nhật **cả** token và locale; hai field đều required. Platform hi�
 
 Nếu guest chưa có `fcmToken`, trả `404 Device token not found`. Việc chuyển token từ guest khác có cùng semantics như POST và cũng chạy trong **`$transaction`**. `data` là `{ "guestId": "uuid" }`.
 
-`token` trên PATCH cũng `@MaxLength(512)`.
+`token` trên PATCH cũng `@MaxLength(4096)`.
 
 ## DELETE `/api/devices`
 

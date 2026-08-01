@@ -123,8 +123,7 @@ Trả về khi query params không hợp lệ (thiếu `gameId`, `page` < 1, `li
     {
       "field": "guestId",
       "constraint": "isUuid",
-      "message": "guestId must be a UUID",
-      "value": "not-a-uuid"
+      "message": "guestId must be a UUID"
     }
   ],
   "timestamp": "2026-06-27T12:00:00.000Z",

@@ -152,8 +152,7 @@ Trả về khi body không hợp lệ (thiếu field, items rỗng, > 50 items, 
     {
       "field": "items",
       "constraint": "arrayMinSize",
-      "message": "items must contain at least 1 elements",
-      "value": []
+      "message": "items must contain at least 1 elements"
     }
   ],
   "timestamp": "2026-06-27T12:00:00.000Z",

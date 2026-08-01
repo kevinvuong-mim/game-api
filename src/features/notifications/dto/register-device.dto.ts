@@ -5,7 +5,7 @@ import { DevicePlatform, NotificationLocale } from '@prisma/client';
 export class RegisterDeviceDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(512)
+  @MaxLength(4096)
   token!: string;
 
   @IsEnum(DevicePlatform)

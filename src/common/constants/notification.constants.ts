@@ -60,10 +60,6 @@ const NOTIFICATION_I18N: Record<
   },
 };
 
-export function resolveNotificationLocale(locale?: string | null): NotificationLocaleCode {
-  return toNotificationLocaleCode(locale);
-}
-
 /** Map Prisma EN/VI, BCP-47, or lowercase codes to notification locale. */
 export function toNotificationLocaleCode(locale?: string | null): NotificationLocaleCode {
   if (!locale) return 'en';

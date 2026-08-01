@@ -143,8 +143,7 @@ Trả về khi body không hợp lệ (thiếu field, sai enum, name quá dài, 
     {
       "field": "gameId",
       "constraint": "isEnum",
-      "message": "gameId must be a valid enum value",
-      "value": "INVALID"
+      "message": "gameId must be a valid enum value"
     }
   ],
   "timestamp": "2026-06-27T12:00:00.000Z",
