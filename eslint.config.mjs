@@ -14,8 +14,8 @@ export default tseslint.config(
     ],
   },
   eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
   eslintPluginPrettierRecommended,
+  ...tseslint.configs.recommendedTypeChecked,
   {
     languageOptions: {
       globals: {

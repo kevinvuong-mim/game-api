@@ -6,12 +6,12 @@ import { LeaderboardRepository } from '@/features/leaderboard/leaderboard.reposi
 
 export interface LeaderboardScoreDelta {
   newBest: number;
+  currentRank: number;
   previousBest: number | null;
   previousRank: number | null;
-  currentRank: number;
-  guestAtRank100BeforeGuestId: string | null;
   displacedGuestRank: number | null;
   displacedGuestBestScore: number | null;
+  guestAtRank100BeforeGuestId: string | null;
 }
 
 /**

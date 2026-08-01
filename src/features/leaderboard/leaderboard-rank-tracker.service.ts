@@ -5,13 +5,13 @@ import { PlayerExitedTop100Event } from '@/domain/events';
 import { type GameId, TOP_100_THRESHOLD } from '@/common/constants';
 
 export interface ScoreUpdateContext {
-  previousRank: number | null;
   /** Rank after the score write — must be computed in the same DB transaction. */
   currentRank: number | null;
+  previousRank: number | null;
   currentBestScore: number | null;
-  guestAtRank100BeforeGuestId: string | null;
   displacedGuestRank: number | null;
   displacedGuestBestScore: number | null;
+  guestAtRank100BeforeGuestId: string | null;
 }
 
 @Injectable()

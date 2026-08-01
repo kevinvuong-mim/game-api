@@ -4,12 +4,12 @@ Hướng dẫn build và deploy `game-api` lên production. Dockerfile multi-sta
 
 ## Yêu cầu production
 
-| Thành phần | Ghi chú                                                    |
-| ---------- | ---------------------------------------------------------- |
-| Node.js    | ≥ 20 (image `node:20-alpine`)                              |
-| PostgreSQL | Repo dev image là 16; production nên giữ parity, managed service khuyến nghị |
+| Thành phần | Ghi chú                                                                                 |
+| ---------- | --------------------------------------------------------------------------------------- |
+| Node.js    | ≥ 20 (image `node:20-alpine`)                                                           |
+| PostgreSQL | Repo dev image là 16; production nên giữ parity, managed service khuyến nghị            |
 | Redis      | Repo dev image là 8.6; production cần tương thích ioredis 5/BullMQ 5 và nên có auth/TLS |
-| Env vars   | Xem [environment-variables.md](./environment-variables.md) |
+| Env vars   | Xem [environment-variables.md](./environment-variables.md)                              |
 
 ## Docker build
 
@@ -59,10 +59,10 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 GET /api/health
 ```
 
-| HTTP | Ý nghĩa                                                      |
-| ---- | ------------------------------------------------------------ |
-| 200  | Postgres **và** Redis connected (`status: ok`)               |
-| 503  | Postgres và/hoặc Redis disconnected (`status: degraded`)     |
+| HTTP | Ý nghĩa                                                  |
+| ---- | -------------------------------------------------------- |
+| 200  | Postgres **và** Redis connected (`status: ok`)           |
+| 503  | Postgres và/hoặc Redis disconnected (`status: degraded`) |
 
 Kubernetes example (đổi `port` nếu container listen cổng khác — khớp `containerPort` / `PORT`):
 

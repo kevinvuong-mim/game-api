@@ -5,7 +5,7 @@ import { GuestRepository } from '@/features/guest/guest.repository';
 
 @Module({
   imports: [PrismaModule],
-  providers: [GuestRepository],
   exports: [GuestRepository],
+  providers: [GuestRepository],
 })
 export class GuestDataModule {}

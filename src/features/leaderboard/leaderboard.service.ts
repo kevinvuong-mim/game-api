@@ -3,8 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { GameId } from '@/common/constants';
 import { requireGameId } from '@/common/utils';
 import { GuestRepository } from '@/features/guest/guest.repository';
-import { LeaderboardQueryDto } from '@/features/leaderboard/dto/leaderboard-query.dto';
 import { LeaderboardRepository } from '@/features/leaderboard/leaderboard.repository';
+import { LeaderboardQueryDto } from '@/features/leaderboard/dto/leaderboard-query.dto';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 
 @Injectable()

@@ -10,9 +10,9 @@ import {
 } from '@/common/constants';
 import { RedisService } from '@/infra/redis/redis.service';
 import { DeviceTokenService } from '@/features/notifications/device-token.service';
+import { toNotificationLocaleCode } from '@/common/constants/notification.constants';
 import { getRankPushWeekKey } from '@/features/notifications/jobs/rank-push-week.util';
 import { RANK_PUSH_JOB_DEFAULTS } from '@/features/notifications/jobs/rank-push.enqueue';
-import { toNotificationLocaleCode } from '@/common/constants/notification.constants';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import { NotificationDeliveryService } from '@/features/notifications/notification-delivery.service';
 

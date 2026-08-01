@@ -6,7 +6,7 @@ import { LeaderboardScoreApplyService } from '@/features/leaderboard/leaderboard
 
 @Module({
   imports: [PrismaModule],
-  providers: [LeaderboardRepository, LeaderboardScoreApplyService],
   exports: [LeaderboardRepository, LeaderboardScoreApplyService],
+  providers: [LeaderboardRepository, LeaderboardScoreApplyService],
 })
 export class LeaderboardDataModule {}

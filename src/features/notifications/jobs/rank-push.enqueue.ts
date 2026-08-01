@@ -1,15 +1,15 @@
 import { Queue } from 'bullmq';
-import { Logger, Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
+import { Logger, Injectable } from '@nestjs/common';
 
 import { type GameId, NOTIFICATION_JOB, NOTIFICATION_QUEUE } from '@/common/constants';
 import { getRankPushWeekKey } from '@/features/notifications/jobs/rank-push-week.util';
 
 export const RANK_PUSH_JOB_DEFAULTS = {
   attempts: 3,
-  backoff: { type: 'exponential' as const, delay: 5_000 },
-  removeOnComplete: true,
   removeOnFail: 100,
+  removeOnComplete: true,
+  backoff: { type: 'exponential' as const, delay: 5_000 },
 };
 
 @Injectable()

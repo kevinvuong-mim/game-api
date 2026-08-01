@@ -6,8 +6,8 @@ import { GuestDataModule } from '@/features/guest/guest-data.module';
 
 /** Guest HTTP API. GuestRepository comes from GuestDataModule; GuestAuthGuard from CommonModule. */
 @Module({
+  providers: [GuestService],
   imports: [GuestDataModule],
   controllers: [GuestController],
-  providers: [GuestService],
 })
 export class GuestModule {}

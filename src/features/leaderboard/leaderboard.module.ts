@@ -9,7 +9,7 @@ import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboar
 @Module({
   imports: [LeaderboardDataModule],
   controllers: [LeaderboardController],
-  exports: [LeaderboardRankTrackerService, LeaderboardRankResolverService, LeaderboardDataModule],
   providers: [LeaderboardService, LeaderboardRankTrackerService, LeaderboardRankResolverService],
+  exports: [LeaderboardRankTrackerService, LeaderboardRankResolverService, LeaderboardDataModule],
 })
 export class LeaderboardModule {}

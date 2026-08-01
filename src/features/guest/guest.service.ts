@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
-import { requireGameId, hashSecretToken, generateSecretToken } from '@/common/utils';
 import { InitGuestDto } from '@/features/guest/dto/init-guest.dto';
 import { GuestRepository } from '@/features/guest/guest.repository';
+import { requireGameId, hashSecretToken, generateSecretToken } from '@/common/utils';
 
 @Injectable()
 export class GuestService {

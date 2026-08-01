@@ -4,21 +4,21 @@ After the ownership refactor, each Nest feature owns a clear data boundary.
 
 ## Data modules
 
-| Module | Owns | Exported for |
-| --- | --- | --- |
-| `GuestDataModule` | `GuestRepository` | Auth, guest HTTP, devices/FCM, leaderboard names |
-| `LeaderboardDataModule` | `LeaderboardRepository`, `LeaderboardScoreApplyService` | Rank reads/writes, TX score-apply + rank delta |
-| `ResultsDataModule` | `ResultsRepository` (+ imports LeaderboardData) | Result insert/dedup; calls score-apply inside same TX |
-| `CommonModule` (global) | `GuestAuthGuard`, `RateLimitGuard`; re-exports `GuestDataModule` | All features (auth without importing GuestModule) |
+| Module                  | Owns                                                             | Exported for                                          |
+| ----------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| `GuestDataModule`       | `GuestRepository`                                                | Auth, guest HTTP, devices/FCM, leaderboard names      |
+| `LeaderboardDataModule` | `LeaderboardRepository`, `LeaderboardScoreApplyService`          | Rank reads/writes, TX score-apply + rank delta        |
+| `ResultsDataModule`     | `ResultsRepository` (+ imports LeaderboardData)                  | Result insert/dedup; calls score-apply inside same TX |
+| `CommonModule` (global) | `GuestAuthGuard`, `RateLimitGuard`; re-exports `GuestDataModule` | All features (auth without importing GuestModule)     |
 
 ## Feature modules
 
-| Module | Responsibility |
-| --- | --- |
-| `GuestModule` | HTTP guest init/name (`GuestService` + controller); imports `GuestDataModule` |
-| `ResultsModule` | HMAC verify + submit batch + rank tracker side-effects |
-| `LeaderboardModule` | Public leaderboard query + rank resolver/tracker |
-| `NotificationsModule` | Devices HTTP + FCM delivery + rank-push BullMQ; imports `GuestDataModule` |
+| Module                | Responsibility                                                                |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `GuestModule`         | HTTP guest init/name (`GuestService` + controller); imports `GuestDataModule` |
+| `ResultsModule`       | HMAC verify + submit batch + rank tracker side-effects                        |
+| `LeaderboardModule`   | Public leaderboard query + rank resolver/tracker                              |
+| `NotificationsModule` | Devices HTTP + FCM delivery + rank-push BullMQ; imports `GuestDataModule`     |
 
 ## Guest table (`guest_players`)
 
@@ -50,19 +50,19 @@ Rank-push batch jobs call `LeaderboardRankResolverService.resolveRanks(gameId, g
 
 Rank-push files:
 
-| File | Role |
-| --- | --- |
-| `jobs/rank-push-week.util.ts` | ISO week key |
-| `jobs/rank-push.enqueue.ts` | `RankPushEnqueueService` |
-| `jobs/rank-push.processor.ts` | BullMQ worker |
+| File                          | Role                       |
+| ----------------------------- | -------------------------- |
+| `jobs/rank-push-week.util.ts` | ISO week key               |
+| `jobs/rank-push.enqueue.ts`   | `RankPushEnqueueService`   |
+| `jobs/rank-push.processor.ts` | BullMQ worker              |
 | `jobs/rank-push.scheduler.ts` | Per-game cron registration |
 
 ## Constants
 
-| File | Contents |
-| --- | --- |
-| `leaderboard.constants.ts` | `TOP_100_THRESHOLD` |
-| `notification.constants.ts` | Queues, jobs, FCM channel, i18n, `toNotificationLocaleCode` |
-| `game.constants.ts` | `GAME_CONFIG`, `validateGameId` (throws `UnsupportedGameError`, not HTTP) |
+| File                        | Contents                                                                  |
+| --------------------------- | ------------------------------------------------------------------------- |
+| `leaderboard.constants.ts`  | `TOP_100_THRESHOLD`                                                       |
+| `notification.constants.ts` | Queues, jobs, FCM channel, i18n, `toNotificationLocaleCode`               |
+| `game.constants.ts`         | `GAME_CONFIG`, `validateGameId` (throws `UnsupportedGameError`, not HTTP) |
 
 HTTP mapping for unknown game IDs: `requireGameId()` in `common/utils/game-id.util.ts`.

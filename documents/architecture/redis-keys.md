@@ -21,14 +21,14 @@ Connection: `REDIS_URL`.
 
 Pattern: `{prefix}{suffix}` — suffix is client IP or `guestId`.
 
-| Prefix          | Suffix  | Limit / window     | Endpoint            |
-| --------------- | ------- | -------------------- | ------------------- |
-| `rate:init:`    | IP      | 3 / 60s              | `POST /guest/init`  |
-| `rate:init:h:`  | IP      | 15 / 3600s           | `POST /guest/init`  |
-| `rate:name:`    | guestId | 10 / 60s             | `PATCH /guest/name` |
-| `rate:result:`  | guestId | 20 / 60s             | `POST /results`     |
-| `rate:lb:`      | IP      | 30 / 60s             | `GET /leaderboards` |
-| `rate:device:`  | guestId | 10 / 60s             | Shared by POST/PATCH/DELETE `/devices` |
+| Prefix         | Suffix  | Limit / window | Endpoint                               |
+| -------------- | ------- | -------------- | -------------------------------------- |
+| `rate:init:`   | IP      | 3 / 60s        | `POST /guest/init`                     |
+| `rate:init:h:` | IP      | 15 / 3600s     | `POST /guest/init`                     |
+| `rate:name:`   | guestId | 10 / 60s       | `PATCH /guest/name`                    |
+| `rate:result:` | guestId | 20 / 60s       | `POST /results`                        |
+| `rate:lb:`     | IP      | 30 / 60s       | `GET /leaderboards`                    |
+| `rate:device:` | guestId | 10 / 60s       | Shared by POST/PATCH/DELETE `/devices` |
 
 Implementation: **atomic Lua** `INCR` + `EXPIRE` (fixed window). Also re-applies TTL if a key somehow lost it.
 
@@ -46,19 +46,19 @@ BullMQ uses the same `REDIS_URL` with its default `bull:` prefix. Queue/job inte
 
 Stable application `jobId`s (not Redis key names, but useful when inspecting BullMQ):
 
-| Pattern | Purpose |
-| --- | --- |
-| `rank-push-start-{gameId}-{weekKey}` | Dedupe start-of-week broadcast enqueue |
-| `rank-push-batch-{gameId}-{weekKey}-…` | Dedupe batch chain steps |
+| Pattern                                | Purpose                                |
+| -------------------------------------- | -------------------------------------- |
+| `rank-push-start-{gameId}-{weekKey}`   | Dedupe start-of-week broadcast enqueue |
+| `rank-push-batch-{gameId}-{weekKey}-…` | Dedupe batch chain steps               |
 
 ## Rank-push send markers
 
-| Property    | Value                                              |
-| ----------- | -------------------------------------------------- |
-| Key pattern | `rank-push:sent:{gameId}:{weekKey}:{guestId}`      |
-| Value       | `"1"`                                              |
-| TTL         | 8 days                                             |
-| Set when    | Before FCM send (`SET NX`); cleared if send fails  |
+| Property    | Value                                             |
+| ----------- | ------------------------------------------------- |
+| Key pattern | `rank-push:sent:{gameId}:{weekKey}:{guestId}`     |
+| Value       | `"1"`                                             |
+| TTL         | 8 days                                            |
+| Set when    | Before FCM send (`SET NX`); cleared if send fails |
 
 Prevents BullMQ job retries from re-notifying the same guest for the same ISO week.
 

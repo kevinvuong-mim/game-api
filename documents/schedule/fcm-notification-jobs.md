@@ -4,10 +4,10 @@ Cron + BullMQ workers for push notifications (no DB outbox).
 
 ## Jobs
 
-| Job                 | Schedule                            | Timezone           | File                                                     |
-| ------------------- | ----------------------------------- | ------------------ | -------------------------------------------------------- |
-| Rank push broadcast | Per-game `GAME_CONFIG.rankPushCron` | `Asia/Ho_Chi_Minh` | `src/features/notifications/jobs/rank-push.scheduler.ts` |
-| Top 100 exit push   | On score submit (async in-process event; no queue) | — | `src/features/notifications/top100-exit-notification.listener.ts` |
+| Job                 | Schedule                                           | Timezone           | File                                                              |
+| ------------------- | -------------------------------------------------- | ------------------ | ----------------------------------------------------------------- |
+| Rank push broadcast | Per-game `GAME_CONFIG.rankPushCron`                | `Asia/Ho_Chi_Minh` | `src/features/notifications/jobs/rank-push.scheduler.ts`          |
+| Top 100 exit push   | On score submit (async in-process event; no queue) | —                  | `src/features/notifications/top100-exit-notification.listener.ts` |
 
 Partition maintenance is **not** an FCM job — see [game-results-partition.md](./game-results-partition.md) (`59 23 28-31 * *`).
 
@@ -17,9 +17,9 @@ Example FRULOOP: `rankPushCron: '0 9 * * 6'` (Saturday 09:00 VN).
 
 ## Push types
 
-| `type`           | When                                              | Route         |
-| ---------------- | ------------------------------------------------- | ------------- |
-| `rank_push`      | Per-game scheduled broadcast for token holders who have a rank | `Leaderboard` |
+| `type`           | When                                                                    | Route         |
+| ---------------- | ----------------------------------------------------------------------- | ------------- |
+| `rank_push`      | Per-game scheduled broadcast for token holders who have a rank          | `Leaderboard` |
 | `top_100_exited` | Guest previously at #100 is displaced by another guest entering Top 100 | `Leaderboard` |
 
 FCM `data` payload: `{ type, route, ...params }` — stringified job params are merged into `data`. Both `rank_push` and `top_100_exited` pass `rank` into `data`. Rank push also interpolates `rank` into localized notification title/body (EN / VI; non-Vietnamese falls back to English) so the client can show a matching foreground toast.
@@ -34,20 +34,20 @@ Android uses high priority and channel `game_alerts`; APNs requests default soun
 
 Job defaults (`rank-push.enqueue.ts` → `RANK_PUSH_JOB_DEFAULTS`):
 
-| Option | Value |
-| --- | --- |
-| `attempts` | `3` |
-| `backoff` | exponential, `delay: 5000` |
-| `removeOnComplete` | `true` |
-| `removeOnFail` | keep last `100` |
+| Option             | Value                      |
+| ------------------ | -------------------------- |
+| `attempts`         | `3`                        |
+| `backoff`          | exponential, `delay: 5000` |
+| `removeOnComplete` | `true`                     |
+| `removeOnFail`     | keep last `100`            |
 
 Stable `jobId`s (week key in `Asia/Ho_Chi_Minh` via `getRankPushWeekKey()`):
 
-| Job | `jobId` pattern |
-| --- | --- |
-| Start broadcast | `rank-push-start-{gameId}-{weekKey}` |
-| First batch | `rank-push-batch-{gameId}-{weekKey}-start` |
-| Cursor batch | `rank-push-batch-{gameId}-{weekKey}-{cursorGuestId}` |
+| Job             | `jobId` pattern                                      |
+| --------------- | ---------------------------------------------------- |
+| Start broadcast | `rank-push-start-{gameId}-{weekKey}`                 |
+| First batch     | `rank-push-batch-{gameId}-{weekKey}-start`           |
+| Cursor batch    | `rank-push-batch-{gameId}-{weekKey}-{cursorGuestId}` |
 
 **Single Nest instance still recommended** for cron registration: week-key `jobId`s dedupe duplicate enqueues within the same ISO week, but multiple replicas can still race on in-process Top-100-exit listeners and cron registration noise.
 

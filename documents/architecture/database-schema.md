@@ -34,17 +34,17 @@ Constraints:
 
 ### `game_results` (range partitioned by year)
 
-| Column           | Type         | Notes                            |
-| ---------------- | ------------ | -------------------------------- |
-| `id`             | `TEXT`       | part of PK                       |
-| `createdAt`      | `TIMESTAMP(3)` | part of PK + partition key     |
-| `gameId`         | `GameId`     |                                  |
-| `guestId`        | `TEXT`       | FK -> `guest_players(gameId,id)` |
-| `clientResultId` | `TEXT`       | client dedup key                 |
-| `score`          | `INTEGER`    |                                  |
-| `signature`      | `TEXT`       | HMAC verified hash               |
-| `metadata`       | `JSONB?`     | optional                         |
-| `playedAt`       | `TIMESTAMP(3)?` | optional                       |
+| Column           | Type            | Notes                            |
+| ---------------- | --------------- | -------------------------------- |
+| `id`             | `TEXT`          | part of PK                       |
+| `createdAt`      | `TIMESTAMP(3)`  | part of PK + partition key       |
+| `gameId`         | `GameId`        |                                  |
+| `guestId`        | `TEXT`          | FK -> `guest_players(gameId,id)` |
+| `clientResultId` | `TEXT`          | client dedup key                 |
+| `score`          | `INTEGER`       |                                  |
+| `signature`      | `TEXT`          | HMAC verified hash               |
+| `metadata`       | `JSONB?`        | optional                         |
+| `playedAt`       | `TIMESTAMP(3)?` | optional                         |
 
 Indexes:
 
@@ -54,11 +54,11 @@ Indexes:
 
 ### `leaderboards`
 
-| Column      | Type        | Notes        |
-| ----------- | ----------- | ------------ |
-| `gameId`    | `GameId`    | PK part      |
-| `guestId`   | `TEXT`      | PK part + FK |
-| `bestScore` | `INTEGER`   |              |
+| Column      | Type           | Notes                        |
+| ----------- | -------------- | ---------------------------- |
+| `gameId`    | `GameId`       | PK part                      |
+| `guestId`   | `TEXT`         | PK part + FK                 |
+| `bestScore` | `INTEGER`      |                              |
 | `updatedAt` | `TIMESTAMP(3)` | updated by Prisma/raw upsert |
 
 Index:

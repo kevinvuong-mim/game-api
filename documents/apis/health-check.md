@@ -65,14 +65,14 @@ Trả về khi **cả** Postgres và Redis kết nối thành công.
 
 ### Response Data Schema (`data`)
 
-| Field          | Type   | Description                                   |
-| -------------- | ------ | --------------------------------------------- |
-| status         | string | `ok` khi cả Postgres và Redis connected       |
-| services       | object | Trạng thái từng dependency                    |
-| services.db    | string | `connected` \| `disconnected`                 |
-| services.redis | string | `connected` \| `disconnected`                 |
-| timestamp      | string | Thời điểm health check (ISO 8601)             |
-| uptime         | number | Thời gian server đã chạy (giây)               |
+| Field          | Type   | Description                             |
+| -------------- | ------ | --------------------------------------- |
+| status         | string | `ok` khi cả Postgres và Redis connected |
+| services       | object | Trạng thái từng dependency              |
+| services.db    | string | `connected` \| `disconnected`           |
+| services.redis | string | `connected` \| `disconnected`           |
+| timestamp      | string | Thời điểm health check (ISO 8601)       |
+| uptime         | number | Thời gian server đã chạy (giây)         |
 
 ### Error Responses
 

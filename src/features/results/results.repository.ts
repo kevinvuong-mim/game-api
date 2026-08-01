@@ -14,14 +14,14 @@ export interface ValidatedResultItem extends SubmitResultDto {
 export interface BatchSubmitResult {
   insertedCount: number;
   newBest: number | null;
-  previousBest: number | null;
-  previousRank: number | null;
   /** Submitting guest rank after this batch (computed inside the same TX). */
   currentRank: number | null;
-  guestAtRank100BeforeGuestId: string | null;
+  previousBest: number | null;
+  previousRank: number | null;
   /** Rank of the pre-update #100 guest after this batch (same TX), if tracked. */
   displacedGuestRank: number | null;
   displacedGuestBestScore: number | null;
+  guestAtRank100BeforeGuestId: string | null;
 }
 
 @Injectable()

@@ -75,8 +75,8 @@ Content-Type: application/json
 
 ### Request Body Schema
 
-| Field | Type   | Required | Validation                  | Description                    |
-| ----- | ------ | -------- | --------------------------- | ------------------------------ |
+| Field | Type   | Required | Validation                           | Description                                                                   |
+| ----- | ------ | -------- | ------------------------------------ | ----------------------------------------------------------------------------- |
 | name  | string | Yes      | Trim rồi MinLength: 1, MaxLength: 26 | Tên hiển thị; DTO `@Transform` trim trước validation — whitespace-only → 400. |
 
 ### Business Logic

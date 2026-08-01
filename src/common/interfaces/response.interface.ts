@@ -4,12 +4,11 @@ interface ErrorResponse {
   stack?: string; // Only in development
   success: false;
   message: string;
+  status?: string;
+  uptime?: number;
   timestamp: string;
   statusCode: number;
   errors?: ValidationError[];
-  /** Health check degraded payload (503 only) */
-  status?: string;
-  uptime?: number;
   services?: { db: string; redis: string };
 }
 

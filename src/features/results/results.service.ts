@@ -1,10 +1,10 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 
-import type { AuthenticatedGuest } from '@/common/decorators';
 import { getGameConfig } from '@/common/constants';
-import { requireGameId, buildReplayPayload, verifyReplaySignature } from '@/common/utils';
+import type { AuthenticatedGuest } from '@/common/decorators';
 import { ResultsRepository } from '@/features/results/results.repository';
 import { SubmitResultBatchDto } from '@/features/results/dto/submit-result-batch.dto';
+import { requireGameId, buildReplayPayload, verifyReplaySignature } from '@/common/utils';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
 

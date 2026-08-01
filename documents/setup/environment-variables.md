@@ -4,13 +4,13 @@ Tài liệu này hướng dẫn cách lấy các biến môi trường cần thi
 
 ## Tổng quan
 
-| Variable                                                               | Required              | Runtime behavior                                                                              |
-| ---------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                                         | Yes                   | Prisma/PostgreSQL connection and migrations                                                   |
-| `REDIS_URL`                                                            | Yes                   | `RedisService` throws during provider creation if absent; BullMQ also uses this URL           |
-| `PORT`                                                                 | No                    | Defaults to `3000` via `process.env.PORT ?? 3000`                                             |
+| Variable                                                               | Required              | Runtime behavior                                                                                                                    |
+| ---------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                         | Yes                   | Prisma/PostgreSQL connection and migrations                                                                                         |
+| `REDIS_URL`                                                            | Yes                   | `RedisService` throws during provider creation if absent; BullMQ also uses this URL                                                 |
+| `PORT`                                                                 | No                    | Defaults to `3000` via `process.env.PORT ?? 3000`                                                                                   |
 | `NODE_ENV`                                                             | No                    | Helmet CSP; in production also hides stack **and** raw non-HttpException messages from the error envelope; Docker sets `production` |
-| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one disables push delivery without disabling device APIs                          |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one disables push delivery without disabling device APIs                                                                |
 
 ## 1. Database
 

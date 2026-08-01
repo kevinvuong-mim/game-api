@@ -1,21 +1,21 @@
 import { Logger, Injectable } from '@nestjs/common';
 
-import { FcmService } from '@/features/notifications/fcm.service';
-import { DeviceTokenService } from '@/features/notifications/device-token.service';
 import {
   type GameId,
   NOTIFICATION_ROUTES,
   NOTIFICATION_TYPES,
   toNotificationLocaleCode,
 } from '@/common/constants';
+import { FcmService } from '@/features/notifications/fcm.service';
+import { DeviceTokenService } from '@/features/notifications/device-token.service';
 
 export interface DeliverNotificationInput {
   route: string;
   gameId: GameId;
   guestId: string;
   locale?: string | null;
-  type: (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
   params?: Record<string, string | number>;
+  type: (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
 }
 
 @Injectable()

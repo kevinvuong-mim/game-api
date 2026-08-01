@@ -42,15 +42,15 @@ Content-Type: application/json
 
 ### Request Body Schema
 
-| Field                  | Type   | Required | Validation                        | Description                                          |
-| ---------------------- | ------ | -------- | --------------------------------- | ---------------------------------------------------- |
-| gameId                 | string | Yes      | `@IsEnum(GameId)`                 | Mã game (`FRULOOP`). Phải khớp game của guest token. |
-| items                  | array  | Yes      | Min: 1, Max: 50 items             | Danh sách kết quả cần gửi                            |
-| items[].clientResultId | string | Yes      | `@Transform(trim)` + `@IsNotEmpty()` + `@MaxLength(128)` | ID do client tạo; dùng làm dedup key trong guest/game |
-| items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647  | Điểm số (khớp Prisma `Int` / PG `integer`)           |
-| items[].playedAt       | string | No       | ISO 8601 strict                   | Thời điểm chơi                                       |
-| items[].metadata       | object | No       | `@IsValidMetadata` (xem bên dưới) | Metadata bổ sung (flat object)                       |
-| items[].signature      | string | Yes      | `@Matches(/^[0-9a-f]{64}$/i)` + HMAC verify in service | Hex SHA-256 64 ký tự (case-insensitive ở DTO; service so sánh lowercase) |
+| Field                  | Type   | Required | Validation                                               | Description                                                              |
+| ---------------------- | ------ | -------- | -------------------------------------------------------- | ------------------------------------------------------------------------ |
+| gameId                 | string | Yes      | `@IsEnum(GameId)`                                        | Mã game (`FRULOOP`). Phải khớp game của guest token.                     |
+| items                  | array  | Yes      | Min: 1, Max: 50 items                                    | Danh sách kết quả cần gửi                                                |
+| items[].clientResultId | string | Yes      | `@Transform(trim)` + `@IsNotEmpty()` + `@MaxLength(128)` | ID do client tạo; dùng làm dedup key trong guest/game                    |
+| items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647                         | Điểm số (khớp Prisma `Int` / PG `integer`)                               |
+| items[].playedAt       | string | No       | ISO 8601 strict                                          | Thời điểm chơi                                                           |
+| items[].metadata       | object | No       | `@IsValidMetadata` (xem bên dưới)                        | Metadata bổ sung (flat object)                                           |
+| items[].signature      | string | Yes      | `@Matches(/^[0-9a-f]{64}$/i)` + HMAC verify in service   | Hex SHA-256 64 ký tự (case-insensitive ở DTO; service so sánh lowercase) |
 
 ### Metadata Constraints (`@IsValidMetadata`)
 

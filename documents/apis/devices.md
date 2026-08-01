@@ -21,11 +21,11 @@ API quản lý một FCM token cho mỗi guest. Dữ liệu nằm trực tiếp 
 }
 ```
 
-| Field | Required | Validation |
-| --- | --- | --- |
-| `token` | Yes | non-empty string, `@MaxLength(4096)` |
-| `platform` | Yes | `IOS` hoặc `ANDROID` |
-| `locale` | Yes | `EN` hoặc `VI` |
+| Field      | Required | Validation                           |
+| ---------- | -------- | ------------------------------------ |
+| `token`    | Yes      | non-empty string, `@MaxLength(4096)` |
+| `platform` | Yes      | `IOS` hoặc `ANDROID`                 |
+| `locale`   | Yes      | `EN` hoặc `VI`                       |
 
 Nếu token đã thuộc guest khác (kể cả game khác), **transaction** clear cả ba field device của owner cũ rồi gán token cho guest hiện tại. Response:
 

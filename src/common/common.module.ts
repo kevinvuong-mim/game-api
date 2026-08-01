@@ -12,8 +12,8 @@ import { GuestDataModule } from '@/features/guest/guest-data.module';
  */
 @Global()
 @Module({
-  imports: [RedisModule, PrismaModule, GuestDataModule],
   providers: [GuestAuthGuard, RateLimitGuard],
+  imports: [RedisModule, PrismaModule, GuestDataModule],
   exports: [GuestDataModule, GuestAuthGuard, RateLimitGuard],
 })
 export class CommonModule {}

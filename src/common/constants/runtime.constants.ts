@@ -1,11 +1,11 @@
 export const RATE_LIMITS = {
   /** Per-IP guest create — short window. */
   init: 3,
-  /** Per-IP guest create — hourly ceiling (anti-bot). */
-  initHourly: 15,
   name: 10,
   device: 10,
   result: 20,
+  /** Per-IP guest create — hourly ceiling (anti-bot). */
+  initHourly: 15,
   leaderboard: 30,
 } as const;
 
