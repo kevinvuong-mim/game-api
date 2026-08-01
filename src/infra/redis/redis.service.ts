@@ -9,7 +9,12 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
 
 const REDIS_KEYS = {
   authToken: (tokenHash: string) => `auth:token:${tokenHash}`,
+  rankPushSent: (gameId: string, weekKey: string, guestId: string) =>
+    `rank-push:sent:${gameId}:${weekKey}:${guestId}`,
 } as const;
+
+/** Keep send markers slightly longer than one ISO week so retries cannot re-notify. */
+const RANK_PUSH_SENT_TTL_SECONDS = 8 * 24 * 60 * 60;
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
@@ -47,6 +52,22 @@ export class RedisService implements OnModuleDestroy {
       'EX',
       AUTH_TOKEN_CACHE_TTL_SECONDS,
     );
+  }
+
+  /** Returns true if this guest has not yet been marked sent for the week (SET NX). */
+  async tryMarkRankPushSent(gameId: string, weekKey: string, guestId: string): Promise<boolean> {
+    const result = await this.redis.set(
+      REDIS_KEYS.rankPushSent(gameId, weekKey, guestId),
+      '1',
+      'EX',
+      RANK_PUSH_SENT_TTL_SECONDS,
+      'NX',
+    );
+    return result === 'OK';
+  }
+
+  async clearRankPushSent(gameId: string, weekKey: string, guestId: string): Promise<void> {
+    await this.redis.del(REDIS_KEYS.rankPushSent(gameId, weekKey, guestId));
   }
 
   /**

@@ -9,7 +9,7 @@ Tài liệu này hướng dẫn cách lấy các biến môi trường cần thi
 | `DATABASE_URL`                                                         | Yes                   | Prisma/PostgreSQL connection and migrations                                                   |
 | `REDIS_URL`                                                            | Yes                   | `RedisService` throws during provider creation if absent; BullMQ also uses this URL           |
 | `PORT`                                                                 | No                    | Defaults to `3000` via `process.env.PORT ?? 3000`                                             |
-| `NODE_ENV`                                                             | No                    | Only changes Helmet CSP and whether error stack traces are returned; Docker sets `production` |
+| `NODE_ENV`                                                             | No                    | Helmet CSP; in production also hides stack **and** raw non-HttpException messages from the error envelope; Docker sets `production` |
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one disables push delivery without disabling device APIs                          |
 
 ## 1. Database
@@ -85,7 +85,7 @@ Môi trường chạy của ứng dụng.
 NODE_ENV="development"
 ```
 
-**Lưu ý:** Hot reload do script `npm run start:dev`, không do `NODE_ENV`. Trong code hiện tại, production bật Helmet CSP và ẩn stack trace khỏi error envelope.
+**Lưu ý:** Hot reload do script `npm run start:dev`, không do `NODE_ENV`. Trong code hiện tại, production bật Helmet CSP và **không** trả stack hay `exception.message` của lỗi không phải `HttpException` (response dùng message chung `Internal server error`; chi tiết vẫn được log server-side).
 
 ---
 

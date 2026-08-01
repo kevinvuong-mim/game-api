@@ -9,6 +9,7 @@ import {
   RANK_PUSH_BATCH_SIZE,
   NOTIFICATION_CRON,
 } from '@/common/constants';
+import { RedisService } from '@/infra/redis/redis.service';
 import { DeviceTokenRepository } from '@/features/notifications/device-token.repository';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import { NotificationDispatcherService } from '@/features/notifications/notification-dispatcher.service';
@@ -80,6 +81,7 @@ export class RankPushProcessor extends WorkerHost {
     private readonly deviceTokenRepository: DeviceTokenRepository,
     private readonly rankResolver: LeaderboardRankResolverService,
     private readonly notificationDispatcher: NotificationDispatcherService,
+    private readonly redisService: RedisService,
   ) {
     super();
   }
@@ -116,17 +118,28 @@ export class RankPushProcessor extends WorkerHost {
     }
 
     for (const device of devices) {
-      const rankInfo = await this.rankResolver.resolveRank(device.gameId as GameId, device.id);
-      if (!rankInfo) {
+      // Claim send slot before FCM so BullMQ retries cannot re-notify the same guest.
+      const claimed = await this.redisService.tryMarkRankPushSent(gameId, weekKey, device.id);
+      if (!claimed) {
         continue;
       }
 
-      await this.notificationDispatcher.sendRankPush(
+      const rankInfo = await this.rankResolver.resolveRank(device.gameId as GameId, device.id);
+      if (!rankInfo) {
+        await this.redisService.clearRankPushSent(gameId, weekKey, device.id);
+        continue;
+      }
+
+      const sent = await this.notificationDispatcher.sendRankPush(
         device.gameId as GameId,
         device.id,
         rankInfo.rank,
         device.notificationLocale === 'VI' ? 'vi' : 'en',
       );
+
+      if (!sent) {
+        await this.redisService.clearRankPushSent(gameId, weekKey, device.id);
+      }
     }
 
     const lastDevice = devices[devices.length - 1];

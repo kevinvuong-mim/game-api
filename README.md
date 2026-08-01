@@ -140,11 +140,21 @@ game-api/
 Each result item includes an HMAC-SHA256 signature:
 
 ```ts
-const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}`;
+const metadataPart = metadata
+  ? JSON.stringify(
+      Object.keys(metadata)
+        .sort()
+        .reduce<Record<string, string | number | boolean | null>>((acc, key) => {
+          acc[key] = metadata[key];
+          return acc;
+        }, {}),
+    )
+  : '';
+const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}|${metadataPart}`;
 const signature = createHmac('sha256', replaySecret).update(payload).digest('hex');
 ```
 
-`replaySecret` is configured per game in `src/common/constants/game.constants.ts` and is also shipped to the game client. HMAC catches malformed or mismatched submissions but is not server-authoritative anti-cheat; replay of the same `clientResultId` is prevented separately by database deduplication.
+`replaySecret` is configured per game in `src/common/constants/game.constants.ts` and is also shipped to the game client. **HMAC is soft integrity only** — it proves the client knew the shared secret and that signed fields (including canonical metadata) were not altered in transit. It is **not** anti-cheat and does **not** prove a real play session; anyone who extracts the client bundle can forge valid signatures. Treat public leaderboards accordingly. Replay of the same `clientResultId` is prevented separately by database deduplication.
 
 ### Leaderboard
 

@@ -102,11 +102,13 @@ VITE_REPLAY_SECRET=<cùng replaySecret với GAME_CONFIG>
 
 Client đọc game env qua [`game-apps/src/game/config.ts`](../../../game-apps/src/game/config.ts) (`id`, `replaySecret`). Runtime config cũng đọc hai biến này; API URL hiện lấy từ preset `VITE_APP_ENV` trong [`game-apps/src/platform/core/config/index.ts`](../../../game-apps/src/platform/core/config/index.ts), không đọc `VITE_API_URL`.
 
-HMAC payload phải khớp backend:
+HMAC payload phải khớp backend (metadata canonical — keys sorted JSON, hoặc rỗng):
 
 ```ts
-`${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}`;
+`${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}|${canonicalMetadata}`;
 ```
+
+HMAC là soft integrity thôi (secret nằm trên client) — **không phải anti-cheat**.
 
 ## 5. Rotate `replaySecret`
 

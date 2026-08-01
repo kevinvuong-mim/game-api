@@ -60,13 +60,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
         }
       }
     } else if (exception instanceof Error) {
-      message = exception.message;
-      error = exception.name;
+      // Production: never leak internal exception messages (Prisma/DB/etc.).
+      if (isDevelopment) {
+        message = exception.message;
+        error = exception.name;
+      }
     }
 
-    // Log error for monitoring
+    // Log real error details for monitoring (even when response is sanitized).
+    const logMessage = exception instanceof Error ? exception.message : message;
     this.logger.error(
-      `${request.method} ${request.url} - ${status} - ${message}`,
+      `${request.method} ${request.url} - ${status} - ${logMessage}`,
       exception instanceof Error ? exception.stack : undefined,
     );
 

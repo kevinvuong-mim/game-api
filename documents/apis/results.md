@@ -65,12 +65,23 @@ Content-Type: application/json
 Payload phải khớp chính xác với server:
 
 ```ts
-const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}`;
+const metadataPart = metadata
+  ? JSON.stringify(
+      Object.keys(metadata)
+        .sort()
+        .reduce<Record<string, string | number | boolean | null>>((acc, key) => {
+          acc[key] = metadata[key];
+          return acc;
+        }, {}),
+    )
+  : '';
+const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}|${metadataPart}`;
 const signature = createHmac('sha256', replaySecret).update(payload).digest('hex');
 ```
 
 - `replaySecret`: Lấy từ `GAME_CONFIG[gameId].replaySecret` (64-char **lowercase** hex)
 - `guestId`: Từ Bearer token (không gửi trong body)
+- `metadata`: optional; nếu có thì serialize canonical (keys sorted) và ghép vào payload. Thiếu metadata → segment rỗng.
 - So sánh signature bằng `timingSafeEqual` sau khi normalize received về lowercase
 
 ### Business Logic
@@ -345,7 +356,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 
 ## Security Considerations
 
-1. **HMAC verification**: Mỗi kết quả phải có signature HMAC-SHA256 với `replaySecret`. Vì client cũng cần secret, đây không thay thế server-authoritative scoring; replay của cùng ID được chặn bằng dedup.
+1. **HMAC verification**: Mỗi kết quả phải có signature HMAC-SHA256 với `replaySecret` (payload gồm cả canonical metadata). Vì client cũng cần secret, đây **không phải anti-cheat** — chỉ soft integrity / chống tamper fields; replay của cùng ID được chặn bằng dedup.
 2. **Timing-safe comparison**: Signature verify dùng `timingSafeEqual` chống timing attack.
 3. **Bearer authentication**: Chỉ guest đã init mới gửi được kết quả.
 4. **Game isolation**: `guest.gameId` phải khớp `body.gameId` — ngăn cross-game submit.
@@ -364,7 +375,7 @@ Client tính sai HMAC — item bị skip, không fail request.
 **Solution**:
 
 - Kiểm tra `clientResultId` chưa tồn tại
-- Verify HMAC payload format: `gameId|guestId|clientResultId|score|playedAt`
+- Verify HMAC payload format: `gameId|guestId|clientResultId|score|playedAt|canonicalMetadata`
 - Đảm bảo `playedAt` trong payload khớp body (hoặc cả hai đều rỗng)
 - Dùng đúng `replaySecret` cho game
 

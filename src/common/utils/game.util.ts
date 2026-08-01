@@ -17,12 +17,35 @@ export function validateGameSecrets(): void {
   }
 }
 
+/** Sorted-key JSON so client/server HMAC metadata segments match. */
+export function canonicalizeMetadata(
+  metadata?: Record<string, string | number | boolean | null>,
+): string {
+  if (!metadata) {
+    return '';
+  }
+
+  const keys = Object.keys(metadata).sort();
+  if (keys.length === 0) {
+    return '';
+  }
+
+  const sorted: Record<string, string | number | boolean | null> = {};
+  for (const key of keys) {
+    sorted[key] = metadata[key];
+  }
+
+  return JSON.stringify(sorted);
+}
+
 export function buildReplayPayload(params: {
   score: number;
   gameId: GameId;
   guestId: string;
   playedAt?: string;
   clientResultId: string;
+  metadata?: Record<string, string | number | boolean | null>;
 }): string {
-  return `${params.gameId}|${params.guestId}|${params.clientResultId}|${params.score}|${params.playedAt ?? ''}`;
+  const metadataPart = canonicalizeMetadata(params.metadata);
+  return `${params.gameId}|${params.guestId}|${params.clientResultId}|${params.score}|${params.playedAt ?? ''}|${metadataPart}`;
 }

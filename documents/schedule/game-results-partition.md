@@ -41,6 +41,6 @@ Tài liệu này mô tả chi tiết cron job được triển khai trong file `
 
 - Prisma không hỗ trợ declarative partitioning — bảng `game_results` được chuyển qua custom SQL migration [`prisma/migrations/20260709123010_partition_game_results/migration.sql`](../../prisma/migrations/20260709123010_partition_game_results/migration.sql).
 - Migration tạo partition cho mọi năm có dữ liệu cũ, năm hiện tại của PostgreSQL và ít nhất năm kế tiếp; các năm sau do `PartitionService` quản lý.
-- PostgreSQL yêu cầu mọi `UNIQUE` constraint trên partitioned table phải chứa partition key — vì vậy **không thể** dùng `UNIQUE (gameId, guestId, clientResultId)`. Dedup được xử lý bằng advisory lock trong `ResultsRepository` (xem [Results API](../apis/results.md)).
+- PostgreSQL yêu cầu mọi `UNIQUE` constraint trên partitioned table phải chứa partition key — vì vậy **không thể** dùng `UNIQUE (gameId, guestId, clientResultId)` trên `game_results`. Dedup được xử lý bằng advisory lock trong `ResultsRepository` (xem [Results API](../apis/results.md)).
 - Cron constant được định nghĩa cố định trong source (`PARTITION_CRON`), không đọc từ biến môi trường.
 - Chỉ việc tạo partition mới được log (`Created partition ...`); nhánh partition đã tồn tại không log.

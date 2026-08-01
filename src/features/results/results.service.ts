@@ -39,6 +39,7 @@ export class ResultsService {
         guestId: guest.guestId,
         playedAt: item.playedAt,
         clientResultId: item.clientResultId,
+        metadata: item.metadata,
       });
 
       if (verifyReplaySignature(replaySecret, payload, item.signature)) {

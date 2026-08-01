@@ -44,6 +44,7 @@ model GuestPlayer {
   gameResults  GameResult[]
   leaderboards Leaderboard?
 
+  // Required composite unique so GameResult/Leaderboard can FK (gameId, guestId).
   @@unique([gameId, id])
   @@map("guest_players")
 }

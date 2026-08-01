@@ -89,7 +89,7 @@ Chi tiết: [apis/health-check.md](../apis/health-check.md).
 - [ ] Đổi credential Postgres/Redis mặc định (không dùng `1234abcd`)
 - [ ] Redis có password + TLS (managed Redis)
 - [ ] Postgres không expose public port
-- [ ] `NODE_ENV=production` — không leak stack trace
+- [ ] `NODE_ENV=production` — không leak stack / internal exception messages
 - [ ] Reverse proxy (nginx/Caddy) terminate TLS
 - [ ] CORS: cân nhắc whitelist origin (hiện tại open + `credentials: true` trong `main.ts`; methods: `GET, POST, PATCH, DELETE, OPTIONS` — không có `PUT`)
 - [ ] Không commit `.env` — dùng secret manager platform

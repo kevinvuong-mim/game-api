@@ -51,6 +51,17 @@ Stable application `jobId`s (not Redis key names, but useful when inspecting Bul
 | `rank-push-start-{gameId}-{weekKey}` | Dedupe start-of-week broadcast enqueue |
 | `rank-push-batch-{gameId}-{weekKey}-…` | Dedupe batch chain steps |
 
+## Rank-push send markers
+
+| Property    | Value                                              |
+| ----------- | -------------------------------------------------- |
+| Key pattern | `rank-push:sent:{gameId}:{weekKey}:{guestId}`      |
+| Value       | `"1"`                                              |
+| TTL         | 8 days                                             |
+| Set when    | Before FCM send (`SET NX`); cleared if send fails  |
+
+Prevents BullMQ job retries from re-notifying the same guest for the same ISO week.
+
 See [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md).
 
 ## CLI (local)

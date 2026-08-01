@@ -58,7 +58,8 @@ Stable `jobId`s (week key in `Asia/Ho_Chi_Minh` via `getRankPushWeekKey()`):
 3. Start job chains `SEND_RANK_PUSH_BATCH` jobs; each loads up to 500 guests with `fcmToken`, ordered/cursored by guest ID
 4. `resolveRank` (same order as leaderboard: `bestScore DESC`, `guestId ASC`)
 5. Guests without a leaderboard entry are skipped; remaining guests are sent sequentially in the worker (`params: { rank }`)
-6. Every non-empty batch enqueues the next cursor batch; the first empty batch completes the broadcast
+6. Before each FCM send, claim Redis key `rank-push:sent:{gameId}:{weekKey}:{guestId}` (`SET NX`, TTL 8 days). Already claimed → skip (idempotent across BullMQ retries). Send failure clears the key so a later attempt can retry.
+7. Every non-empty batch enqueues the next cursor batch; the first empty batch completes the broadcast
 
 ## Top 100 exit flow
 
@@ -73,7 +74,7 @@ Stable `jobId`s (week key in `Asia/Ho_Chi_Minh` via `getRankPushWeekKey()`):
 ## Delivery semantics
 
 - No separate FCM retry / outbox table
-- Rank-push queue jobs use BullMQ `attempts` / exponential backoff and week-key `jobId` dedupe (see above)
+- Rank-push queue jobs use BullMQ `attempts` / exponential backoff, week-key `jobId` dedupe, **and** per-guest Redis send markers (see flow step 6)
 - Missing Firebase credentials → push disabled; device APIs still work
 - Invalid FCM token → clear token fields on `guest_players`
-- Other FCM failures are logged and return `false`; they are not retried by application code outside BullMQ job attempts
+- Other FCM failures are logged and return `false`; they are not retried by application code outside BullMQ job attempts (failed sends clear the send marker so the next attempt can retry that guest)

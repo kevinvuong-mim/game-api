@@ -78,5 +78,6 @@ erDiagram
 - Chỉ có 3 bảng nghiệp vụ chính: `guest_players`, `game_results`, `leaderboards`.
 - Không còn `guest_device_tokens` và `notification_outbox`.
 - `game_results` partition tạo bằng custom SQL migration + maintenance job.
+- `guest_players.@@unique([gameId, id])` tồn tại để làm target FK composite cho `game_results` / `leaderboards` (không thừa dù `id` đã là `@id`).
 - Cả `game_results` và `leaderboards` dùng composite FK (`gameId`, `guestId`) tới `guest_players`; delete guest cascade sang hai bảng.
 - `clientResultId` không có unique constraint toàn parent partition; service dùng advisory transaction lock rồi lookup để dedup theo (`gameId`, `guestId`, `clientResultId`).
