@@ -51,10 +51,7 @@ export class LeaderboardRankResolverService {
     };
   }
 
-  async resolveRanks(
-    gameId: GameId,
-    guestIds: string[],
-  ): Promise<Map<string, GuestRankInfo>> {
+  async resolveRanks(gameId: GameId, guestIds: string[]): Promise<Map<string, GuestRankInfo>> {
     const rows = await this.leaderboardRepository.resolveRanksForGuests(gameId, guestIds);
     return new Map(rows.map((row) => [row.guestId, { rank: row.rank, bestScore: row.bestScore }]));
   }
