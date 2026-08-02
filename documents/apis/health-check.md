@@ -74,28 +74,28 @@ Trả về khi **cả** Postgres và Redis kết nối thành công.
 | timestamp      | string | Thời điểm health check (ISO 8601)       |
 | uptime         | number | Thời gian server đã chạy (giây)         |
 
-### Error Responses
+### Degraded Response (503 Service Unavailable)
 
-**503 Service Unavailable — Postgres và/hoặc Redis down**
+Trả về khi Postgres và/hoặc Redis down. Controller set HTTP **503** qua `passthrough` (`res.status(503)`); payload vẫn đi qua `ResponseInterceptor` nên envelope vẫn `success: true` (không dùng `ServiceUnavailableException` / `HttpExceptionFilter`).
 
 ```json
 {
-  "success": false,
+  "success": true,
   "statusCode": 503,
-  "message": "Service Unavailable Exception",
-  "error": "ServiceUnavailableException",
-  "status": "degraded",
-  "services": {
-    "db": "connected",
-    "redis": "disconnected"
+  "message": "Data retrieved successfully",
+  "data": {
+    "status": "degraded",
+    "services": {
+      "db": "connected",
+      "redis": "disconnected"
+    },
+    "timestamp": "2026-06-27T12:00:00.000Z",
+    "uptime": 12345
   },
-  "uptime": 12345,
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/health"
 }
 ```
-
-Với 503, filter giữ lại `status`, `services`, `uptime` và health-check `timestamp` trong error envelope.
 
 **Possible states**:
 

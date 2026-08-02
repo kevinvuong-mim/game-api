@@ -109,9 +109,19 @@ curl -X POST http://localhost:3000/api/guest/init \
 
 Lưu `secretToken` và `guestId` từ response.
 
-### Submit result (cần HMAC)
+### Submit result
 
-Client game-apps tự ký HMAC. Để test thủ công, dùng `replaySecret` khớp `GAME_CONFIG` trong `src/common/constants/game.constants.ts` (và `VITE_REPLAY_SECRET` trên client).
+```bash
+curl -X POST http://localhost:3000/api/results \
+  -H "Authorization: Bearer <secretToken>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "gameId": "FRULOOP",
+    "items": [
+      { "clientResultId": "test-001", "score": 1000 }
+    ]
+  }'
+```
 
 ### Leaderboard
 
@@ -147,7 +157,6 @@ Trên client, set:
 ```env
 VITE_APP_ENV=dev
 VITE_GAME_ID=FRULOOP
-VITE_REPLAY_SECRET=<khớp GAME_CONFIG replaySecret>
 ```
 
 Preset `dev` trong [`game-apps/src/platform/core/config/index.ts`](../../../game-apps/src/platform/core/config/index.ts) dùng `https://game-api-s5kn.onrender.com/api` (cùng URL production). Client không đọc `VITE_API_URL`. Để trỏ local API, tạm sửa preset `apiUrl` trong `config/index.ts`.
@@ -159,7 +168,6 @@ Preset `dev` trong [`game-apps/src/platform/core/config/index.ts`](../../../game
 | `EADDRINUSE :3000`          | Đổi `PORT` hoặc kill process: `lsof -i :3000`                                                              |
 | Health 503                  | Kiểm tra Postgres (`DATABASE_URL`) **và** Redis (`REDIS_URL`, `docker-compose`) — cả hai phải connected    |
 | Validation 400 cho `gameId` | Dùng `FRULOOP` hoặc thêm game vào Prisma enum + `GAME_CONFIG` — [adding-new-game.md](./adding-new-game.md) |
-| HMAC invalid                | Đảm bảo `replaySecret` client = backend `GAME_CONFIG`                                                      |
 | Push không gửi              | Kiểm tra đủ `FIREBASE_*`, guest có `fcmToken`, có leaderboard rank; backend không có status/mute           |
 
 Xem thêm troubleshooting env: [environment-variables.md](./environment-variables.md).

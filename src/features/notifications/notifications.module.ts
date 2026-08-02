@@ -11,7 +11,6 @@ import { RankPushProcessor } from '@/features/notifications/jobs/rank-push.proce
 import { RankPushScheduler } from '@/features/notifications/jobs/rank-push.scheduler';
 import { RankPushEnqueueService } from '@/features/notifications/jobs/rank-push.enqueue';
 import { NotificationDeliveryService } from '@/features/notifications/notification-delivery.service';
-import { Top100ExitNotificationListener } from '@/features/notifications/top100-exit-notification.listener';
 
 @Module({
   providers: [
@@ -21,9 +20,9 @@ import { Top100ExitNotificationListener } from '@/features/notifications/top100-
     DeviceTokenService,
     RankPushEnqueueService,
     NotificationDeliveryService,
-    Top100ExitNotificationListener,
   ],
   controllers: [DevicesController],
+  exports: [NotificationDeliveryService],
   imports: [
     GuestDataModule,
     LeaderboardModule,

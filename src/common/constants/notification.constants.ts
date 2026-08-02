@@ -11,7 +11,6 @@ export const NOTIFICATION_QUEUE = {
 
 export const NOTIFICATION_JOB = {
   SEND_RANK_PUSH_BATCH: 'send-rank-push-batch',
-  START_RANK_PUSH_BROADCAST: 'start-rank-push-broadcast',
 } as const;
 
 export const RANK_PUSH_BATCH_SIZE = 500;

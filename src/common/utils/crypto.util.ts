@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 export function generateSecretToken(): string {
   return randomBytes(32).toString('base64url');
@@ -6,25 +6,6 @@ export function generateSecretToken(): string {
 
 export function hashSecretToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
-}
-
-function computeReplaySignature(secret: string, payload: string): string {
-  return createHmac('sha256', secret).update(payload).digest('hex');
-}
-
-export function isValidSha256Hex(value: string): boolean {
-  return /^[a-f0-9]{64}$/.test(value);
-}
-
-export function verifyReplaySignature(secret: string, payload: string, received: string): boolean {
-  const expected = computeReplaySignature(secret, payload);
-  const normalized = received.toLowerCase();
-
-  try {
-    return timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(normalized, 'hex'));
-  } catch {
-    return false;
-  }
 }
 
 export function dedupLockKey(gameId: string, guestId: string, clientResultId: string): bigint {

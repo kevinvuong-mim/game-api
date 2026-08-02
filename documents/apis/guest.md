@@ -41,7 +41,7 @@ Content-Type: application/json
 
 ### Business Logic
 
-1. **Validate gameId**: `@IsEnum(GameId)` trả 400 nếu game không nằm trong enum; service gọi lại `validateGameId()` sau validation.
+1. **Validate gameId**: `@IsEnum(GameId)` trả 400 nếu game không nằm trong enum.
 2. **Rate limit check**: Giới hạn theo IP — `rate:init:{ip}` (3/60s) và `rate:init:h:{ip}` (15/3600s). Cả hai phải pass.
 3. **Generate token**: `generateSecretToken()` — random 32 bytes, base64url.
 4. **Hash token**: `hashSecretToken()` — SHA-256 hex, chỉ lưu hash vào DB.

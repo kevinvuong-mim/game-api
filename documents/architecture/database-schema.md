@@ -42,7 +42,6 @@ Constraints:
 | `guestId`        | `TEXT`          | FK -> `guest_players(gameId,id)` |
 | `clientResultId` | `TEXT`          | client dedup key                 |
 | `score`          | `INTEGER`       |                                  |
-| `signature`      | `TEXT`          | HMAC verified hash               |
 | `metadata`       | `JSONB?`        | optional                         |
 | `playedAt`       | `TIMESTAMP(3)?` | optional                         |
 

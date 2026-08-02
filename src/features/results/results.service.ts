@@ -1,58 +1,33 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Logger, Injectable, ForbiddenException } from '@nestjs/common';
 
-import { getGameConfig } from '@/common/constants';
 import type { AuthenticatedGuest } from '@/common/decorators';
+import { type GameId, TOP_100_THRESHOLD } from '@/common/constants';
 import { ResultsRepository } from '@/features/results/results.repository';
 import { SubmitResultBatchDto } from '@/features/results/dto/submit-result-batch.dto';
-import { requireGameId, buildReplayPayload, verifyReplaySignature } from '@/common/utils';
 import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
-import { LeaderboardRankTrackerService } from '@/features/leaderboard/leaderboard-rank-tracker.service';
-
-export interface RejectedResultItem {
-  clientResultId: string;
-  reason: 'invalid_signature';
-}
+import { NotificationDeliveryService } from '@/features/notifications/notification-delivery.service';
 
 @Injectable()
 export class ResultsService {
+  private readonly logger = new Logger(ResultsService.name);
+
   constructor(
     private readonly resultsRepository: ResultsRepository,
     private readonly rankResolver: LeaderboardRankResolverService,
-    private readonly rankTracker: LeaderboardRankTrackerService,
+    private readonly notificationDelivery: NotificationDeliveryService,
   ) {}
 
   async submitResults(guest: AuthenticatedGuest, dto: SubmitResultBatchDto) {
-    const gameId = requireGameId(dto.gameId);
+    const gameId = dto.gameId;
 
     if (guest.gameId !== gameId) {
       throw new ForbiddenException('Guest does not belong to this game');
     }
 
-    const rejected: RejectedResultItem[] = [];
-    const validItems: SubmitResultBatchDto['items'] = [];
-    const replaySecret = getGameConfig(gameId).replaySecret;
-
-    for (const item of dto.items) {
-      const payload = buildReplayPayload({
-        gameId,
-        score: item.score,
-        guestId: guest.guestId,
-        playedAt: item.playedAt,
-        metadata: item.metadata,
-        clientResultId: item.clientResultId,
-      });
-
-      if (verifyReplaySignature(replaySecret, payload, item.signature)) {
-        validItems.push(item);
-      } else {
-        rejected.push({ clientResultId: item.clientResultId, reason: 'invalid_signature' });
-      }
-    }
-
     const batchResult = await this.resultsRepository.submitValidatedBatch(
       gameId,
       guest.guestId,
-      validItems,
+      dto.items,
     );
 
     if (
@@ -60,11 +35,7 @@ export class ResultsService {
       batchResult.insertedCount > 0 &&
       batchResult.newBest > (batchResult.previousBest ?? -Infinity)
     ) {
-      this.rankTracker.onScoreUpdated(gameId, guest.guestId, {
-        displacedGuestRank: batchResult.displacedGuestRank,
-        displacedGuestBestScore: batchResult.displacedGuestBestScore,
-        guestAtRank100BeforeGuestId: batchResult.guestAtRank100BeforeGuestId,
-      });
+      this.notifyTop100ExitIfNeeded(gameId, guest.guestId, batchResult);
     }
 
     // Prefer ranks computed inside the submit TX; fall back when nothing inserted.
@@ -74,10 +45,43 @@ export class ResultsService {
         : await this.rankResolver.resolveRank(gameId, guest.guestId);
 
     return {
-      rejectedCount: rejected.length,
       insertedCount: batchResult.insertedCount,
-      rejected: rejected.length > 0 ? rejected : undefined,
       ...(rankInfo ? { rank: rankInfo.rank, bestScore: rankInfo.bestScore } : {}),
     };
+  }
+
+  private notifyTop100ExitIfNeeded(
+    gameId: GameId,
+    submitterGuestId: string,
+    batchResult: {
+      previousBest: number | null;
+      displacedGuestRank: number | null;
+      displacedGuestBestScore: number | null;
+      guestAtRank100BeforeGuestId: string | null;
+    },
+  ): void {
+    const displacedGuestId = batchResult.guestAtRank100BeforeGuestId;
+    if (!displacedGuestId || displacedGuestId === submitterGuestId) {
+      return;
+    }
+
+    const enteredFromOutsideTop100 =
+      batchResult.previousBest === null || batchResult.previousBest < TOP_100_THRESHOLD;
+    if (!enteredFromOutsideTop100) {
+      return;
+    }
+
+    if (
+      batchResult.displacedGuestRank === null ||
+      batchResult.displacedGuestRank <= TOP_100_THRESHOLD
+    ) {
+      return;
+    }
+
+    void this.notificationDelivery
+      .sendTop100Exited(gameId, displacedGuestId, batchResult.displacedGuestRank)
+      .catch((error: unknown) => {
+        this.logger.warn(`Failed to send top_100_exited for guest ${displacedGuestId}`, error);
+      });
   }
 }

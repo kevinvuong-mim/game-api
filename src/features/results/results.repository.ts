@@ -7,10 +7,6 @@ import { PartitionService } from '@/infra/maintenance/partition.service';
 import type { SubmitResultDto } from '@/features/results/dto/submit-result.dto';
 import { LeaderboardScoreApplyService } from '@/features/leaderboard/leaderboard-score-apply.service';
 
-export interface ValidatedResultItem extends SubmitResultDto {
-  signature: string;
-}
-
 export interface BatchSubmitResult {
   insertedCount: number;
   newBest: number | null;
@@ -34,7 +30,7 @@ export class ResultsRepository {
   async submitValidatedBatch(
     gameId: GameId,
     guestId: string,
-    items: ValidatedResultItem[],
+    items: SubmitResultDto[],
   ): Promise<BatchSubmitResult> {
     if (items.length === 0) {
       return emptyBatchResult();
@@ -69,7 +65,6 @@ export class ResultsRepository {
             gameId,
             guestId,
             score: item.score,
-            signature: item.signature,
             clientResultId: item.clientResultId,
             metadata: item.metadata as Prisma.InputJsonValue | undefined,
             playedAt: item.playedAt ? new Date(item.playedAt) : undefined,

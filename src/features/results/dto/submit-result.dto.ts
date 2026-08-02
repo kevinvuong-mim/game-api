@@ -2,7 +2,6 @@ import {
   Max,
   Min,
   IsInt,
-  Matches,
   IsString,
   MaxLength,
   IsISO8601,
@@ -35,8 +34,4 @@ export class SubmitResultDto {
   @IsOptional()
   @IsValidMetadata()
   metadata?: Record<string, string | number | boolean | null>;
-
-  @IsString()
-  @Matches(/^[0-9a-f]{64}$/i)
-  signature!: string;
 }

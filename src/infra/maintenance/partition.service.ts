@@ -1,15 +1,33 @@
+import { Cron } from '@nestjs/schedule';
 import type { Prisma } from '@prisma/client';
-import { Logger, Injectable } from '@nestjs/common';
+import { Logger, Injectable, OnModuleInit } from '@nestjs/common';
 
+import { PARTITION_CRON } from '@/common/constants';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 
 type DbClient = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
-export class PartitionService {
+export class PartitionService implements OnModuleInit {
   private readonly logger = new Logger(PartitionService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  onModuleInit() {
+    void this.ensurePartitionsForUpcomingPeriod();
+  }
+
+  /** Runs at 23:59 on the 28th–31st; only acts on the last day of the month. */
+  @Cron(PARTITION_CRON)
+  async ensurePartitionsBeforeMonthBoundary() {
+    const now = new Date();
+    if (!this.isLastDayOfMonth(now)) {
+      return;
+    }
+
+    this.logger.log('Pre-creating game_results partitions before month boundary');
+    await this.ensurePartitionsForUpcomingPeriod(now);
+  }
 
   async ensurePartitionsForUpcomingPeriod(referenceDate = new Date()): Promise<void> {
     const year = referenceDate.getFullYear();
@@ -46,5 +64,11 @@ export class PartitionService {
     `);
 
     this.logger.log(`Created partition ${tableName}`);
+  }
+
+  private isLastDayOfMonth(date: Date): boolean {
+    const tomorrow = new Date(date);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.getDate() === 1;
   }
 }

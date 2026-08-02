@@ -37,7 +37,7 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 
 ### Business Logic
 
-1. **Validate query**: `@IsEnum(GameId)` trả 400 cho game không hợp lệ; service gọi `validateGameId()` sau DTO validation.
+1. **Validate query**: `@IsEnum(GameId)` trả 400 cho game không hợp lệ.
 2. **Rate limit check**: Giới hạn theo IP (`rate:lb:{ip}`).
 3. **Pagination**: Tính `offset = (page - 1) * limit`. `limit > 100` bị DTO reject (400), service không clamp.
 4. **Count total**: Đếm tổng entry trong bảng `leaderboards` theo `gameId`.

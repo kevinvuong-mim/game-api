@@ -2,14 +2,12 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { AppModule } from '@/app.module';
 import { NestFactory } from '@nestjs/core';
-import { validateGameSecrets } from '@/common/utils';
 import { HttpExceptionFilter } from '@/common/filters';
 import { ResponseInterceptor } from '@/common/interceptors';
 import { Logger, HttpException, ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  validateGameSecrets();
 
   const app = await NestFactory.create(AppModule);
 

@@ -24,11 +24,11 @@ export class RankPushEnqueueService {
   async enqueueRankPushBroadcast(gameId: GameId): Promise<void> {
     const weekKey = getRankPushWeekKey();
     await this.rankPushQueue.add(
-      NOTIFICATION_JOB.START_RANK_PUSH_BROADCAST,
+      NOTIFICATION_JOB.SEND_RANK_PUSH_BATCH,
       { gameId, weekKey },
       {
         ...RANK_PUSH_JOB_DEFAULTS,
-        jobId: `rank-push-start-${gameId}-${weekKey}`,
+        jobId: `rank-push-batch-${gameId}-${weekKey}-start`,
       },
     );
     this.logger.log(`Rank push broadcast enqueued for ${gameId} (${weekKey})`);

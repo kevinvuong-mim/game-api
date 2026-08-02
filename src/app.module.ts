@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { AppService } from '@/app.service';
@@ -26,7 +25,6 @@ import { NotificationsModule } from '@/features/notifications/notifications.modu
     MaintenanceModule,
     NotificationsModule,
     ScheduleModule.forRoot(),
-    EventEmitterModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRootAsync({
       imports: [ConfigModule],

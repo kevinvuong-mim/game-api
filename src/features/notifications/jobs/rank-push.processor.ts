@@ -38,24 +38,11 @@ export class RankPushProcessor extends WorkerHost {
   }
 
   async process(job: Job<RankPushBatchPayload>): Promise<void> {
-    const weekKey = job.data.weekKey ?? getRankPushWeekKey();
-
-    if (job.name === NOTIFICATION_JOB.START_RANK_PUSH_BROADCAST) {
-      await this.rankPushQueue.add(
-        NOTIFICATION_JOB.SEND_RANK_PUSH_BATCH,
-        { gameId: job.data.gameId, weekKey },
-        {
-          ...RANK_PUSH_JOB_DEFAULTS,
-          jobId: `rank-push-batch-${job.data.gameId}-${weekKey}-start`,
-        },
-      );
-      return;
-    }
-
     if (job.name !== NOTIFICATION_JOB.SEND_RANK_PUSH_BATCH) {
       return;
     }
 
+    const weekKey = job.data.weekKey ?? getRankPushWeekKey();
     const { gameId, cursor } = job.data;
     const devices = await this.deviceTokenService.findActiveTokenBatch(
       gameId,

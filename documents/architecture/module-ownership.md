@@ -4,21 +4,25 @@ After the ownership refactor, each Nest feature owns a clear data boundary.
 
 ## Data modules
 
-| Module                  | Owns                                                             | Exported for                                          |
-| ----------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| `GuestDataModule`       | `GuestRepository`                                                | Auth, guest HTTP, devices/FCM, leaderboard names      |
-| `LeaderboardDataModule` | `LeaderboardRepository`, `LeaderboardScoreApplyService`          | Rank reads/writes, TX score-apply + rank delta        |
-| `ResultsDataModule`     | `ResultsRepository` (+ imports LeaderboardData)                  | Result insert/dedup; calls score-apply inside same TX |
-| `CommonModule` (global) | `GuestAuthGuard`, `RateLimitGuard`; re-exports `GuestDataModule` | All features (auth without importing GuestModule)     |
+| Module                  | Owns                                                             | Exported for                                      |
+| ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
+| `GuestDataModule`       | `GuestRepository`                                                | Auth, guest HTTP, devices/FCM, leaderboard names  |
+| `LeaderboardDataModule` | `LeaderboardRepository`, `LeaderboardScoreApplyService`          | Rank reads/writes, TX score-apply + rank delta    |
+| `CommonModule` (global) | `GuestAuthGuard`, `RateLimitGuard`; re-exports `GuestDataModule` | All features (auth without importing GuestModule) |
+
+`ResultsRepository` is **not** in a separate data module — it is provided by `ResultsModule` (see below).
 
 ## Feature modules
 
-| Module                | Responsibility                                                                |
-| --------------------- | ----------------------------------------------------------------------------- |
-| `GuestModule`         | HTTP guest init/name (`GuestService` + controller); imports `GuestDataModule` |
-| `ResultsModule`       | HMAC verify + submit batch + rank tracker side-effects                        |
-| `LeaderboardModule`   | Public leaderboard query + rank resolver/tracker                              |
-| `NotificationsModule` | Devices HTTP + FCM delivery + rank-push BullMQ; imports `GuestDataModule`     |
+| Module                | Responsibility                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------- |
+| `GuestModule`         | HTTP guest init/name (`GuestService` + controller); imports `GuestDataModule`                           |
+| `ResultsModule`       | Submit batch; providers `[ResultsService, ResultsRepository]`; Top-100 exit side-effect after submit    |
+| `LeaderboardModule`   | Public leaderboard query + `LeaderboardRankResolverService`; exports resolver + `LeaderboardDataModule` |
+| `NotificationsModule` | Devices HTTP + FCM delivery + rank-push BullMQ; imports `GuestDataModule`                               |
+| `MaintenanceModule`   | Wires `PartitionService` (partition cron + ensure helpers)                                              |
+
+`ResultsModule` imports `LeaderboardDataModule`, `LeaderboardModule`, `NotificationsModule`, and `MaintenanceModule`.
 
 ## Guest table (`guest_players`)
 
@@ -40,7 +44,7 @@ All reads/writes go through **`GuestRepository`** (provided by **`GuestDataModul
 ## Notifications pipeline
 
 ```
-Listener / RankPushProcessor
+ResultsService.notifyTop100ExitIfNeeded / RankPushProcessor
   → NotificationDeliveryService.sendTop100Exited | sendRankPush | deliver
     → DeviceTokenService → GuestRepository
     → FcmService
@@ -59,10 +63,8 @@ Rank-push files:
 
 ## Constants
 
-| File                        | Contents                                                                  |
-| --------------------------- | ------------------------------------------------------------------------- |
-| `leaderboard.constants.ts`  | `TOP_100_THRESHOLD`                                                       |
-| `notification.constants.ts` | Queues, jobs, FCM channel, i18n, `toNotificationLocaleCode`               |
-| `game.constants.ts`         | `GAME_CONFIG`, `validateGameId` (throws `UnsupportedGameError`, not HTTP) |
-
-HTTP mapping for unknown game IDs: `requireGameId()` in `common/utils/game-id.util.ts`.
+| File                        | Contents                                                    |
+| --------------------------- | ----------------------------------------------------------- |
+| `leaderboard.constants.ts`  | `TOP_100_THRESHOLD`                                         |
+| `notification.constants.ts` | Queues, jobs, FCM channel, i18n, `toNotificationLocaleCode` |
+| `game.constants.ts`         | `GAME_CONFIG` (`rankPushCron` optional per game)            |

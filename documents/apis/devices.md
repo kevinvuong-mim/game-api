@@ -73,7 +73,8 @@ Clear `fcmToken`, `devicePlatform` và `notificationLocale`. Endpoint idempotent
 ## Errors and delivery behavior
 
 - Thiếu/sai Bearer token: 401; DTO invalid/field thừa: 400; vượt shared limit: 429; Redis lỗi trên rate limit: **503** (`Service Temporarily Unavailable`, fail-closed).
-- `fcmToken` unique toàn DB. Code chủ động chuyển ownership trước update để tránh unique conflict.
+- `fcmToken` unique toàn DB. Code chủ động chuyển ownership trước update để tránh unique conflict. Nếu vẫn còn race unique, `DeviceTokenService` map `FcmTokenConflictError` → **409 Conflict**.
+- Guest chưa có token khi PATCH: **404** `Device token not found`.
 - FCM error `messaging/registration-token-not-registered` hoặc `messaging/invalid-registration-token` clear cả ba field device.
 - Locale `VI` map sang `vi`; mọi giá trị còn lại trong delivery path fallback `en`.
 - Thiếu Firebase credentials không làm device API lỗi; dữ liệu vẫn được lưu nhưng delivery bị skip.

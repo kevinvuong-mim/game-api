@@ -61,9 +61,8 @@ model GameResult {
   // Client Identity
   clientResultId String
 
-  // Score & Verification
-  score     Int
-  signature String
+  // Score
+  score Int
 
   // Optional Metadata
   metadata Json?

@@ -96,9 +96,9 @@ Chi tiết: [apis/health-check.md](../apis/health-check.md).
 
 ## Partition maintenance
 
-`MaintenanceService` tự tạo partition `game_results_<YYYY>` khi:
+`PartitionService` (via `MaintenanceModule`) tự tạo partition `game_results_<YYYY>` khi:
 
-- App startup (`onModuleInit` → `PartitionService.ensurePartitionsForUpcomingPeriod()`)
+- App startup (`PartitionService.onModuleInit` → `ensurePartitionsForUpcomingPeriod()`)
 - Cron `59 23 28-31 * *` (handler `ensurePartitionsBeforeMonthBoundary`, chỉ xử lý ngày cuối tháng) + ensure-on-insert
 
 Cron partition không đặt timezone; nó dùng timezone local của process. Startup và ensure-on-insert vẫn bảo vệ việc ghi nếu cron bị lỡ.

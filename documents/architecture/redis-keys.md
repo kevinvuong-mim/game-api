@@ -46,10 +46,10 @@ BullMQ uses the same `REDIS_URL` with its default `bull:` prefix. Queue/job inte
 
 Stable application `jobId`s (not Redis key names, but useful when inspecting BullMQ):
 
-| Pattern                                | Purpose                                |
-| -------------------------------------- | -------------------------------------- |
-| `rank-push-start-{gameId}-{weekKey}`   | Dedupe start-of-week broadcast enqueue |
-| `rank-push-batch-{gameId}-{weekKey}-…` | Dedupe batch chain steps               |
+| Pattern                                              | Purpose                                    |
+| ---------------------------------------------------- | ------------------------------------------ |
+| `rank-push-batch-{gameId}-{weekKey}-start`           | Dedupe first batch of the weekly broadcast |
+| `rank-push-batch-{gameId}-{weekKey}-{cursorGuestId}` | Dedupe subsequent cursor batch steps       |
 
 ## Rank-push send markers
 

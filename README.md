@@ -2,7 +2,7 @@
 
 Backend API for hyper-casual / casual mobile games. **Leaderboard-as-a-Service** for guest-only players — no user accounts, no registration.
 
-Players are identified by anonymous guest tokens. The server handles score storage, HMAC verification, result-ID deduplication, and PostgreSQL leaderboards across multiple games.
+Players are identified by anonymous guest tokens. The server handles score storage, result-ID deduplication, and PostgreSQL leaderboards across multiple games.
 
 **Node.js:** `>= 20`
 
@@ -102,17 +102,17 @@ game-api/
 │   │   ├── filters/               # HttpExceptionFilter
 │   │   ├── guards/                # GuestAuthGuard, RateLimitGuard (via CommonModule)
 │   │   ├── interceptors/          # ResponseInterceptor (standard envelope)
-│   │   ├── utils/                 # HMAC, token hashing, requireGameId
+│   │   ├── utils/                 # Token hashing, advisory lock keys
 │   │   └── common.module.ts       # Global: GuestRepository + auth/rate guards
 │   ├── features/
 │   │   ├── guest/                 # Guest HTTP (init + name)
-│   │   ├── results/               # HMAC submit; ResultsRepository + ResultsDataModule
-│   │   ├── leaderboard/           # LeaderboardRepository, query, rank resolver/tracker
+│   │   ├── results/               # Batch submit; ResultsRepository in ResultsModule
+│   │   ├── leaderboard/           # LeaderboardRepository, query, rank resolver
 │   │   └── notifications/         # Devices, FCM delivery, rank-push jobs
 │   ├── infra/
 │   │   ├── prisma/
 │   │   ├── redis/
-│   │   └── maintenance/           # Partition cron job
+│   │   └── maintenance/           # PartitionService (cron + ensure)
 ├── prisma/
 │   ├── schema.prisma
 │   └── migrations/
@@ -137,26 +137,12 @@ Module boundaries: [documents/architecture/module-ownership.md](./documents/arch
 - Token cached in Redis (TTL 5 min) to avoid DB lookup on every request.
 - `GuestAuthGuard` is provided by global `CommonModule` (uses `GuestRepository`).
 
-### HMAC verification and deduplication
+### Result submit and deduplication
 
-Each result item includes an HMAC-SHA256 signature:
+Authenticated guests batch-submit scores via `POST /results`. Scores are trusted from the authenticated client (offline single-player); there is no HMAC / replay-secret layer.
 
-```ts
-const metadataPart = metadata
-  ? JSON.stringify(
-      Object.keys(metadata)
-        .sort()
-        .reduce<Record<string, string | number | boolean | null>>((acc, key) => {
-          acc[key] = metadata[key];
-          return acc;
-        }, {}),
-    )
-  : '';
-const payload = `${gameId}|${guestId}|${clientResultId}|${score}|${playedAt || ''}|${metadataPart}`;
-const signature = createHmac('sha256', replaySecret).update(payload).digest('hex');
-```
-
-`replaySecret` is configured per game in `src/common/constants/game.constants.ts` and is also shipped to the game client. **HMAC is soft integrity only** — it proves the client knew the shared secret and that signed fields (including canonical metadata) were not altered in transit. It is **not** anti-cheat and does **not** prove a real play session; anyone who extracts the client bundle can forge valid signatures. Treat public leaderboards accordingly. Replay of the same `clientResultId` is prevented separately by database deduplication.
+- `game_results` is partitioned by `createdAt` — no global unique constraint on `clientResultId`
+- Dedup uses Postgres advisory locks per `(gameId, guestId, clientResultId)` in a transaction
 
 ### Leaderboard
 
@@ -167,14 +153,9 @@ const signature = createHmac('sha256', replaySecret).update(payload).digest('hex
 - Guest display names resolved via `GuestRepository.findNamesByIds`
 - No Redis sorted-set cache
 
-### Result deduplication
-
-- `game_results` is partitioned by `createdAt` — no global unique constraint on `clientResultId`
-- Dedup uses Postgres advisory locks per `(gameId, guestId, clientResultId)` in a transaction
-
 ### Scheduled maintenance
 
-- `PartitionService` ensures `game_results_<YYYY>` for the current and next process-local calendar years
+- `PartitionService` (via `MaintenanceModule`) ensures `game_results_<YYYY>` for the current and next process-local calendar years
 - Triggers: startup, ensure-on-insert, and cron `59 23 28-31 * *` (handler acts only on the process-local last day of each month)
 
 See [documents/schedule/game-results-partition.md](./documents/schedule/game-results-partition.md).
@@ -183,7 +164,7 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 - Device fields are stored on `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`) via `GuestRepository`
 - `POST /api/devices` — client registers FCM token after guest init (`DeviceTokenService`)
-- **Top 100 exit**: guest #100 displaced → `PlayerExitedTop100Event.EVENT` → `NotificationDeliveryService.sendTop100Exited`
+- **Top 100 exit**: after submit, `ResultsService` calls `NotificationDeliveryService.sendTop100Exited` directly (fire-and-forget) when #100 is displaced by a submitter whose previous best was outside the Top-100 score band
 - **Scheduled rank push**: Cron → `RankPushEnqueueService` → BullMQ `RankPushProcessor` → `sendRankPush`; Redis send markers prevent duplicate FCM on retry
 - **Rank sau submit**: prefer `currentRank`/`newBest` from the submit TX; fallback `LeaderboardRankResolverService` when nothing was inserted
 - FCM payload `data`: `{ type, route, ...params }`
@@ -248,7 +229,7 @@ Errors use `HttpExceptionFilter` with `success: false`.
 
 ## Related Projects
 
-- [game-apps](../game-apps/) — Phaser 3 + Capacitor client (`guest`, `game-sync`, `leaderboard`, `notifications` modules).
+- [game-apps](../game-apps/) — Phaser 3 + Capacitor client (`guest`, `game-sync`, `game-run`, `leaderboard`, `notifications` modules).
 
 ## License
 
