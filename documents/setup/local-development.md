@@ -150,7 +150,7 @@ npx prisma studio
 
 Mở UI tại `http://localhost:5555` để xem/edit data.
 
-## Kết nối với game-apps
+## Kết nối với game-app
 
 Trên client, set:
 
@@ -159,7 +159,7 @@ VITE_APP_ENV=dev
 VITE_GAME_ID=FRULOOP
 ```
 
-Preset `dev` trong [`game-apps/src/platform/core/config/index.ts`](../../../game-apps/src/platform/core/config/index.ts) dùng `https://game-api-s5kn.onrender.com/api` (cùng URL production). Client không đọc `VITE_API_URL`. Để trỏ local API, tạm sửa preset `apiUrl` trong `config/index.ts`.
+Preset `dev` trong [`game-app/src/platform/core/config/index.ts`](../../../game-app/src/platform/core/config/index.ts) dùng `https://game-api-s5kn.onrender.com/api` (cùng URL production). Client không đọc `VITE_API_URL`. Để trỏ local API, tạm sửa preset `apiUrl` trong `config/index.ts`.
 
 ## Troubleshooting
 

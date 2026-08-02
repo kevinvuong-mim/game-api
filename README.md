@@ -170,7 +170,7 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 - FCM payload `data`: `{ type, route, ...params }`
 - Missing `FIREBASE_*` → push disabled; device APIs vẫn hoạt động
 
-Client setup: [game-apps/documents/setup/firebase-native.md](../game-apps/documents/setup/firebase-native.md).
+Client setup: [game-app/documents/setup/firebase-native.md](../game-app/documents/setup/firebase-native.md).
 
 ## Supported Games
 
@@ -229,7 +229,7 @@ Errors use `HttpExceptionFilter` with `success: false`.
 
 ## Related Projects
 
-- [game-apps](../game-apps/) — Phaser 3 + Capacitor client (`guest`, `game-sync`, `game-run`, `leaderboard`, `notifications` modules).
+- [game-app](../game-app/) — Phaser 3 + Capacitor client (`guest`, `game-sync`, `game-run`, `leaderboard`, `notifications` modules).
 
 ## License
 

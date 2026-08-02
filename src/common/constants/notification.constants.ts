@@ -1,4 +1,4 @@
-/** Must match Android notification channel created by game-apps client. */
+/** Must match Android notification channel created by game-app client. */
 export const FCM_ANDROID_CHANNEL_ID = 'game_alerts';
 
 export const NOTIFICATION_CRON = {

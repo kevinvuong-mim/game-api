@@ -10,7 +10,7 @@ Game được khai báo **trong source code** (type-safe), không có bảng `ga
 2. **`GAME_CONFIG`** — thêm entry trong `src/common/constants/game.constants.ts` (optional `rankPushCron`)
 3. **Migrate** — `npm run prisma:migrate` (và `prisma:generate`) rồi deploy
 
-Client (`game-apps`) chỉ đổi `VITE_GAME_ID` **sau** khi PR API đã merge/deploy. Không thể “chỉ clone kit” mà bỏ qua PR API — các DTO `@IsEnum(GameId)` sẽ từ chối game chưa có bằng HTTP 400.
+Client (`game-app`) chỉ đổi `VITE_GAME_ID` **sau** khi PR API đã merge/deploy. Không thể “chỉ clone kit” mà bỏ qua PR API — các DTO `@IsEnum(GameId)` sẽ từ chối game chưa có bằng HTTP 400.
 
 Thêm game mới luôn yêu cầu deploy backend **và** cập nhật client (coordinated release).
 
@@ -78,13 +78,13 @@ Các module sau tự động hỗ trợ game mới qua `GameId` enum:
 
 `ResultsRepository` nằm trong `ResultsModule` — không cần sửa khi thêm game (đã key theo `GameId`).
 
-## 4. Client — game-apps
+## 4. Client — game-app
 
 ```env
 VITE_GAME_ID=MYGAME
 ```
 
-Client đọc game id qua [`game-apps/src/game/config.ts`](../../../game-apps/src/game/config.ts). Runtime config cũng đọc `VITE_GAME_ID`; API URL hiện lấy từ preset `VITE_APP_ENV` trong [`game-apps/src/platform/core/config/index.ts`](../../../game-apps/src/platform/core/config/index.ts), không đọc `VITE_API_URL`.
+Client đọc game id qua [`game-app/src/game/config.ts`](../../../game-app/src/game/config.ts). Runtime config cũng đọc `VITE_GAME_ID`; API URL hiện lấy từ preset `VITE_APP_ENV` trong [`game-app/src/platform/core/config/index.ts`](../../../game-app/src/platform/core/config/index.ts), không đọc `VITE_API_URL`.
 
 ## 5. Verify sau deploy
 
@@ -99,5 +99,5 @@ curl "https://api.example.com/api/leaderboards?gameId=MYGAME"
 ## Related
 
 - Results API: [apis/results.md](../apis/results.md)
-- Frontend sync: [game-apps/documents/modules/game-result-sync.md](../../../game-apps/documents/modules/game-result-sync.md)
+- Frontend sync: [game-app/documents/modules/game-result-sync.md](../../../game-app/documents/modules/game-result-sync.md)
 - Push jobs: [schedule/fcm-notification-jobs.md](../schedule/fcm-notification-jobs.md)

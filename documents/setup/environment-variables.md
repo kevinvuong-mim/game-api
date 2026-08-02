@@ -93,14 +93,14 @@ NODE_ENV="development"
 
 Backend dùng **Firebase Admin SDK** để gửi FCM push notification tới thiết bị native. Ba biến sau lấy từ **Service Account** của cùng Firebase project mà client dùng (`google-services.json` / `GoogleService-Info.plist`).
 
-> Hướng dẫn cấu hình phía client: [game-apps/documents/setup/firebase-native.md](../../../game-apps/documents/setup/firebase-native.md)
+> Hướng dẫn cấu hình phía client: [game-app/documents/setup/firebase-native.md](../../../game-app/documents/setup/firebase-native.md)
 
 ### Cách lấy credentials
 
 1. Mở [Firebase Console](https://console.firebase.google.com/) → chọn project (cùng project với app mobile)
 2. Vào **Project settings** (biểu tượng bánh răng) → tab **Service accounts**
 3. Chọn **Firebase Admin SDK** → nhấn **Generate new private key** → **Generate key**
-4. Tải file JSON (ví dụ: `game-apps-firebase-adminsdk-xxxxx.json`)
+4. Tải file JSON (ví dụ: `game-app-firebase-adminsdk-xxxxx.json`)
 
 File JSON có dạng:
 
@@ -140,7 +140,7 @@ ID của Firebase project.
 **Ví dụ:**
 
 ```env
-FIREBASE_PROJECT_ID=game-apps-prod
+FIREBASE_PROJECT_ID=game-app-prod
 ```
 
 **Lưu ý:** Phải trùng `project_id` với client (`VITE_FIREBASE_PROJECT_ID` và native config files).
@@ -154,7 +154,7 @@ Email của Service Account dùng để xác thực Admin SDK.
 **Ví dụ:**
 
 ```env
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-abc12@game-apps-prod.iam.gserviceaccount.com
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-abc12@game-app-prod.iam.gserviceaccount.com
 ```
 
 ### FIREBASE_PRIVATE_KEY
