@@ -2,8 +2,8 @@ import { Logger, Injectable } from '@nestjs/common';
 
 import {
   type GameId,
-  NOTIFICATION_ROUTES,
   NOTIFICATION_TYPES,
+  NOTIFICATION_ROUTES,
   toNotificationLocaleCode,
 } from '@/common/constants';
 import { FcmService } from '@/features/notifications/fcm.service';
