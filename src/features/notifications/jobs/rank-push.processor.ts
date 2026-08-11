@@ -73,7 +73,7 @@ export class RankPushProcessor extends WorkerHost {
       }
 
       const sent = await this.notificationDelivery.sendRankPush(
-        device.gameId as GameId,
+        device.gameId,
         device.id,
         rankInfo.rank,
         toNotificationLocaleCode(device.notificationLocale),
