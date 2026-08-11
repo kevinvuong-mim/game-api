@@ -13,7 +13,7 @@ Partition maintenance is **not** an FCM job — see [game-results-partition.md](
 
 Game **without** `rankPushCron` in `GAME_CONFIG` → no weekly rank-push cron for that game.
 
-Example FRULOOP: `rankPushCron: '0 9 * * 6'` (Saturday 09:00 VN).
+Example FRULOOP / MEMORA: `rankPushCron: '0 9 * * 6'` (Saturday 09:00 VN).
 
 ## Push types
 

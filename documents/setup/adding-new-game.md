@@ -36,6 +36,7 @@ export interface GameConfigEntry {
 
 export const GAME_CONFIG: Record<GameId, GameConfigEntry> = {
   [GameId.FRULOOP]: { ... },
+  [GameId.MEMORA]: { ... },
   [GameId.MYGAME]: {
     rankPushCron: '0 9 * * 6', // optional
   },
@@ -55,6 +56,7 @@ File: `prisma/schema.prisma`
 ```prisma
 enum GameId {
   FRULOOP
+  MEMORA
   MYGAME   // thêm
 }
 ```

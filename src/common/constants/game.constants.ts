@@ -10,6 +10,9 @@ export const GAME_CONFIG: Record<GameId, GameConfigEntry> = {
   [GameId.FRULOOP]: {
     rankPushCron: '0 9 * * 6',
   },
+  [GameId.MEMORA]: {
+    rankPushCron: '0 9 * * 6',
+  },
 };
 
 export function getGamesWithRankPushCron(): GameId[] {

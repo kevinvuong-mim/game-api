@@ -43,7 +43,7 @@ Content-Type: application/json
 
 | Field                  | Type   | Required | Validation                                               | Description                                           |
 | ---------------------- | ------ | -------- | -------------------------------------------------------- | ----------------------------------------------------- |
-| gameId                 | string | Yes      | `@IsEnum(GameId)`                                        | Mã game (`FRULOOP`). Phải khớp game của guest token.  |
+| gameId                 | string | Yes      | `@IsEnum(GameId)`                                        | Mã game (`FRULOOP`, `MEMORA`). Phải khớp game của guest token. |
 | items                  | array  | Yes      | Min: 1, Max: 50 items                                    | Danh sách kết quả cần gửi                             |
 | items[].clientResultId | string | Yes      | `@Transform(trim)` + `@IsNotEmpty()` + `@MaxLength(128)` | ID do client tạo; dùng làm dedup key trong guest/game |
 | items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647                         | Điểm số (khớp Prisma `Int` / PG `integer`)            |

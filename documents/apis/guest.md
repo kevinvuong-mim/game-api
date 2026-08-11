@@ -37,7 +37,7 @@ Content-Type: application/json
 
 | Field  | Type   | Required | Validation        | Description                          |
 | ------ | ------ | -------- | ----------------- | ------------------------------------ |
-| gameId | string | Yes      | `@IsEnum(GameId)` | Mã game hợp lệ. Hiện tại: `FRULOOP`. |
+| gameId | string | Yes      | `@IsEnum(GameId)` | Mã game hợp lệ. Hiện tại: `FRULOOP`, `MEMORA`. |
 
 ### Business Logic
 
@@ -323,7 +323,7 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 
 **Result**: DTO `isEnum` validation trả HTTP 400 trước khi service chạy.
 
-**Solution**: Kiểm tra `gameId` đúng (`FRULOOP`) và đã có trong cả Prisma `GameId` lẫn `GAME_CONFIG`.
+**Solution**: Kiểm tra `gameId` đúng (`FRULOOP`, `MEMORA`) và đã có trong cả Prisma `GameId` lẫn `GAME_CONFIG`.
 
 ### Error: "Bearer token required"
 

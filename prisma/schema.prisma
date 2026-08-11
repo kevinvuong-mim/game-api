@@ -9,6 +9,7 @@ datasource db {
 
 enum GameId {
   FRULOOP
+  MEMORA
 }
 
 enum DevicePlatform {

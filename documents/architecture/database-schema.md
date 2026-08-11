@@ -7,7 +7,7 @@ Database: PostgreSQL 16
 
 | Enum                 | Values           |
 | -------------------- | ---------------- |
-| `GameId`             | `FRULOOP`        |
+| `GameId`             | `FRULOOP`, `MEMORA` |
 | `DevicePlatform`     | `IOS`, `ANDROID` |
 | `NotificationLocale` | `EN`, `VI`       |
 

@@ -179,6 +179,7 @@ Games are declared in source code (`GameId` enum), not in a database table.
 | Game ID   | Rank push cron (`rankPushCron`) |
 | --------- | ------------------------------- |
 | `FRULOOP` | `0 9 * * 6` (9:00 Thứ 7, VN TZ) |
+| `MEMORA`  | `0 9 * * 6` (9:00 Thứ 7, VN TZ) |
 
 To add a new game, open **one PR on `game-api`** covering `GameId` + `GAME_CONFIG` + migrate, then update the client. See [documents/setup/adding-new-game.md](./documents/setup/adding-new-game.md).
 

@@ -193,7 +193,7 @@ Các API device token (`POST /api/devices`, v.v.) vẫn hoạt động; chỉ b�
 1. Khởi động lại server: `npm run start:dev`
 2. Xác nhận log: `Firebase Admin SDK initialized`
 3. Đăng ký device token từ app native (xem [Devices API](../apis/devices.md))
-4. Trigger notification bằng cách để một guest mới đi vào Top 100 và đẩy guest #100 cũ ra, hoặc đợi cron theo `GAME_CONFIG.rankPushCron` (FRULOOP: 9:00 Thứ 7, `Asia/Ho_Chi_Minh`). Backend chỉ có push exit cho guest bị đẩy ra, không có push enter.
+4. Trigger notification bằng cách để một guest mới đi vào Top 100 và đẩy guest #100 cũ ra, hoặc đợi cron theo `GAME_CONFIG.rankPushCron` (FRULOOP / MEMORA: 9:00 Thứ 7, `Asia/Ho_Chi_Minh`). Backend chỉ có push exit cho guest bị đẩy ra, không có push enter.
 
 ---
 

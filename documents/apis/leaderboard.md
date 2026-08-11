@@ -30,7 +30,7 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 
 | Field   | Type   | Required | Validation                                    | Default | Description                                       |
 | ------- | ------ | -------- | --------------------------------------------- | ------- | ------------------------------------------------- |
-| gameId  | string | Yes      | Phải là `GameId` hợp lệ                       | -       | Mã game (`FRULOOP`)                               |
+| gameId  | string | Yes      | Phải là `GameId` hợp lệ                       | -       | Mã game (`FRULOOP`, `MEMORA`)                      |
 | page    | number | No       | Min: 1, integer                               | `1`     | Trang hiện tại (1-based)                          |
 | limit   | number | No       | Min: 1, Max: 100 (`@Max(100)` → 400 nếu vượt) | `20`    | Số entry mỗi trang                                |
 | guestId | string | No       | UUID (`@IsUUID()`, không khóa version)        | -       | Guest ID để lấy rank và best score của chính mình |
@@ -279,7 +279,7 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 
 **Result**: DTO validation trả HTTP 400 trước khi service chạy.
 
-**Solution**: Dùng `gameId=FRULOOP` hoặc game ID đã có trong Prisma enum và `GAME_CONFIG`.
+**Solution**: Dùng `gameId=FRULOOP`, `gameId=MEMORA`, hoặc game ID đã có trong Prisma enum và `GAME_CONFIG`.
 
 ### Error: Validation failed (page/limit)
 
