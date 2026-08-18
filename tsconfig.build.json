@@ -5,5 +5,14 @@
   },
   "include": ["src/**/*"],
   "extends": "./tsconfig.json",
-  "exclude": ["dist", "prisma", "documents", "node_modules", "nest-cli.json", "eslint.config.mjs"]
+  "exclude": [
+    "dist",
+    "test",
+    "prisma",
+    "documents",
+    "node_modules",
+    "nest-cli.json",
+    "eslint.config.mjs",
+    "**/*.spec.ts"
+  ]
 }
