@@ -5,7 +5,7 @@
 API quản lý một FCM token cho mỗi guest. Dữ liệu nằm trực tiếp trên `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`) qua **`GuestRepository`** (không có `DeviceTokenRepository` / bảng device riêng).
 
 **Base URL:** `/api/devices`  
-**Authentication:** `Authorization: Bearer <secretToken>` cho cả ba endpoint  
+**Authentication:** `X-Api-Key` + `Authorization: Bearer <secretToken>` cho cả ba endpoint  
 **Rate limit:** 10 requests / 60 giây per guest, dùng chung key `rate:device:{guestId}` giữa POST/PATCH/DELETE  
 **Validation:** global whitelist từ chối field thừa; enum phân biệt hoa/thường
 

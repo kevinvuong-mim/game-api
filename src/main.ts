@@ -29,8 +29,8 @@ async function bootstrap() {
 
   app.enableCors({
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization'],
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
   });
 
   app.useGlobalPipes(

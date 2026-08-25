@@ -14,13 +14,14 @@ API gửi kết quả game (batch submit). Dedup theo `clientResultId` ngăn cù
 
 **Rate Limit**: 20 requests / 60 giây (per guest)
 
-**Authentication**: Required (Bearer Token)
+**Authentication**: `X-Api-Key` + Bearer Token
 
 ### Request Headers
 
 ```
 Authorization: Bearer <secretToken>
 Content-Type: application/json
+X-Api-Key: <API_KEY>
 ```
 
 ### Request Body

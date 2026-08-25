@@ -14,11 +14,13 @@ API lấy bảng xếp hạng (leaderboard) theo game. Hỗ trợ phân trang v�
 
 **Rate Limit**: 30 requests / 60 giây (per IP)
 
-**Authentication**: Public (không yêu cầu token)
+**Authentication**: `X-Api-Key` (không cần Bearer)
 
 ### Request Headers
 
-Không bắt buộc. Có thể gửi `Accept: application/json`.
+```
+X-Api-Key: <API_KEY>
+```
 
 ### Query Parameters
 

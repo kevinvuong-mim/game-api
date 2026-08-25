@@ -2,9 +2,12 @@ import { createHash } from 'node:crypto';
 
 import {
   dedupLockKey,
-  generateSecretToken,
   hashSecretToken,
   leaderboardLockKey,
+  generateSecretToken,
+  timingSafeEqualString,
+  parseConfiguredSecrets,
+  matchesConfiguredSecret,
 } from '@/common/utils/crypto.util';
 
 describe('crypto.util', () => {
@@ -59,6 +62,29 @@ describe('crypto.util', () => {
 
       expect(leaderboardLockKey('FRULOOP')).toBe(expected);
       expect(leaderboardLockKey('MEMORA')).not.toBe(leaderboardLockKey('FRULOOP'));
+    });
+  });
+
+  describe('timingSafeEqualString', () => {
+    it('returns true only for identical strings', () => {
+      expect(timingSafeEqualString('secret', 'secret')).toBe(true);
+      expect(timingSafeEqualString('secret', 'Secret')).toBe(false);
+      expect(timingSafeEqualString('short', 'longer-value')).toBe(false);
+    });
+  });
+
+  describe('parseConfiguredSecrets', () => {
+    it('splits comma-separated keys and drops blanks', () => {
+      expect(parseConfiguredSecrets(' alpha,beta, ,gamma ')).toEqual(['alpha', 'beta', 'gamma']);
+      expect(parseConfiguredSecrets('')).toEqual([]);
+    });
+  });
+
+  describe('matchesConfiguredSecret', () => {
+    it('accepts any configured key', () => {
+      expect(matchesConfiguredSecret('beta', 'alpha, beta, gamma')).toBe(true);
+      expect(matchesConfiguredSecret('nope', 'alpha, beta')).toBe(false);
+      expect(matchesConfiguredSecret('beta', '')).toBe(false);
     });
   });
 });

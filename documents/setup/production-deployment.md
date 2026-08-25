@@ -91,7 +91,8 @@ Chi tiết: [apis/health-check.md](../apis/health-check.md).
 - [ ] Postgres không expose public port
 - [ ] `NODE_ENV=production` — không leak stack / internal exception messages
 - [ ] Reverse proxy (nginx/Caddy) terminate TLS
-- [ ] CORS: cân nhắc whitelist origin (hiện tại open + `credentials: true` trong `main.ts`; methods: `GET, POST, PATCH, DELETE, OPTIONS` — không có `PUT`)
+- [ ] CORS: cân nhắc whitelist origin (hiện tại open + `credentials: true` trong `main.ts`; methods: `GET, POST, PATCH, DELETE, OPTIONS` — không có `PUT`; headers gồm `X-Api-Key`)
+- [ ] `API_KEY` trên Render khớp `VITE_API_KEY` của app; không dùng giá trị `change-me`
 - [ ] Không commit `.env` — dùng secret manager platform
 
 ## Partition maintenance

@@ -8,6 +8,7 @@ Tài liệu này hướng dẫn cách lấy các biến môi trường cần thi
 | ---------------------------------------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                                                         | Yes                   | Prisma/PostgreSQL connection and migrations                                                                                         |
 | `REDIS_URL`                                                            | Yes                   | `RedisService` throws during provider creation if absent; BullMQ also uses this URL                                                 |
+| `API_KEY`                                                              | Yes                   | Shared app secret; missing → 503 on every route except `GET /health`. Comma-separate to rotate                                      |
 | `PORT`                                                                 | No                    | Defaults to `3000` via `process.env.PORT ?? 3000`                                                                                   |
 | `NODE_ENV`                                                             | No                    | Helmet CSP; in production also hides stack **and** raw non-HttpException messages from the error envelope; Docker sets `production` |
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one disables push delivery without disabling device APIs                                                                |
@@ -69,6 +70,19 @@ PORT=3000
 - Port mặc định thường là 3000
 - Đảm bảo port không bị sử dụng bởi ứng dụng khác
 - Có thể thay đổi nếu cần (3001, 8000, 8080, v.v.)
+
+### API_KEY
+
+Shared secret với `game-app` (`VITE_API_KEY`). Client gửi header `X-Api-Key` trên mọi request trừ `GET /api/health`.
+
+```env
+API_KEY="a-long-random-string"
+```
+
+- Thiếu hoặc rỗng → các route (trừ health) trả **503** `API key is not configured`
+- Sai key → **401** `Invalid API key`
+- Xoay key không downtime: `API_KEY="old-key,new-key"` rồi gỡ key cũ sau khi app mới đã ship
+- Secret nằm trong JS bundle — chỉ chặn client ngẫu nhiên, không chống reverse engineer
 
 ### NODE_ENV
 

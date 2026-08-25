@@ -67,16 +67,18 @@ curl http://localhost:3000/api/health
 
 Global prefix: `/api`
 
-| Method | Path            | Auth   | Description                     |
-| ------ | --------------- | ------ | ------------------------------- |
-| GET    | `/health`       | Public | Health check (Postgres + Redis) |
-| POST   | `/guest/init`   | Public | Create guest, receive token     |
-| PATCH  | `/guest/name`   | Bearer | Update display name             |
-| POST   | `/results`      | Bearer | Submit game results (batch)     |
-| GET    | `/leaderboards` | Public | Paginated leaderboard           |
-| POST   | `/devices`      | Bearer | Register FCM device token       |
-| PATCH  | `/devices`      | Bearer | Update FCM token / locale       |
-| DELETE | `/devices`      | Bearer | Unregister FCM device token     |
+All endpoints except `GET /health` require header `X-Api-Key` matching `API_KEY` (comma-separated values allowed for rotation). This is a shared app secret embedded in the client — extractable from the binary.
+
+| Method | Path            | Auth             | Description                     |
+| ------ | --------------- | ---------------- | ------------------------------- |
+| GET    | `/health`       | Public           | Health check (Postgres + Redis) |
+| POST   | `/guest/init`   | API key          | Create guest, receive token     |
+| PATCH  | `/guest/name`   | API key + Bearer | Update display name             |
+| POST   | `/results`      | API key + Bearer | Submit game results (batch)     |
+| GET    | `/leaderboards` | API key          | Paginated leaderboard           |
+| POST   | `/devices`      | API key + Bearer | Register FCM device token       |
+| PATCH  | `/devices`      | API key + Bearer | Update FCM token / locale       |
+| DELETE | `/devices`      | API key + Bearer | Unregister FCM device token     |
 
 Detailed API docs:
 

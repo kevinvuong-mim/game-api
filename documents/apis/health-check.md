@@ -14,7 +14,7 @@ API kiểm tra trạng thái server và các dependency (Postgres, Redis). Dùng
 
 **Rate Limit**: Không áp dụng
 
-**Authentication**: Public (không yêu cầu token)
+**Authentication**: Public (không yêu cầu `X-Api-Key` hay Bearer — probe/load balancer)
 
 ### Request Headers
 

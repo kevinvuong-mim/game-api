@@ -17,12 +17,13 @@ API quản lý guest player (người chơi ẩn danh) cho game. Gồm hai endpo
 
 **Rate Limit**: 3 requests / 60 giây + 15 requests / 3600 giây (per IP)
 
-**Authentication**: Public (không yêu cầu token)
+**Authentication**: `X-Api-Key` (không cần Bearer)
 
 ### Request Headers
 
 ```
 Content-Type: application/json
+X-Api-Key: <API_KEY>
 ```
 
 ### Request Body
@@ -56,13 +57,14 @@ Content-Type: application/json
 
 **Rate Limit**: 10 requests / 60 giây (per guest)
 
-**Authentication**: Required (Bearer Token)
+**Authentication**: `X-Api-Key` + Bearer Token
 
 ### Request Headers
 
 ```
 Authorization: Bearer <secretToken>
 Content-Type: application/json
+X-Api-Key: <API_KEY>
 ```
 
 ### Request Body
