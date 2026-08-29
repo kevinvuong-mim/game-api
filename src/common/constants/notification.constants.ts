@@ -14,6 +14,8 @@ export const NOTIFICATION_JOB = {
 } as const;
 
 export const RANK_PUSH_BATCH_SIZE = 500;
+export const RANK_PUSH_SEND_CONCURRENCY = 10;
+export const RANK_PUSH_LOCK_DURATION_MS = 120_000;
 
 export const NOTIFICATION_ROUTES = {
   LEADERBOARD: 'Leaderboard',

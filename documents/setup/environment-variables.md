@@ -11,7 +11,7 @@ Tài liệu này hướng dẫn cách lấy các biến môi trường cần thi
 | `API_KEY`                                                              | Yes                   | Shared app secret; missing → 503 on every route except `GET /health`. Comma-separate to rotate                                      |
 | `PORT`                                                                 | No                    | Defaults to `3000` via `process.env.PORT ?? 3000`                                                                                   |
 | `NODE_ENV`                                                             | No                    | Helmet CSP; in production also hides stack **and** raw non-HttpException messages from the error envelope; Docker sets `production` |
-| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one disables push delivery without disabling device APIs                                                                |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one **or invalid credentials** disables push without crashing; device APIs still work |
 
 ## 1. Database
 
@@ -194,13 +194,19 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFA
 
 ### Hành vi khi thiếu cấu hình
 
-Nếu **thiếu bất kỳ** biến nào trong ba biến trên, backend vẫn chạy bình thường nhưng **tắt push notification**. Log sẽ có:
+Nếu **thiếu bất kỳ** biến nào trong ba biến trên, **hoặc** credentials sai (key không parse được), backend vẫn chạy bình thường nhưng **tắt push notification**. Log sẽ có:
 
 ```
 Firebase is not configured — push notifications are disabled
 ```
 
-Các API device token (`POST /api/devices`, v.v.) vẫn hoạt động; chỉ bước gửi FCM bị bỏ qua.
+hoặc
+
+```
+Firebase Admin SDK failed to initialize — push notifications are disabled
+```
+
+Các API device token (`POST /api/devices`, v.v.) vẫn hoạt động; chỉ bước gửi FCM bị bỏ qua. Credentials sai **không** làm crash process.
 
 ### Kiểm tra sau khi cấu hình
 
@@ -225,6 +231,7 @@ REDIS_URL="redis://localhost:6379"
 # Server
 PORT=3000
 NODE_ENV="development"
+API_KEY="change-me"
 
 # Firebase Admin SDK
 FIREBASE_PROJECT_ID=
@@ -370,5 +377,14 @@ Error: Failed to parse private key
 ```
 
 → Kiểm tra `FIREBASE_PRIVATE_KEY` có bọc `"..."` và dùng `\n` thay xuống dòng thật.
+
+### 7. 401 Invalid API key / 503 API key is not configured
+
+**Nguyên nhân:**
+
+- Request thiếu header `X-Api-Key`, hoặc không khớp `API_KEY`
+- `API_KEY` trống / chưa set → 503 `API key is not configured` (trừ `GET /api/health`)
+
+**Giải pháp:** Set `API_KEY` trong `.env` (local: copy từ `.env.example`) và gửi header `X-Api-Key` trên mọi request trừ health.
 
 ---

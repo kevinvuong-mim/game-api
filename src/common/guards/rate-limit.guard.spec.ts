@@ -81,12 +81,15 @@ describe('RateLimitGuard', () => {
     );
   });
 
-  it('returns 429 when the IP suffix is empty', async () => {
+  it('uses unknown when request.ip is missing or empty', async () => {
     reflector.getAllAndOverride.mockReturnValue(ipOptions);
+    redisService.consumeRateLimit.mockResolvedValue(true);
 
-    await expect(guard.canActivate(createContext({ ip: '' }))).rejects.toEqual(
-      expect.objectContaining({ status: HttpStatus.TOO_MANY_REQUESTS }),
-    );
+    await expect(guard.canActivate(createContext({}))).resolves.toBe(true);
+    expect(redisService.consumeRateLimit).toHaveBeenCalledWith('rate:init:unknown', 3, 60);
+
+    await expect(guard.canActivate(createContext({ ip: '' }))).resolves.toBe(true);
+    expect(redisService.consumeRateLimit).toHaveBeenCalledWith('rate:init:unknown', 3, 60);
   });
 
   it('returns 429 when the window is exhausted', async () => {
@@ -118,13 +121,5 @@ describe('RateLimitGuard', () => {
       status: HttpStatus.TOO_MANY_REQUESTS,
     });
     expect(redisService.consumeRateLimit).toHaveBeenCalledTimes(2);
-  });
-
-  it('uses unknown when request.ip is missing', async () => {
-    reflector.getAllAndOverride.mockReturnValue(ipOptions);
-    redisService.consumeRateLimit.mockResolvedValue(true);
-
-    await expect(guard.canActivate(createContext({}))).resolves.toBe(true);
-    expect(redisService.consumeRateLimit).toHaveBeenCalledWith('rate:init:unknown', 3, 60);
   });
 });

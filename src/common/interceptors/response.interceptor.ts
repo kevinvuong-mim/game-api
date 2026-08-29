@@ -30,7 +30,6 @@ export class ResponseInterceptor<T> implements NestInterceptor<T, SuccessRespons
   private getDefaultMessage(method: string): string {
     const messages: Record<string, string> = {
       GET: 'Data retrieved successfully',
-      PUT: 'Resource updated successfully',
       POST: 'Resource created successfully',
       PATCH: 'Resource updated successfully',
       DELETE: 'Resource deleted successfully',

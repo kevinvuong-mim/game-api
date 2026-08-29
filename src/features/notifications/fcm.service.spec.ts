@@ -38,6 +38,7 @@ describe('FcmService', () => {
     jest.clearAllMocks();
     firebaseState.apps.length = 0;
     firebaseState.send.mockReset();
+    firebaseState.cert.mockImplementation((value: unknown) => value);
   });
 
   it('stays disabled when Firebase env is incomplete', () => {
@@ -74,6 +75,20 @@ describe('FcmService', () => {
 
     expect(firebaseState.initializeApp).not.toHaveBeenCalled();
     expect(service.isEnabled()).toBe(true);
+  });
+
+  it('stays disabled when credential initialization throws', () => {
+    firebaseState.cert.mockImplementation(() => {
+      throw new Error('bad key');
+    });
+    const service = createService({
+      FIREBASE_PROJECT_ID: 'proj',
+      FIREBASE_CLIENT_EMAIL: 'svc@proj.iam.gserviceaccount.com',
+      FIREBASE_PRIVATE_KEY: 'key',
+    });
+    service.onModuleInit();
+
+    expect(service.isEnabled()).toBe(false);
   });
 
   it('skips send when Firebase is disabled', async () => {

@@ -14,19 +14,25 @@ export class PartitionService implements OnModuleInit {
   constructor(private readonly prisma: PrismaService) {}
 
   onModuleInit() {
-    void this.ensurePartitionsForUpcomingPeriod();
+    void this.ensurePartitionsForUpcomingPeriod().catch((error: unknown) => {
+      this.logger.error('Failed to ensure partitions on startup', error);
+    });
   }
 
   /** Runs at 23:59 on the 28th–31st; only acts on the last day of the month. */
   @Cron(PARTITION_CRON)
   async ensurePartitionsBeforeMonthBoundary() {
-    const now = new Date();
-    if (!this.isLastDayOfMonth(now)) {
-      return;
-    }
+    try {
+      const now = new Date();
+      if (!this.isLastDayOfMonth(now)) {
+        return;
+      }
 
-    this.logger.log('Pre-creating game_results partitions before month boundary');
-    await this.ensurePartitionsForUpcomingPeriod(now);
+      this.logger.log('Pre-creating game_results partitions before month boundary');
+      await this.ensurePartitionsForUpcomingPeriod(now);
+    } catch (error: unknown) {
+      this.logger.error('Failed to ensure partitions before month boundary', error);
+    }
   }
 
   async ensurePartitionsForUpcomingPeriod(referenceDate = new Date()): Promise<void> {

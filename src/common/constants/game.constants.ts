@@ -20,7 +20,3 @@ export function getGamesWithRankPushCron(): GameId[] {
     .filter(([, config]) => config.rankPushCron)
     .map(([gameId]) => gameId as GameId);
 }
-
-export function getGameConfig(gameId: GameId) {
-  return GAME_CONFIG[gameId];
-}

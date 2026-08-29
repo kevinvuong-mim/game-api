@@ -64,4 +64,16 @@ describe('RankPushScheduler', () => {
       expect.stringMatching(/^(FRULOOP|MEMORA)$/),
     );
   });
+
+  it('swallows enqueue errors so a cron tick cannot crash the process', async () => {
+    rankPushEnqueue.enqueueRankPushBroadcast.mockRejectedValue(new Error('redis down'));
+    const scheduler = new RankPushScheduler(
+      schedulerRegistry as unknown as SchedulerRegistry,
+      rankPushEnqueue as unknown as RankPushEnqueueService,
+    );
+    scheduler.onModuleInit();
+
+    expect(() => cronJobs[0].onTick()).not.toThrow();
+    await new Promise((resolve) => setImmediate(resolve));
+  });
 });

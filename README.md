@@ -38,7 +38,7 @@ cp .env.example .env
 
 Copy values from [`.env.example`](./.env.example) (dev credentials for local Postgres/Redis). Full reference: [documents/setup/environment-variables.md](./documents/setup/environment-variables.md).
 
-Push is optional: server starts without Firebase; device APIs still work.
+Push is optional: server starts without Firebase, and also starts if Firebase credentials are invalid (push stays disabled); device APIs still work.
 
 ### 3. Install and migrate
 
@@ -100,12 +100,13 @@ game-api/
 │   ├── app.controller.ts          # GET /api/health
 │   ├── common/
 │   │   ├── constants/             # GameId, leaderboard, notifications, rate limits
-│   │   ├── decorators/            # @Guest, @RateLimit
+│   │   ├── decorators/            # @Guest, @RateLimit, @SkipApiKey
 │   │   ├── filters/               # HttpExceptionFilter
-│   │   ├── guards/                # GuestAuthGuard, RateLimitGuard (via CommonModule)
+│   │   ├── guards/                # ApiKeyGuard (global APP_GUARD), GuestAuthGuard, RateLimitGuard
 │   │   ├── interceptors/          # ResponseInterceptor (standard envelope)
-│   │   ├── utils/                 # Token hashing, advisory lock keys
-│   │   └── common.module.ts       # Global: GuestRepository + auth/rate guards
+│   │   ├── validators/            # @IsValidMetadata
+│   │   ├── utils/                 # Token hashing, advisory lock keys, API key compare
+│   │   └── common.module.ts       # Global: ApiKeyGuard + GuestAuthGuard + RateLimitGuard; re-exports GuestDataModule
 │   ├── features/
 │   │   ├── guest/                 # Guest HTTP (init + name)
 │   │   ├── results/               # Batch submit; ResultsRepository in ResultsModule
@@ -138,6 +139,7 @@ Module boundaries: [documents/architecture/module-ownership.md](./documents/arch
 - Server stores only SHA-256 hash. Subsequent requests use `Authorization: Bearer <token>`.
 - Token cached in Redis (TTL 5 min) to avoid DB lookup on every request.
 - `GuestAuthGuard` is provided by global `CommonModule` (uses `GuestRepository`).
+- Global `ApiKeyGuard` requires `X-Api-Key` on every route except `GET /health` (`@SkipApiKey`).
 
 ### Result submit and deduplication
 
@@ -166,7 +168,7 @@ See [documents/schedule/game-results-partition.md](./documents/schedule/game-res
 
 - Device fields are stored on `guest_players` (`fcmToken`, `devicePlatform`, `notificationLocale`) via `GuestRepository`
 - `POST /api/devices` — client registers FCM token after guest init (`DeviceTokenService`)
-- **Top 100 exit**: after submit, `ResultsService` calls `NotificationDeliveryService.sendTop100Exited` directly (fire-and-forget) when #100 is displaced by a submitter whose previous best was outside the Top-100 score band
+- **Top 100 exit**: after submit, `ResultsService` calls `NotificationDeliveryService.sendTop100Exited` directly (fire-and-forget) when the guest previously at rank #100 is pushed to rank >100
 - **Scheduled rank push**: Cron → `RankPushEnqueueService` → BullMQ `RankPushProcessor` → `sendRankPush`; Redis send markers prevent duplicate FCM on retry
 - **Rank sau submit**: prefer `currentRank`/`newBest` from the submit TX; fallback `LeaderboardRankResolverService` when nothing was inserted
 - FCM payload `data`: `{ type, route, ...params }`
@@ -207,8 +209,11 @@ Errors use `HttpExceptionFilter` with `success: false`.
 | Command                   | Description                   |
 | ------------------------- | ----------------------------- |
 | `npm run start:dev`       | Dev server with hot-reload    |
+| `npm run start:debug`     | Dev + Node inspector          |
 | `npm run start:prod`      | Run compiled `dist/main`      |
 | `npm run build`           | Compile TypeScript            |
+| `npm run test`            | Run unit tests (Jest)         |
+| `npm run typecheck`       | `tsc --noEmit` (build tsconfig) |
 | `npm run lint`            | ESLint with auto-fix          |
 | `npm run format`          | Prettier write                |
 | `npm run prisma:migrate`  | Run Prisma migrations (dev)   |

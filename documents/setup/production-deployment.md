@@ -44,12 +44,15 @@ NODE_ENV=production
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
 PORT=3000
+API_KEY=...
 
 # Optional — FCM
 FIREBASE_PROJECT_ID=...
 FIREBASE_CLIENT_EMAIL=...
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
+
+**Lưu ý `API_KEY`:** Bắt buộc. Thiếu → 503 trên mọi route trừ `GET /api/health`. Phải khớp `VITE_API_KEY` của game-app.
 
 **Lưu ý `FIREBASE_PRIVATE_KEY`:** Dùng `\n` literal trong env string, không xuống dòng thật.
 
@@ -83,6 +86,8 @@ livenessProbe:
 ```
 
 Chi tiết: [apis/health-check.md](../apis/health-check.md).
+
+Dockerfile runtime stage also defines `HEALTHCHECK` against `GET /api/health` (uses `PORT` or 3000).
 
 ## Security checklist
 
@@ -144,7 +149,7 @@ Log quan trọng (NestJS `Logger`):
 - `HttpExceptionFilter` — mọi HTTP error
 - `PartitionService` — partition create (partition đã tồn tại thì silent, không log skip)
 - `RankPushScheduler` — scheduled rank push batch (per-game `rankPushCron` từ `GAME_CONFIG`)
-- `Firebase is not configured` — push disabled
+- `Firebase is not configured` / `Firebase Admin SDK failed to initialize` — push disabled (API vẫn start)
 
 Chưa có `/api/metrics` (Prometheus) — optional tương lai.
 

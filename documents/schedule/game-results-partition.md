@@ -26,8 +26,8 @@ Tài liệu này mô tả chi tiết cron job được triển khai trong file `
 
 **Startup trigger (bổ sung):**
 
-- Ngoài cron, `PartitionService.onModuleInit()` cũng gọi `ensurePartitionsForUpcomingPeriod()`.
-- Đảm bảo partition cho năm hiện tại và năm tiếp theo tồn tại ngay khi app khởi động, không cần chờ đến ngày 1 tháng sau.
+- Ngoài cron, `PartitionService.onModuleInit()` cũng gọi `ensurePartitionsForUpcomingPeriod()` (lỗi được log, không làm crash process).
+- Đảm bảo partition cho năm hiện tại và năm tiếp theo tồn tại ngay khi app khởi động, không cần chờ cron cuối tháng.
 
 **Related Fields / Tables:**
 
@@ -35,11 +35,11 @@ Tài liệu này mô tả chi tiết cron job được triển khai trong file `
 - `game_results_<YYYY>`: partition con theo từng năm dương lịch.
 - `createdAt`: partition key — mỗi row được route vào partition theo năm của timestamp này.
 - `PARTITION_CRON`: hằng số cron `59 23 28-31 * *` trong `src/common/constants/runtime.constants.ts`.
-- `ResultsRepository` gọi `PartitionService.ensurePartitionForInsertDate()` trong transaction trước khi insert — lớp bảo vệ cuối nếu cron bị lỡ.
+- `ResultsRepository` gọi `PartitionService.ensurePartitionForInsertDate()` **trước** transaction insert — lớp bảo vệ cuối nếu cron bị lỡ (DDL không nằm trong TX submit).
 
 **General Notes:**
 
-- Prisma không hỗ trợ declarative partitioning — bảng `game_results` được chuyển qua custom SQL migration [`prisma/migrations/20260709123010_partition_game_results/migration.sql`](../../prisma/migrations/20260709123010_partition_game_results/migration.sql).
+- Prisma không hỗ trợ declarative partitioning — bảng `game_results` được chuyển qua custom SQL migration [`prisma/migrations/20260829090606_partition_game_results/migration.sql`](../../prisma/migrations/20260829090606_partition_game_results/migration.sql).
 - Migration tạo partition cho mọi năm có dữ liệu cũ, năm hiện tại của PostgreSQL và ít nhất năm kế tiếp; các năm sau do `PartitionService` quản lý.
 - PostgreSQL yêu cầu mọi `UNIQUE` constraint trên partitioned table phải chứa partition key — vì vậy **không thể** dùng `UNIQUE (gameId, guestId, clientResultId)` trên `game_results`. Dedup được xử lý bằng advisory lock trong `ResultsRepository` (xem [Results API](../apis/results.md)).
 - Cron constant được định nghĩa cố định trong source (`PARTITION_CRON`), không đọc từ biến môi trường.

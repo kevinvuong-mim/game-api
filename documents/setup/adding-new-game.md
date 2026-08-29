@@ -93,9 +93,11 @@ Client đọc game id qua [`game-app/src/game/config.ts`](../../../game-app/src/
 ```bash
 curl -X POST https://api.example.com/api/guest/init \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: <API_KEY>" \
   -d '{"gameId": "MYGAME"}'
 
-curl "https://api.example.com/api/leaderboards?gameId=MYGAME"
+curl "https://api.example.com/api/leaderboards?gameId=MYGAME" \
+  -H "X-Api-Key: <API_KEY>"
 ```
 
 ## Related

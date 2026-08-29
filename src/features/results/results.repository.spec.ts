@@ -1,5 +1,6 @@
 import { GameId } from '@prisma/client';
 
+import { SUBMIT_RESULT_TX } from '@/common/constants';
 import type { PrismaService } from '@/infra/prisma/prisma.service';
 import { ResultsRepository } from '@/features/results/results.repository';
 import type { PartitionService } from '@/infra/maintenance/partition.service';
@@ -30,17 +31,30 @@ describe('ResultsRepository', () => {
     );
   });
 
-  it('returns an empty result without opening a transaction when the batch is empty', async () => {
+  it('ensures partitions then opens a transaction with an extended timeout', async () => {
+    tx.gameResult.findFirst.mockResolvedValue({ id: 'existing' });
+
+    await repository.submitValidatedBatch(GameId.FRULOOP, 'g1', [
+      { clientResultId: 'dup', score: 1 },
+    ]);
+
+    expect(partitionService.ensurePartitionForInsertDate).toHaveBeenCalledWith(expect.any(Date));
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      maxWait: SUBMIT_RESULT_TX.maxWait,
+      timeout: SUBMIT_RESULT_TX.timeout,
+    });
+  });
+
+  it('returns an empty result when the batch is empty', async () => {
     await expect(repository.submitValidatedBatch(GameId.FRULOOP, 'g1', [])).resolves.toEqual({
       newBest: null,
       insertedCount: 0,
       currentRank: null,
       previousBest: null,
       displacedGuestRank: null,
-      displacedGuestBestScore: null,
       guestAtRank100BeforeGuestId: null,
     });
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(leaderboardScoreApply.applyBestScoreAndCollectDelta).not.toHaveBeenCalled();
   });
 
   it('skips duplicates and applies the max inserted score', async () => {
@@ -53,7 +67,6 @@ describe('ResultsRepository', () => {
       currentRank: 3,
       previousBest: 10,
       displacedGuestRank: null,
-      displacedGuestBestScore: null,
       guestAtRank100BeforeGuestId: null,
     });
 
@@ -63,7 +76,6 @@ describe('ResultsRepository', () => {
       { clientResultId: 'b', score: 40, playedAt: '2026-01-01T00:00:00.000Z', metadata: { w: 1 } },
     ]);
 
-    expect(partitionService.ensurePartitionForInsertDate).toHaveBeenCalled();
     expect(tx.$executeRaw).toHaveBeenCalledTimes(3);
     expect(tx.gameResult.create).toHaveBeenCalledTimes(2);
     expect(leaderboardScoreApply.applyBestScoreAndCollectDelta).toHaveBeenCalledWith(

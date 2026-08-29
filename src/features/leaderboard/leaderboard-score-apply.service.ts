@@ -10,7 +10,6 @@ export interface LeaderboardScoreDelta {
   currentRank: number;
   previousBest: number | null;
   displacedGuestRank: number | null;
-  displacedGuestBestScore: number | null;
   guestAtRank100BeforeGuestId: string | null;
 }
 
@@ -28,12 +27,39 @@ export class LeaderboardScoreApplyService {
     guestId: string,
     candidateScore: number,
   ): Promise<LeaderboardScoreDelta> {
+    const previousRow = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
+    const previousBest = previousRow?.bestScore ?? null;
+
+    if (previousBest !== null && candidateScore <= previousBest) {
+      return this.unchangedBest(tx, gameId, guestId, previousBest);
+    }
+
     // Serialize Top-100 snapshots + upserts per game so concurrent submits cannot
     // both read the same #100 guest and emit duplicate exit notifications.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${leaderboardLockKey(gameId)})`;
 
-    const previousRow = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
-    const previousBest = previousRow?.bestScore ?? null;
+    const previousAfterLock = await this.leaderboardRepository.getGuestBestScoreTx(
+      tx,
+      gameId,
+      guestId,
+    );
+    const previousBestAfterLock = previousAfterLock?.bestScore ?? null;
+
+    if (previousBestAfterLock !== null && candidateScore <= previousBestAfterLock) {
+      return this.unchangedBest(tx, gameId, guestId, previousBestAfterLock);
+    }
+
+    if (previousBestAfterLock !== null) {
+      const previousRank = await this.resolveRankFromScoreTx(
+        tx,
+        gameId,
+        guestId,
+        previousBestAfterLock,
+      );
+      if (previousRank <= TOP_100_THRESHOLD) {
+        return this.upsertNewBest(tx, gameId, guestId, candidateScore, previousBestAfterLock);
+      }
+    }
 
     const guestAtRank100 = await this.leaderboardRepository.findGuestAtRankTx(
       tx,
@@ -42,14 +68,15 @@ export class LeaderboardScoreApplyService {
     );
     const guestAtRank100BeforeGuestId = guestAtRank100[0]?.guestId ?? null;
 
-    await this.leaderboardRepository.upsertBestScoreTx(tx, gameId, guestId, candidateScore);
-
-    const row = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
-    const newBest = row?.bestScore ?? candidateScore;
-    const currentRank = await this.resolveRankFromScoreTx(tx, gameId, guestId, newBest);
+    const applied = await this.upsertNewBest(
+      tx,
+      gameId,
+      guestId,
+      candidateScore,
+      previousBestAfterLock,
+    );
 
     let displacedGuestRank: number | null = null;
-    let displacedGuestBestScore: number | null = null;
     if (guestAtRank100BeforeGuestId && guestAtRank100BeforeGuestId !== guestId) {
       const displaced = await this.leaderboardRepository.getGuestBestScoreTx(
         tx,
@@ -57,7 +84,6 @@ export class LeaderboardScoreApplyService {
         guestAtRank100BeforeGuestId,
       );
       if (displaced) {
-        displacedGuestBestScore = displaced.bestScore;
         displacedGuestRank = await this.resolveRankFromScoreTx(
           tx,
           gameId,
@@ -68,11 +94,8 @@ export class LeaderboardScoreApplyService {
     }
 
     return {
-      newBest,
-      currentRank,
-      previousBest,
+      ...applied,
       displacedGuestRank,
-      displacedGuestBestScore,
       guestAtRank100BeforeGuestId,
     };
   }
@@ -91,5 +114,41 @@ export class LeaderboardScoreApplyService {
       bestScore,
     );
     return betterCount + 1;
+  }
+
+  private async unchangedBest(
+    tx: Prisma.TransactionClient,
+    gameId: GameId,
+    guestId: string,
+    bestScore: number,
+  ): Promise<LeaderboardScoreDelta> {
+    const currentRank = await this.resolveRankFromScoreTx(tx, gameId, guestId, bestScore);
+    return {
+      newBest: bestScore,
+      currentRank,
+      previousBest: bestScore,
+      displacedGuestRank: null,
+      guestAtRank100BeforeGuestId: null,
+    };
+  }
+
+  private async upsertNewBest(
+    tx: Prisma.TransactionClient,
+    gameId: GameId,
+    guestId: string,
+    candidateScore: number,
+    previousBest: number | null,
+  ): Promise<LeaderboardScoreDelta> {
+    await this.leaderboardRepository.upsertBestScoreTx(tx, gameId, guestId, candidateScore);
+    const row = await this.leaderboardRepository.getGuestBestScoreTx(tx, gameId, guestId);
+    const newBest = row?.bestScore ?? candidateScore;
+    const currentRank = await this.resolveRankFromScoreTx(tx, gameId, guestId, newBest);
+    return {
+      newBest,
+      currentRank,
+      previousBest,
+      displacedGuestRank: null,
+      guestAtRank100BeforeGuestId: null,
+    };
   }
 }

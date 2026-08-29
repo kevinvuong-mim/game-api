@@ -2,7 +2,7 @@
 
 ## Overview
 
-API gửi kết quả game (batch submit). Dedup theo `clientResultId` ngăn cùng kết quả được ghi lại. Batch cập nhật leaderboard best score và, khi submitter có previous best ngoài Top-100 score band (`previousBest < 100` hoặc null) đẩy guest #100 xuống rank >100, có thể gửi FCM `top_100_exited` cho guest bị đẩy ra. Không có notification “entered Top 100”. Scores trusted từ authenticated client — không có HMAC / signature.
+API gửi kết quả game (batch submit). Dedup theo `clientResultId` ngăn cùng kết quả được ghi lại. Batch cập nhật leaderboard best score và, khi submitter từ ngoài Top 100 (rank >100 hoặc chưa có rank) đẩy guest #100 xuống rank >100, có thể gửi FCM `top_100_exited` cho guest bị đẩy ra. Không có notification “entered Top 100”. Scores trusted từ authenticated client — không có HMAC / signature.
 
 **Base URL**: `/api/results`
 
@@ -61,16 +61,21 @@ X-Api-Key: <API_KEY>
 
 ### Business Logic
 
+Guards chạy trước ValidationPipe: `X-Api-Key` (global) → `GuestAuthGuard` → rate limit → DTO.
+
 1. **Authenticate**: `GuestAuthGuard` xác thực Bearer token.
 2. **Rate limit check**: Giới hạn theo `guestId` (`rate:result:{guestId}`).
-3. **Validate gameId**: `@IsEnum(GameId)` trả 400 cho giá trị không hợp lệ; sau đó kiểm tra `guest.gameId === dto.gameId` (403 nếu không khớp).
-4. **Atomic batch insert** (tất cả item trong một transaction):
+3. **Validate body**: `@IsEnum(GameId)` trả 400 cho giá trị không hợp lệ; sau đó kiểm tra `guest.gameId === dto.gameId` (403 nếu không khớp).
+4. **Ensure partition then atomic batch insert**:
+   - `PartitionService.ensurePartitionForInsertDate()` **trước** transaction (DDL không nằm trong TX submit).
+   - Transaction timeout 30s (`SUBMIT_RESULT_TX`).
    - Advisory lock: `pg_advisory_xact_lock` theo `(gameId, guestId, clientResultId)`.
    - Check duplicate → skip nếu `clientResultId` đã tồn tại.
    - Insert vào `game_results` nếu chưa có.
 5. **Update leaderboard** (cùng transaction với insert):
-   - Upsert `leaderboards.bestScore` = `GREATEST(current, newScore)`.
-6. **Top 100 exit (optional FCM)**: Chỉ khi batch tạo best score mới. Trong TX, capture guest #100 trước upsert; sau upsert resolve rank của guest đó. `ResultsService` gọi trực tiếp `NotificationDeliveryService.sendTop100Exited` (fire-and-forget) khi displaced guest rank >100 **và** previous best của submitter nằm ngoài Top-100 score band (`null` hoặc `< 100`). Submitter không nhận exit — `bestScore` chỉ tăng/`GREATEST`.
+   - Nếu candidate score **không** phải best mới: không lấy lock toàn game, không snapshot #100; chỉ trả rank hiện tại.
+   - Nếu là best mới: per-game advisory lock. Nếu submitter **đã** ở rank ≤100, upsert `bestScore` và bỏ snapshot #100 (nhảy trong Top 100 không đẩy #100 ra). Nếu chưa có rank hoặc rank >100: snapshot guest #100, rồi upsert.
+6. **Top 100 exit (optional FCM)**: Chỉ khi batch tạo best score mới **và** snapshot #100 được lấy (submitter vào từ ngoài Top 100). Sau upsert, resolve rank của guest #100 cũ. `ResultsService` gọi trực tiếp `NotificationDeliveryService.sendTop100Exited` (fire-and-forget) khi displaced guest rank >100. `TOP_100_THRESHOLD` là cutoff **rank**, không phải score. Submitter không nhận exit — `bestScore` chỉ tăng.
 7. **Resolve rank**: Prefer `currentRank`/`newBest` từ submit TX; trả `rank` và `bestScore` khi guest có entry trên leaderboard.
 8. **Return summary**: `insertedCount`, `rank?`, `bestScore?` trong `data` envelope.
 
@@ -130,6 +135,10 @@ Trả về khi body không hợp lệ (thiếu field, items rỗng, > 50 items, 
   "path": "/api/results"
 }
 ```
+
+**401 Unauthorized - Invalid API key**
+
+Thiếu hoặc sai `X-Api-Key` → `401` `Invalid API key`. `API_KEY` chưa cấu hình → `503` `API key is not configured`.
 
 **401 Unauthorized - Thiếu hoặc sai token**
 
@@ -199,6 +208,7 @@ Player hoàn thành một ván, client gửi kết quả.
 curl -X POST http://localhost:3000/api/results \
   -H "Authorization: Bearer xK9mP2nQ7vR4sT8wY1zA3bC5dE6fG0hJ" \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: <API_KEY>" \
   -d '{
     "gameId": "FRULOOP",
     "items": [
@@ -241,6 +251,7 @@ Client sync nhiều kết quả đã chơi offline (tối đa 50 items/request).
 curl -X POST http://localhost:3000/api/results \
   -H "Authorization: Bearer xK9mP2nQ7vR4sT8wY1zA3bC5dE6fG0hJ" \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: <API_KEY>" \
   -d '{
     "gameId": "FRULOOP",
     "items": [
@@ -279,6 +290,7 @@ Client retry gửi cùng `clientResultId` — server skip duplicate.
 curl -X POST http://localhost:3000/api/results \
   -H "Authorization: Bearer xK9mP2nQ7vR4sT8wY1zA3bC5dE6fG0hJ" \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: <API_KEY>" \
   -d '{
     "gameId": "FRULOOP",
     "items": [
@@ -311,7 +323,7 @@ curl -X POST http://localhost:3000/api/results \
 
 ## Security Considerations
 
-1. **Bearer authentication**: Chỉ guest đã init mới gửi được kết quả.
+1. **API key + Bearer**: Mọi request cần `X-Api-Key`; chỉ guest đã init mới gửi được kết quả.
 2. **Game isolation**: `guest.gameId` phải khớp `body.gameId` — ngăn cross-game submit.
 3. **Atomic dedup**: Advisory lock đảm bảo không insert trùng `clientResultId` dù concurrent requests.
 4. **Rate limiting**: 20 requests/60s per guest chống spam.
@@ -342,7 +354,7 @@ curl -X POST http://localhost:3000/api/results \
 
 **Cause**: Thiếu Authorization header
 
-**Solution**: Gửi `Authorization: Bearer <secretToken>` từ `POST /api/guest/init`
+**Solution**: Gửi `Authorization: Bearer <secretToken>` từ `POST /api/guest/init` (kèm `X-Api-Key`)
 
 ### Error: Validation failed (metadata)
 

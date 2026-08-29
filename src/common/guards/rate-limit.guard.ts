@@ -46,11 +46,7 @@ export class RateLimitGuard implements CanActivate {
         options.keySource === 'guest' ? request.user?.guestId : this.extractClientIp(request);
 
       if (!keySuffix) {
-        if (options.keySource === 'guest') {
-          throw new UnauthorizedException('Authentication required for rate limiting');
-        }
-
-        throw new HttpException('Too Many Requests', HttpStatus.TOO_MANY_REQUESTS);
+        throw new UnauthorizedException('Authentication required for rate limiting');
       }
 
       let allowed: boolean;
@@ -78,6 +74,6 @@ export class RateLimitGuard implements CanActivate {
     // Use Express `request.ip` only. With `trust proxy` enabled in main.ts,
     // Express derives the client IP from X-Forwarded-For safely. Reading the
     // header here directly would let clients spoof rate-limit buckets.
-    return request.ip ?? 'unknown';
+    return request.ip || 'unknown';
   }
 }

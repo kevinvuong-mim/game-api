@@ -21,19 +21,77 @@ describe('LeaderboardScoreApplyService', () => {
     );
   });
 
-  it('collects before/after rank fields when a different guest occupied #100', async () => {
+  it('skips the game lock and snapshot when the candidate is not a new best', async () => {
+    leaderboardRepository.getGuestBestScoreTx.mockResolvedValue({ bestScore: 80 });
+    leaderboardRepository.countBetterRanksTx.mockResolvedValue(4);
+
+    const result = await service.applyBestScoreAndCollectDelta(
+      tx as never,
+      GameId.FRULOOP,
+      'submitter',
+      50,
+    );
+
+    expect(tx.$executeRaw).not.toHaveBeenCalled();
+    expect(leaderboardRepository.findGuestAtRankTx).not.toHaveBeenCalled();
+    expect(leaderboardRepository.upsertBestScoreTx).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      newBest: 80,
+      currentRank: 5,
+      previousBest: 80,
+      displacedGuestRank: null,
+      guestAtRank100BeforeGuestId: null,
+    });
+  });
+
+  it('skips the #100 snapshot when the submitter was already in Top 100', async () => {
     leaderboardRepository.getGuestBestScoreTx
-      .mockResolvedValueOnce({ bestScore: 20 })
-      .mockResolvedValueOnce({ bestScore: 80 })
-      .mockResolvedValueOnce({ bestScore: 40 });
-    leaderboardRepository.findGuestAtRankTx.mockResolvedValue([{ guestId: 'g100' }]);
-    leaderboardRepository.countBetterRanksTx.mockResolvedValueOnce(4).mockResolvedValueOnce(100);
+      .mockResolvedValueOnce({ bestScore: 50 })
+      .mockResolvedValueOnce({ bestScore: 50 })
+      .mockResolvedValueOnce({ bestScore: 80 });
+    leaderboardRepository.countBetterRanksTx.mockResolvedValueOnce(4).mockResolvedValueOnce(0);
 
     const result = await service.applyBestScoreAndCollectDelta(
       tx as never,
       GameId.FRULOOP,
       'submitter',
       80,
+    );
+
+    expect(tx.$executeRaw).toHaveBeenCalled();
+    expect(leaderboardRepository.findGuestAtRankTx).not.toHaveBeenCalled();
+    expect(leaderboardRepository.upsertBestScoreTx).toHaveBeenCalledWith(
+      tx,
+      GameId.FRULOOP,
+      'submitter',
+      80,
+    );
+    expect(result).toEqual({
+      newBest: 80,
+      currentRank: 1,
+      previousBest: 50,
+      displacedGuestRank: null,
+      guestAtRank100BeforeGuestId: null,
+    });
+  });
+
+  it('collects before/after rank fields when a different guest occupied #100', async () => {
+    leaderboardRepository.getGuestBestScoreTx
+      .mockResolvedValueOnce({ bestScore: 500 })
+      .mockResolvedValueOnce({ bestScore: 500 })
+      .mockResolvedValueOnce({ bestScore: 800 })
+      .mockResolvedValueOnce({ bestScore: 40 });
+    leaderboardRepository.findGuestAtRankTx.mockResolvedValue([{ guestId: 'g100' }]);
+    leaderboardRepository.countBetterRanksTx
+      .mockResolvedValueOnce(149)
+      .mockResolvedValueOnce(4)
+      .mockResolvedValueOnce(100);
+
+    const result = await service.applyBestScoreAndCollectDelta(
+      tx as never,
+      GameId.FRULOOP,
+      'submitter',
+      800,
     );
 
     expect(tx.$executeRaw).toHaveBeenCalled();
@@ -46,20 +104,20 @@ describe('LeaderboardScoreApplyService', () => {
       tx,
       GameId.FRULOOP,
       'submitter',
-      80,
+      800,
     );
     expect(result).toEqual({
-      newBest: 80,
+      newBest: 800,
       currentRank: 5,
-      previousBest: 20,
+      previousBest: 500,
       displacedGuestRank: 101,
-      displacedGuestBestScore: 40,
       guestAtRank100BeforeGuestId: 'g100',
     });
   });
 
   it('skips displaced-guest lookup when the submitter already occupied #100', async () => {
     leaderboardRepository.getGuestBestScoreTx
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ bestScore: 10 });
     leaderboardRepository.findGuestAtRankTx.mockResolvedValue([{ guestId: 'submitter' }]);
@@ -72,13 +130,11 @@ describe('LeaderboardScoreApplyService', () => {
       10,
     );
 
-    expect(leaderboardRepository.getGuestBestScoreTx).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
       newBest: 10,
       currentRank: 1,
       previousBest: null,
       displacedGuestRank: null,
-      displacedGuestBestScore: null,
       guestAtRank100BeforeGuestId: 'submitter',
     });
   });

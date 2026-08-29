@@ -16,3 +16,9 @@ export const API_KEY_HEADER = 'x-api-key';
 export const PARTITION_CRON = '59 23 28-31 * *';
 
 export const AUTH_TOKEN_CACHE_TTL_SECONDS = 300;
+
+/** Prisma interactive-TX limits for result submit (default timeout is 5s). */
+export const SUBMIT_RESULT_TX = {
+  maxWait: 10_000,
+  timeout: 30_000,
+} as const;

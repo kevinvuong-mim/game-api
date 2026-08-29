@@ -58,4 +58,20 @@ describe('PartitionService', () => {
     expect(prisma.$queryRaw).toHaveBeenCalled();
     jest.useRealTimers();
   });
+
+  it('does not throw from onModuleInit when ensure fails', async () => {
+    prisma.$queryRaw.mockRejectedValue(new Error('db down'));
+
+    expect(() => service.onModuleInit()).not.toThrow();
+    await new Promise((resolve) => setImmediate(resolve));
+  });
+
+  it('swallows errors from the month-boundary cron handler', async () => {
+    prisma.$queryRaw.mockRejectedValue(new Error('db down'));
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 0, 31, 23, 59));
+
+    await expect(service.ensurePartitionsBeforeMonthBoundary()).resolves.toBeUndefined();
+    jest.useRealTimers();
+  });
 });

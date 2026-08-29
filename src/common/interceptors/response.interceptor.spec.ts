@@ -19,7 +19,6 @@ describe('ResponseInterceptor', () => {
     ['GET', 'Data retrieved successfully'],
     ['POST', 'Resource created successfully'],
     ['PATCH', 'Resource updated successfully'],
-    ['PUT', 'Resource updated successfully'],
     ['DELETE', 'Resource deleted successfully'],
     ['OPTIONS', 'Operation completed successfully'],
   ])('wraps %s responses with the default message', async (method, message) => {

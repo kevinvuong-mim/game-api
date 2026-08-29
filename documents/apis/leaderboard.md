@@ -14,7 +14,7 @@ API lấy bảng xếp hạng (leaderboard) theo game. Hỗ trợ phân trang v�
 
 **Rate Limit**: 30 requests / 60 giây (per IP)
 
-**Authentication**: `X-Api-Key` (không cần Bearer)
+**Authentication**: `X-Api-Key` (không cần Bearer — vẫn là shared app secret, không phải endpoint hoàn toàn public)
 
 ### Request Headers
 
@@ -39,8 +39,10 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 
 ### Business Logic
 
-1. **Validate query**: `@IsEnum(GameId)` trả 400 cho game không hợp lệ.
-2. **Rate limit check**: Giới hạn theo IP (`rate:lb:{ip}`).
+Guards chạy trước ValidationPipe: `X-Api-Key` (global) → rate limit → DTO.
+
+1. **Rate limit check**: Giới hạn theo IP (`rate:lb:{ip}`).
+2. **Validate query**: `@IsEnum(GameId)` trả 400 cho game không hợp lệ.
 3. **Pagination**: Tính `offset = (page - 1) * limit`. `limit > 100` bị DTO reject (400), service không clamp.
 4. **Count total**: Đếm tổng entry trong bảng `leaderboards` theo `gameId`.
 5. **Fetch items**: Query PostgreSQL `leaderboards` với `ORDER BY bestScore DESC, guestId ASC`, `SKIP`/`TAKE` theo pagination.
@@ -133,6 +135,10 @@ Trả về khi query params không hợp lệ (thiếu `gameId`, `page` < 1, `li
 }
 ```
 
+**401 Unauthorized - Invalid API key**
+
+Thiếu hoặc sai `X-Api-Key` → `401` `Invalid API key`. `API_KEY` chưa cấu hình → `503` `API key is not configured`.
+
 **429 Too Many Requests - Vượt quá rate limit**
 
 ```json
@@ -170,7 +176,8 @@ Game client load trang đầu tiên của bảng xếp hạng.
 **Request:**
 
 ```bash
-curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=1&limit=20"
+curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=1&limit=20" \
+  -H "X-Api-Key: <API_KEY>"
 ```
 
 **Response:**
@@ -209,7 +216,8 @@ Player muốn biết mình đứng thứ mấy trong khi xem leaderboard.
 **Request:**
 
 ```bash
-curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&guestId=a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&guestId=a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "X-Api-Key: <API_KEY>"
 ```
 
 **Response:**
@@ -257,7 +265,8 @@ User scroll xuống để xem thêm entry.
 **Request:**
 
 ```bash
-curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
+curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20" \
+  -H "X-Api-Key: <API_KEY>"
 ```
 
 **Response:** HTTP 200 với `page: 2`, `items` chứa rank 21–40.
@@ -266,7 +275,7 @@ curl "http://localhost:3000/api/leaderboards?gameId=FRULOOP&page=2&limit=20"
 
 ## Security Considerations
 
-1. **Public endpoint**: Không yêu cầu authentication — phù hợp cho hiển thị leaderboard công khai.
+1. **Shared app secret**: Yêu cầu `X-Api-Key` (không cần Bearer) — phù hợp cho hiển thị leaderboard công khai từ client đã nhúng key.
 2. **No sensitive data**: Chỉ trả về `guestId`, `name`, `bestScore` — không lộ token hay metadata game.
 3. **Rate limiting**: 30 requests/60s per IP để chống scrape/abuse.
 4. **guestId optional**: Truyền `guestId` chỉ để xem self rank, không xác thực ownership — bất kỳ ai biết UUID đều có thể query rank.

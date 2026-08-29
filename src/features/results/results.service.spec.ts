@@ -16,7 +16,6 @@ function batchResult(overrides: Record<string, unknown> = {}) {
     previousBest: 10,
     insertedCount: 1,
     displacedGuestRank: 101,
-    displacedGuestBestScore: 80,
     guestAtRank100BeforeGuestId: 'displaced',
     ...overrides,
   };
@@ -83,7 +82,7 @@ describe('ResultsService', () => {
     ).resolves.toEqual({ insertedCount: 0 });
   });
 
-  it('notifies the displaced #100 guest when the submitter entered from outside Top 100', async () => {
+  it('notifies the displaced #100 guest when their new rank is outside Top 100', async () => {
     resultsRepository.submitValidatedBatch.mockResolvedValue(batchResult());
 
     await service.submitResults(guest, { gameId: GameId.FRULOOP, items: [] });
@@ -96,15 +95,19 @@ describe('ResultsService', () => {
     );
   });
 
-  it('does not notify when the submitter was already at or above the score threshold', async () => {
+  it('notifies even when the submitter already had a high previous best score', async () => {
     resultsRepository.submitValidatedBatch.mockResolvedValue(
-      batchResult({ previousBest: TOP_100_THRESHOLD }),
+      batchResult({ previousBest: 400, newBest: 500, currentRank: 50 }),
     );
 
     await service.submitResults(guest, { gameId: GameId.FRULOOP, items: [] });
     await Promise.resolve();
 
-    expect(notificationDelivery.sendTop100Exited).not.toHaveBeenCalled();
+    expect(notificationDelivery.sendTop100Exited).toHaveBeenCalledWith(
+      GameId.FRULOOP,
+      'displaced',
+      101,
+    );
   });
 
   it('does not notify when the displaced guest is the submitter or still in Top 100', async () => {

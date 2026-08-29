@@ -31,6 +31,7 @@ import { NotificationsModule } from '@/features/notifications/notifications.modu
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         connection: {
+          maxRetriesPerRequest: null,
           url: configService.get<string>('REDIS_URL'),
         },
       }),

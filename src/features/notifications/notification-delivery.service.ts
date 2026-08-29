@@ -14,6 +14,7 @@ export interface DeliverNotificationInput {
   gameId: GameId;
   guestId: string;
   locale?: string | null;
+  fcmToken?: string | null;
   params?: Record<string, string | number>;
   type: (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
 }
@@ -42,11 +43,13 @@ export class NotificationDeliveryService {
     guestId: string,
     rank: number,
     locale?: string | null,
+    fcmToken?: string | null,
   ): Promise<boolean> {
     return this.deliver({
       locale,
       gameId,
       guestId,
+      fcmToken,
       params: { rank },
       type: NOTIFICATION_TYPES.RANK_PUSH,
       route: NOTIFICATION_ROUTES.LEADERBOARD,
@@ -59,7 +62,9 @@ export class NotificationDeliveryService {
         return false;
       }
 
-      const device = await this.deviceTokenService.getActiveToken(input.gameId, input.guestId);
+      const device = input.fcmToken
+        ? { fcmToken: input.fcmToken, notificationLocale: null }
+        : await this.deviceTokenService.getActiveToken(input.gameId, input.guestId);
       if (!device?.fcmToken) {
         return false;
       }

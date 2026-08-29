@@ -29,7 +29,9 @@ export class RankPushScheduler implements OnModuleInit {
       const job = new CronJob(
         cronExpression,
         () => {
-          void this.handleRankPushBroadcast(gameId);
+          void this.handleRankPushBroadcast(gameId).catch((error: unknown) => {
+            this.logger.error(`Rank push broadcast failed for ${gameId}`, error);
+          });
         },
         null,
         true,

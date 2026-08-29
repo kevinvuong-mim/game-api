@@ -4,12 +4,9 @@ interface ErrorResponse {
   stack?: string; // Only in development
   success: false;
   message: string;
-  status?: string;
-  uptime?: number;
   timestamp: string;
   statusCode: number;
   errors?: ValidationError[];
-  services?: { db: string; redis: string };
 }
 
 interface SuccessResponse<T = unknown> {

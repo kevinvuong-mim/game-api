@@ -28,7 +28,11 @@ describe('createRedisClient', () => {
   it('creates an ioredis client from REDIS_URL', () => {
     const configService = { get: jest.fn().mockReturnValue('redis://localhost:6379') };
     createRedisClient(configService as unknown as ConfigService);
-    expect(Redis).toHaveBeenCalledWith('redis://localhost:6379', { maxRetriesPerRequest: null });
+    expect(Redis).toHaveBeenCalledWith('redis://localhost:6379', {
+      connectTimeout: 5_000,
+      commandTimeout: 3_000,
+      maxRetriesPerRequest: 3,
+    });
   });
 });
 

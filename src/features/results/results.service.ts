@@ -54,20 +54,12 @@ export class ResultsService {
     gameId: GameId,
     submitterGuestId: string,
     batchResult: {
-      previousBest: number | null;
       displacedGuestRank: number | null;
-      displacedGuestBestScore: number | null;
       guestAtRank100BeforeGuestId: string | null;
     },
   ): void {
     const displacedGuestId = batchResult.guestAtRank100BeforeGuestId;
     if (!displacedGuestId || displacedGuestId === submitterGuestId) {
-      return;
-    }
-
-    const enteredFromOutsideTop100 =
-      batchResult.previousBest === null || batchResult.previousBest < TOP_100_THRESHOLD;
-    if (!enteredFromOutsideTop100) {
       return;
     }
 

@@ -81,7 +81,7 @@ export class LeaderboardRepository {
       VALUES (${gameId}::"GameId", ${guestId}, ${score}, now())
       ON CONFLICT ("gameId", "guestId")
       DO UPDATE SET
-        "bestScore" = GREATEST(leaderboards."bestScore", EXCLUDED."bestScore"),
+        "bestScore" = EXCLUDED."bestScore",
         "updatedAt" = now()
       WHERE EXCLUDED."bestScore" > leaderboards."bestScore"
     `;

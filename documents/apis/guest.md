@@ -42,8 +42,10 @@ X-Api-Key: <API_KEY>
 
 ### Business Logic
 
-1. **Validate gameId**: `@IsEnum(GameId)` trả 400 nếu game không nằm trong enum.
-2. **Rate limit check**: Giới hạn theo IP — `rate:init:{ip}` (3/60s) và `rate:init:h:{ip}` (15/3600s). Cả hai phải pass.
+Guards chạy trước ValidationPipe: `X-Api-Key` (global) → rate limit → DTO.
+
+1. **Rate limit check**: Giới hạn theo IP — `rate:init:{ip}` (3/60s) và `rate:init:h:{ip}` (15/3600s). Cả hai phải pass.
+2. **Validate gameId**: `@IsEnum(GameId)` trả 400 nếu game không nằm trong enum.
 3. **Generate token**: `generateSecretToken()` — random 32 bytes, base64url.
 4. **Hash token**: `hashSecretToken()` — SHA-256 hex, chỉ lưu hash vào DB.
 5. **Create guest**: Insert `GuestPlayer` với `gameId` và `authTokenHash`.
@@ -153,9 +155,24 @@ Trả về khi body không hợp lệ (thiếu field, sai enum, name quá dài, 
 }
 ```
 
+**401 Unauthorized - Invalid API key**
+
+Trả về khi thiếu hoặc sai header `X-Api-Key` (mọi route trừ `GET /api/health`).
+
+```json
+{
+  "success": false,
+  "statusCode": 401,
+  "message": "Invalid API key",
+  "error": "Unauthorized",
+  "timestamp": "2026-06-27T12:00:00.000Z",
+  "path": "/api/guest/init"
+}
+```
+
 **401 Unauthorized - Thiếu hoặc sai token**
 
-Trả về khi gọi `PATCH /api/guest/name` mà không có Bearer token hoặc token không hợp lệ.
+Trả về khi gọi `PATCH /api/guest/name` mà không có Bearer token hoặc token không hợp lệ (request vẫn phải có `X-Api-Key` hợp lệ; thiếu API key thì 401 `Invalid API key` xảy ra trước).
 
 ```json
 {
@@ -194,6 +211,19 @@ hoặc
 }
 ```
 
+**503 Service Unavailable - `API_KEY` chưa cấu hình**
+
+```json
+{
+  "success": false,
+  "statusCode": 503,
+  "message": "API key is not configured",
+  "error": "HttpException",
+  "timestamp": "2026-06-27T12:00:00.000Z",
+  "path": "/api/guest/init"
+}
+```
+
 **503 Service Unavailable - Redis lỗi (rate limit fail-closed)**
 
 ```json
@@ -220,6 +250,7 @@ Player mở game lần đầu, client gọi init để tạo identity ẩn danh.
 ```bash
 curl -X POST http://localhost:3000/api/guest/init \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: <API_KEY>" \
   -d '{
     "gameId": "FRULOOP"
   }'
@@ -254,6 +285,7 @@ Sau khi init, player nhập tên để hiển thị trên leaderboard.
 curl -X PATCH http://localhost:3000/api/guest/name \
   -H "Authorization: Bearer xK9mP2nQ7vR4sT8wY1zA3bC5dE6fG0hJ" \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: <API_KEY>" \
   -d '{
     "name": "PlayerOne"
   }'
@@ -287,6 +319,7 @@ Client quên lưu token hoặc gửi request không có header Authorization.
 ```bash
 curl -X PATCH http://localhost:3000/api/guest/name \
   -H "Content-Type: application/json" \
+  -H "X-Api-Key: <API_KEY>" \
   -d '{
     "name": "PlayerOne"
   }'
@@ -326,6 +359,12 @@ curl -X PATCH http://localhost:3000/api/guest/name \
 **Result**: DTO `isEnum` validation trả HTTP 400 trước khi service chạy.
 
 **Solution**: Kiểm tra `gameId` đúng (`FRULOOP`, `MEMORA`) và đã có trong cả Prisma `GameId` lẫn `GAME_CONFIG`.
+
+### Error: "Invalid API key"
+
+**Cause**: Thiếu header `X-Api-Key` hoặc không khớp `API_KEY`
+
+**Solution**: Gửi `X-Api-Key` trùng với biến `API_KEY` trên server (local mặc định trong `.env.example` là `change-me`)
 
 ### Error: "Bearer token required"
 

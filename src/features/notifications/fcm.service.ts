@@ -39,18 +39,26 @@ export class FcmService implements OnModuleInit {
       return;
     }
 
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          privateKey,
-          clientEmail,
-        }),
-      });
-    }
+    try {
+      if (!admin.apps.length) {
+        admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId,
+            privateKey,
+            clientEmail,
+          }),
+        });
+      }
 
-    this.messaging = admin.messaging();
-    this.logger.log('Firebase Admin SDK initialized');
+      this.messaging = admin.messaging();
+      this.logger.log('Firebase Admin SDK initialized');
+    } catch (error: unknown) {
+      this.messaging = null;
+      this.logger.error(
+        'Firebase Admin SDK failed to initialize — push notifications are disabled',
+        error,
+      );
+    }
   }
 
   isEnabled(): boolean {

@@ -1,10 +1,6 @@
 import { GameId } from '@prisma/client';
 
-import {
-  GAME_CONFIG,
-  getGameConfig,
-  getGamesWithRankPushCron,
-} from '@/common/constants/game.constants';
+import { GAME_CONFIG, getGamesWithRankPushCron } from '@/common/constants/game.constants';
 
 describe('game.constants', () => {
   it('declares rank-push cron for every supported game', () => {
@@ -15,9 +11,5 @@ describe('game.constants', () => {
 
   it('getGamesWithRankPushCron returns games that have a cron expression', () => {
     expect(getGamesWithRankPushCron().sort()).toEqual([GameId.FRULOOP, GameId.MEMORA].sort());
-  });
-
-  it('getGameConfig returns the entry for a game', () => {
-    expect(getGameConfig(GameId.FRULOOP)).toBe(GAME_CONFIG[GameId.FRULOOP]);
   });
 });

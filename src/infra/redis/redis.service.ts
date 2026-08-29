@@ -98,5 +98,9 @@ export function createRedisClient(configService: ConfigService) {
     throw new Error('REDIS_URL is not configured');
   }
 
-  return new Redis(url, { maxRetriesPerRequest: null });
+  return new Redis(url, {
+    connectTimeout: 5_000,
+    commandTimeout: 3_000,
+    maxRetriesPerRequest: 3,
+  });
 }

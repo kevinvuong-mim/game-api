@@ -64,6 +64,20 @@ describe('NotificationDeliveryService', () => {
     );
   });
 
+  it('skips the token lookup when an FCM token is already provided', async () => {
+    fcmService.isEnabled.mockReturnValue(true);
+    fcmService.sendToToken.mockResolvedValue({ success: true });
+
+    await expect(service.sendRankPush(GameId.FRULOOP, 'g1', 4, 'en', 'known-tok')).resolves.toBe(
+      true,
+    );
+    expect(deviceTokenService.getActiveToken).not.toHaveBeenCalled();
+    expect(fcmService.sendToToken).toHaveBeenCalledWith(
+      'known-tok',
+      expect.objectContaining({ locale: 'en' }),
+    );
+  });
+
   it('marks invalid tokens and returns false', async () => {
     fcmService.isEnabled.mockReturnValue(true);
     deviceTokenService.getActiveToken.mockResolvedValue({ fcmToken: 'tok' });

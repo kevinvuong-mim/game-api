@@ -1,8 +1,9 @@
 # Redis Keys
 
-Redis is used for auth cache, rate limiting, and BullMQ. Client: ioredis via `RedisService` (`src/infra/redis/redis.service.ts`).
+Redis is used for auth cache, rate limiting, and BullMQ. Two ioredis connections share `REDIS_URL`:
 
-Connection: `REDIS_URL`.
+- `RedisService` (HTTP path): `maxRetriesPerRequest: 3`, connect/command timeouts — so rate-limit can fail-closed with 503 instead of hanging.
+- BullMQ queues/workers: `maxRetriesPerRequest: null` (required by BullMQ).
 
 > Leaderboard is **not** cached in Redis — queries hit PostgreSQL `leaderboards` directly.
 
@@ -79,4 +80,5 @@ KEYS rate:*
 ```ts
 RATE_LIMITS = { init: 3, initHourly: 15, name: 10, device: 10, result: 20, leaderboard: 30 };
 AUTH_TOKEN_CACHE_TTL_SECONDS = 300;
+SUBMIT_RESULT_TX = { maxWait: 10_000, timeout: 30_000 };
 ```
