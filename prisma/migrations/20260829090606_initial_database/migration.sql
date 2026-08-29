@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "GameId" AS ENUM ('FRULOOP');
+CREATE TYPE "GameId" AS ENUM ('FRULOOP', 'MEMORA');
 
 -- CreateEnum
 CREATE TYPE "DevicePlatform" AS ENUM ('IOS', 'ANDROID');
@@ -29,7 +29,6 @@ CREATE TABLE "game_results" (
     "guestId" TEXT NOT NULL,
     "clientResultId" TEXT NOT NULL,
     "score" INTEGER NOT NULL,
-    "signature" TEXT NOT NULL,
     "metadata" JSONB,
     "playedAt" TIMESTAMP(3),
 
