@@ -1,7 +1,7 @@
 import { GameId } from '@prisma/client';
 
-import { LeaderboardService } from '@/features/leaderboard/leaderboard.service';
 import type { GuestRepository } from '@/features/guest/guest.repository';
+import { LeaderboardService } from '@/features/leaderboard/leaderboard.service';
 import type { LeaderboardRepository } from '@/features/leaderboard/leaderboard.repository';
 import type { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 

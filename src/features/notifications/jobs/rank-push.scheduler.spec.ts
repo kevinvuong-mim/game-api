@@ -1,5 +1,5 @@
-import { SchedulerRegistry } from '@nestjs/schedule';
 import { GameId } from '@prisma/client';
+import { SchedulerRegistry } from '@nestjs/schedule';
 
 import { GAME_CONFIG, NOTIFICATION_CRON } from '@/common/constants';
 import { RankPushScheduler } from '@/features/notifications/jobs/rank-push.scheduler';

@@ -10,7 +10,7 @@ export async function validatePlain<T extends object>(
     whitelist: true,
     forbidNonWhitelisted: true,
   });
-  return { instance, errors };
+  return { errors, instance };
 }
 
 export function constraintNames(errors: ValidationError[]): string[] {

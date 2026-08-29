@@ -1,9 +1,9 @@
-import { GameId } from '@prisma/client';
 import type { Queue } from 'bullmq';
+import { GameId } from '@prisma/client';
 
 import { NOTIFICATION_JOB } from '@/common/constants';
-import { RankPushEnqueueService } from '@/features/notifications/jobs/rank-push.enqueue';
 import { getRankPushWeekKey } from '@/features/notifications/jobs/rank-push-week.util';
+import { RankPushEnqueueService } from '@/features/notifications/jobs/rank-push.enqueue';
 
 describe('RankPushEnqueueService', () => {
   it('enqueues the first batch with a week-scoped job id', async () => {

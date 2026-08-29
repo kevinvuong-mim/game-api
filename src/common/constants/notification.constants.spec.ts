@@ -1,6 +1,6 @@
 import {
-  getLocalizedNotification,
   NOTIFICATION_TYPES,
+  getLocalizedNotification,
   toNotificationLocaleCode,
 } from '@/common/constants/notification.constants';
 

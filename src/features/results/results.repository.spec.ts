@@ -1,7 +1,7 @@
 import { GameId } from '@prisma/client';
 
-import { ResultsRepository } from '@/features/results/results.repository';
 import type { PrismaService } from '@/infra/prisma/prisma.service';
+import { ResultsRepository } from '@/features/results/results.repository';
 import type { PartitionService } from '@/infra/maintenance/partition.service';
 import type { LeaderboardScoreApplyService } from '@/features/leaderboard/leaderboard-score-apply.service';
 
@@ -9,8 +9,8 @@ describe('ResultsRepository', () => {
   const tx = {
     $executeRaw: jest.fn(),
     gameResult: {
-      findFirst: jest.fn(),
       create: jest.fn(),
+      findFirst: jest.fn(),
     },
   };
   const prisma = {

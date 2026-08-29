@@ -36,8 +36,8 @@ X-Api-Key: <API_KEY>
 
 ### Request Body Schema
 
-| Field  | Type   | Required | Validation        | Description                          |
-| ------ | ------ | -------- | ----------------- | ------------------------------------ |
+| Field  | Type   | Required | Validation        | Description                                    |
+| ------ | ------ | -------- | ----------------- | ---------------------------------------------- |
 | gameId | string | Yes      | `@IsEnum(GameId)` | Mã game hợp lệ. Hiện tại: `FRULOOP`, `MEMORA`. |
 
 ### Business Logic

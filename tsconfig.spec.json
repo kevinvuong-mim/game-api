@@ -2,15 +2,15 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
-    "moduleResolution": "node",
-    "isolatedModules": true,
-    "types": ["jest", "node"],
-    "esModuleInterop": true,
-    "resolvePackageJsonExports": false,
     "paths": {
       "@/*": ["src/*"],
       "@test/*": ["test/*"]
-    }
+    },
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "types": ["jest", "node"],
+    "moduleResolution": "node",
+    "resolvePackageJsonExports": false
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

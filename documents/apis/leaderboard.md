@@ -32,7 +32,7 @@ GET /api/leaderboards?gameId=FRULOOP&page=1&limit=20&guestId=<uuid>
 
 | Field   | Type   | Required | Validation                                    | Default | Description                                       |
 | ------- | ------ | -------- | --------------------------------------------- | ------- | ------------------------------------------------- |
-| gameId  | string | Yes      | Phải là `GameId` hợp lệ                       | -       | Mã game (`FRULOOP`, `MEMORA`)                      |
+| gameId  | string | Yes      | Phải là `GameId` hợp lệ                       | -       | Mã game (`FRULOOP`, `MEMORA`)                     |
 | page    | number | No       | Min: 1, integer                               | `1`     | Trang hiện tại (1-based)                          |
 | limit   | number | No       | Min: 1, Max: 100 (`@Max(100)` → 400 nếu vượt) | `20`    | Số entry mỗi trang                                |
 | guestId | string | No       | UUID (`@IsUUID()`, không khóa version)        | -       | Guest ID để lấy rank và best score của chính mình |

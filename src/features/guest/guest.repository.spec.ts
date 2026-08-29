@@ -1,7 +1,7 @@
 import { DevicePlatform, GameId, NotificationLocale, Prisma } from '@prisma/client';
 
-import { FcmTokenConflictError, GuestRepository } from '@/features/guest/guest.repository';
 import type { PrismaService } from '@/infra/prisma/prisma.service';
+import { FcmTokenConflictError, GuestRepository } from '@/features/guest/guest.repository';
 
 describe('GuestRepository', () => {
   const guestPlayer = {

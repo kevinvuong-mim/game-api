@@ -1,9 +1,9 @@
 import { GameId, NotificationLocale } from '@prisma/client';
 
-import { NOTIFICATION_ROUTES, NOTIFICATION_TYPES } from '@/common/constants';
-import { NotificationDeliveryService } from '@/features/notifications/notification-delivery.service';
 import type { FcmService } from '@/features/notifications/fcm.service';
+import { NOTIFICATION_ROUTES, NOTIFICATION_TYPES } from '@/common/constants';
 import type { DeviceTokenService } from '@/features/notifications/device-token.service';
+import { NotificationDeliveryService } from '@/features/notifications/notification-delivery.service';
 
 describe('NotificationDeliveryService', () => {
   const fcmService = { isEnabled: jest.fn(), sendToToken: jest.fn() };

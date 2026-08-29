@@ -1,18 +1,18 @@
 {
-  "compilerOptions": {
-    "sourceMap": false,
-    "declaration": false
-  },
-  "include": ["src/**/*"],
-  "extends": "./tsconfig.json",
   "exclude": [
     "dist",
     "test",
     "prisma",
     "documents",
+    "**/*.spec.ts",
     "node_modules",
     "nest-cli.json",
-    "eslint.config.mjs",
-    "**/*.spec.ts"
-  ]
+    "eslint.config.mjs"
+  ],
+  "compilerOptions": {
+    "sourceMap": false,
+    "declaration": false
+  },
+  "include": ["src/**/*"],
+  "extends": "./tsconfig.json"
 }

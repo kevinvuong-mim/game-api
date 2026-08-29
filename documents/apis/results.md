@@ -42,14 +42,14 @@ X-Api-Key: <API_KEY>
 
 ### Request Body Schema
 
-| Field                  | Type   | Required | Validation                                               | Description                                           |
-| ---------------------- | ------ | -------- | -------------------------------------------------------- | ----------------------------------------------------- |
+| Field                  | Type   | Required | Validation                                               | Description                                                    |
+| ---------------------- | ------ | -------- | -------------------------------------------------------- | -------------------------------------------------------------- |
 | gameId                 | string | Yes      | `@IsEnum(GameId)`                                        | Mã game (`FRULOOP`, `MEMORA`). Phải khớp game của guest token. |
-| items                  | array  | Yes      | Min: 1, Max: 50 items                                    | Danh sách kết quả cần gửi                             |
-| items[].clientResultId | string | Yes      | `@Transform(trim)` + `@IsNotEmpty()` + `@MaxLength(128)` | ID do client tạo; dùng làm dedup key trong guest/game |
-| items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647                         | Điểm số (khớp Prisma `Int` / PG `integer`)            |
-| items[].playedAt       | string | No       | ISO 8601 strict                                          | Thời điểm chơi                                        |
-| items[].metadata       | object | No       | `@IsValidMetadata` (xem bên dưới)                        | Metadata bổ sung (flat object)                        |
+| items                  | array  | Yes      | Min: 1, Max: 50 items                                    | Danh sách kết quả cần gửi                                      |
+| items[].clientResultId | string | Yes      | `@Transform(trim)` + `@IsNotEmpty()` + `@MaxLength(128)` | ID do client tạo; dùng làm dedup key trong guest/game          |
+| items[].score          | number | Yes      | Integer, Min: 0, Max: 2147483647                         | Điểm số (khớp Prisma `Int` / PG `integer`)                     |
+| items[].playedAt       | string | No       | ISO 8601 strict                                          | Thời điểm chơi                                                 |
+| items[].metadata       | object | No       | `@IsValidMetadata` (xem bên dưới)                        | Metadata bổ sung (flat object)                                 |
 
 ### Metadata Constraints (`@IsValidMetadata`)
 

@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 
-import { FCM_ANDROID_CHANNEL_ID, NOTIFICATION_TYPES } from '@/common/constants';
 import { FcmService } from '@/features/notifications/fcm.service';
+import { FCM_ANDROID_CHANNEL_ID, NOTIFICATION_TYPES } from '@/common/constants';
 
 const firebaseState = {
   apps: [] as unknown[],

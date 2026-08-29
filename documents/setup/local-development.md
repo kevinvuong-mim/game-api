@@ -163,11 +163,11 @@ Preset `dev` trong [`game-app/src/platform/core/config/index.ts`](../../../game-
 
 ## Troubleshooting
 
-| Vấn đề                      | Giải pháp                                                                                                  |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `EADDRINUSE :3000`          | Đổi `PORT` hoặc kill process: `lsof -i :3000`                                                              |
-| Health 503                  | Kiểm tra Postgres (`DATABASE_URL`) **và** Redis (`REDIS_URL`, `docker-compose`) — cả hai phải connected    |
+| Vấn đề                      | Giải pháp                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `EADDRINUSE :3000`          | Đổi `PORT` hoặc kill process: `lsof -i :3000`                                                                         |
+| Health 503                  | Kiểm tra Postgres (`DATABASE_URL`) **và** Redis (`REDIS_URL`, `docker-compose`) — cả hai phải connected               |
 | Validation 400 cho `gameId` | Dùng `FRULOOP` / `MEMORA` hoặc thêm game vào Prisma enum + `GAME_CONFIG` — [adding-new-game.md](./adding-new-game.md) |
-| Push không gửi              | Kiểm tra đủ `FIREBASE_*`, guest có `fcmToken`, có leaderboard rank; backend không có status/mute           |
+| Push không gửi              | Kiểm tra đủ `FIREBASE_*`, guest có `fcmToken`, có leaderboard rank; backend không có status/mute                      |
 
 Xem thêm troubleshooting env: [environment-variables.md](./environment-variables.md).

@@ -1,6 +1,6 @@
-import { ConfigService } from '@nestjs/config';
-import { GameId } from '@prisma/client';
 import Redis from 'ioredis';
+import { GameId } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 
 import { AUTH_TOKEN_CACHE_TTL_SECONDS } from '@/common/constants';
 import { REDIS_CLIENT, RedisService, createRedisClient } from '@/infra/redis/redis.service';

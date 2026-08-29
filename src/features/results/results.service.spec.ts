@@ -1,5 +1,5 @@
-import { ForbiddenException } from '@nestjs/common';
 import { GameId } from '@prisma/client';
+import { ForbiddenException } from '@nestjs/common';
 
 import { TOP_100_THRESHOLD } from '@/common/constants';
 import { ResultsService } from '@/features/results/results.service';
@@ -11,10 +11,10 @@ const guest = { guestId: 'submitter', gameId: GameId.FRULOOP };
 
 function batchResult(overrides: Record<string, unknown> = {}) {
   return {
-    insertedCount: 1,
     newBest: 500,
     currentRank: 50,
     previousBest: 10,
+    insertedCount: 1,
     displacedGuestRank: 101,
     displacedGuestBestScore: 80,
     guestAtRank100BeforeGuestId: 'displaced',

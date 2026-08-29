@@ -1,7 +1,7 @@
 import { GameId } from '@prisma/client';
 
-import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import type { LeaderboardRepository } from '@/features/leaderboard/leaderboard.repository';
+import { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 
 describe('LeaderboardRankResolverService', () => {
   const leaderboardRepository = {

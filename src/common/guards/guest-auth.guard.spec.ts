@@ -1,9 +1,9 @@
-import { UnauthorizedException, type ExecutionContext } from '@nestjs/common';
 import { GameId } from '@prisma/client';
+import { UnauthorizedException, type ExecutionContext } from '@nestjs/common';
 
 import { hashSecretToken } from '@/common/utils';
-import { GuestAuthGuard } from '@/common/guards/guest-auth.guard';
 import type { RedisService } from '@/infra/redis/redis.service';
+import { GuestAuthGuard } from '@/common/guards/guest-auth.guard';
 import type { GuestRepository } from '@/features/guest/guest.repository';
 
 function createContext(authorization?: string): ExecutionContext {

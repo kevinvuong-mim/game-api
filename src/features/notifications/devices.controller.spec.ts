@@ -1,7 +1,7 @@
 import { GameId, NotificationLocale } from '@prisma/client';
 
-import { DeviceTokenService } from '@/features/notifications/device-token.service';
 import { DevicesController } from '@/features/notifications/devices.controller';
+import { DeviceTokenService } from '@/features/notifications/device-token.service';
 
 const guest = { guestId: 'g1', gameId: GameId.FRULOOP };
 

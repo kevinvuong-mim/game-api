@@ -1,8 +1,8 @@
 import { DevicePlatform, NotificationLocale } from '@prisma/client';
 
 import { constraintNames, validatePlain } from '@test/dto';
-import { RegisterDeviceDto } from '@/features/notifications/dto/register-device.dto';
 import { UpdateDeviceDto } from '@/features/notifications/dto/update-device.dto';
+import { RegisterDeviceDto } from '@/features/notifications/dto/register-device.dto';
 
 describe('RegisterDeviceDto', () => {
   const valid = {

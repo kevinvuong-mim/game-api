@@ -1,5 +1,5 @@
-import { PartitionService } from '@/infra/maintenance/partition.service';
 import type { PrismaService } from '@/infra/prisma/prisma.service';
+import { PartitionService } from '@/infra/maintenance/partition.service';
 
 describe('PartitionService', () => {
   const prisma = {

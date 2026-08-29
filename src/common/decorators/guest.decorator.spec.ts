@@ -1,6 +1,6 @@
-import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
-import type { ExecutionContext } from '@nestjs/common';
 import { GameId } from '@prisma/client';
+import type { ExecutionContext } from '@nestjs/common';
+import { ROUTE_ARGS_METADATA } from '@nestjs/common/constants';
 
 import { Guest, type AuthenticatedGuest } from '@/common/decorators/guest.decorator';
 

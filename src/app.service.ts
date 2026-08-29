@@ -23,9 +23,9 @@ export class AppService {
     return {
       healthy,
       services,
+      status: healthy ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       uptime: Math.floor(process.uptime()),
-      status: healthy ? 'ok' : 'degraded',
     };
   }
 

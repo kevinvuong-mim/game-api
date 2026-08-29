@@ -1,15 +1,15 @@
 import {
-  HttpException,
   HttpStatus,
+  HttpException,
   UnauthorizedException,
   type ExecutionContext,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { GameId } from '@prisma/client';
+import { Reflector } from '@nestjs/core';
 
-import { RATE_LIMIT_KEY, type RateLimitOptions } from '@/common/decorators';
-import { RateLimitGuard } from '@/common/guards/rate-limit.guard';
 import type { RedisService } from '@/infra/redis/redis.service';
+import { RateLimitGuard } from '@/common/guards/rate-limit.guard';
+import { RATE_LIMIT_KEY, type RateLimitOptions } from '@/common/decorators';
 
 function createContext(request: Record<string, unknown>): ExecutionContext {
   return {

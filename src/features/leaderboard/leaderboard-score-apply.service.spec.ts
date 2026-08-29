@@ -1,15 +1,15 @@
 import { GameId } from '@prisma/client';
 
 import { TOP_100_THRESHOLD } from '@/common/constants';
-import { LeaderboardScoreApplyService } from '@/features/leaderboard/leaderboard-score-apply.service';
 import type { LeaderboardRepository } from '@/features/leaderboard/leaderboard.repository';
+import { LeaderboardScoreApplyService } from '@/features/leaderboard/leaderboard-score-apply.service';
 
 describe('LeaderboardScoreApplyService', () => {
   const leaderboardRepository = {
-    getGuestBestScoreTx: jest.fn(),
     findGuestAtRankTx: jest.fn(),
     upsertBestScoreTx: jest.fn(),
     countBetterRanksTx: jest.fn(),
+    getGuestBestScoreTx: jest.fn(),
   };
   const tx = { $executeRaw: jest.fn() };
   let service: LeaderboardScoreApplyService;

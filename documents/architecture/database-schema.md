@@ -5,11 +5,11 @@ Database: PostgreSQL 16
 
 ## Enum
 
-| Enum                 | Values           |
-| -------------------- | ---------------- |
+| Enum                 | Values              |
+| -------------------- | ------------------- |
 | `GameId`             | `FRULOOP`, `MEMORA` |
-| `DevicePlatform`     | `IOS`, `ANDROID` |
-| `NotificationLocale` | `EN`, `VI`       |
+| `DevicePlatform`     | `IOS`, `ANDROID`    |
+| `NotificationLocale` | `EN`, `VI`          |
 
 ## Tables
 

@@ -30,5 +30,5 @@
     "strictPropertyInitialization": false,
     "forceConsistentCasingInFileNames": true
   },
-  "exclude": ["node_modules", "dist", "coverage"]
+  "exclude": ["dist", "coverage", "node_modules"]
 }

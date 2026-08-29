@@ -1,9 +1,9 @@
-import { GameId, NotificationLocale } from '@prisma/client';
 import type { Job, Queue } from 'bullmq';
+import { GameId, NotificationLocale } from '@prisma/client';
 
+import type { RedisService } from '@/infra/redis/redis.service';
 import { NOTIFICATION_JOB, RANK_PUSH_BATCH_SIZE } from '@/common/constants';
 import { RankPushProcessor } from '@/features/notifications/jobs/rank-push.processor';
-import type { RedisService } from '@/infra/redis/redis.service';
 import type { DeviceTokenService } from '@/features/notifications/device-token.service';
 import type { LeaderboardRankResolverService } from '@/features/leaderboard/leaderboard-rank.resolver';
 import type { NotificationDeliveryService } from '@/features/notifications/notification-delivery.service';
