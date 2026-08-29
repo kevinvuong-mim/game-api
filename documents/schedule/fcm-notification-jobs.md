@@ -17,9 +17,9 @@ Example FRULOOP / MEMORA: `rankPushCron: '0 9 * * 6'` (Saturday 09:00 VN).
 
 ## Push types
 
-| `type`           | When                                                                                                                                                                              | Route         |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `rank_push`      | Per-game scheduled broadcast for token holders who have a rank                                                                                                                    | `Leaderboard` |
+| `type`           | When                                                                                                                                     | Route         |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `rank_push`      | Per-game scheduled broadcast for token holders who have a rank                                                                           | `Leaderboard` |
 | `top_100_exited` | Guest previously at rank #100 is pushed to rank >100 when a submitter enters Top 100 from outside (no prior rank, or previous rank >100) | `Leaderboard` |
 
 FCM `data` payload: `{ type, route, ...params }` — stringified job params are merged into `data`. Both `rank_push` and `top_100_exited` pass `rank` into `data`. Rank push interpolates `rank` into the localized notification **body** (EN / VI; non-Vietnamese falls back to English); titles are static (`Weekly Rank Update` / `Cập nhật thứ hạng`). The client can show a matching foreground toast from `data`.

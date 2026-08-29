@@ -11,7 +11,7 @@ Tài liệu này hướng dẫn cách lấy các biến môi trường cần thi
 | `API_KEY`                                                              | Yes                   | Shared app secret; missing → 503 on every route except `GET /health`. Comma-separate to rotate                                      |
 | `PORT`                                                                 | No                    | Defaults to `3000` via `process.env.PORT ?? 3000`                                                                                   |
 | `NODE_ENV`                                                             | No                    | Helmet CSP; in production also hides stack **and** raw non-HttpException messages from the error envelope; Docker sets `production` |
-| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one **or invalid credentials** disables push without crashing; device APIs still work |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | All-or-none, optional | Missing any one **or invalid credentials** disables push without crashing; device APIs still work                                   |
 
 ## 1. Database
 

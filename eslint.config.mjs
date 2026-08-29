@@ -7,8 +7,8 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**',
-      'coverage/**',
       '.prisma/**',
+      'coverage/**',
       'node_modules/**',
       'eslint.config.mjs',
       'prisma/migrations/**',

@@ -206,19 +206,19 @@ Errors use `HttpExceptionFilter` with `success: false`.
 
 ## Scripts
 
-| Command                   | Description                   |
-| ------------------------- | ----------------------------- |
-| `npm run start:dev`       | Dev server with hot-reload    |
-| `npm run start:debug`     | Dev + Node inspector          |
-| `npm run start:prod`      | Run compiled `dist/main`      |
-| `npm run build`           | Compile TypeScript            |
-| `npm run test`            | Run unit tests (Jest)         |
+| Command                   | Description                     |
+| ------------------------- | ------------------------------- |
+| `npm run start:dev`       | Dev server with hot-reload      |
+| `npm run start:debug`     | Dev + Node inspector            |
+| `npm run start:prod`      | Run compiled `dist/main`        |
+| `npm run build`           | Compile TypeScript              |
+| `npm run test`            | Run unit tests (Jest)           |
 | `npm run typecheck`       | `tsc --noEmit` (build tsconfig) |
-| `npm run lint`            | ESLint with auto-fix          |
-| `npm run format`          | Prettier write                |
-| `npm run prisma:migrate`  | Run Prisma migrations (dev)   |
-| `npm run prisma:generate` | Generate Prisma client        |
-| `npm run prisma:reset`    | Reset database and re-migrate |
+| `npm run lint`            | ESLint with auto-fix            |
+| `npm run format`          | Prettier write                  |
+| `npm run prisma:migrate`  | Run Prisma migrations (dev)     |
+| `npm run prisma:generate` | Generate Prisma client          |
+| `npm run prisma:reset`    | Reset database and re-migrate   |
 
 ## Documentation
 

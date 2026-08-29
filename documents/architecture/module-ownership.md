@@ -4,23 +4,23 @@ After the ownership refactor, each Nest feature owns a clear data boundary.
 
 ## Data modules
 
-| Module                  | Owns                                                             | Exported for                                      |
-| ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
-| `GuestDataModule`       | `GuestRepository`                                                | Auth, guest HTTP, devices/FCM, leaderboard names  |
-| `LeaderboardDataModule` | `LeaderboardRepository`, `LeaderboardScoreApplyService`          | Rank reads/writes, TX score-apply + rank delta    |
+| Module                  | Owns                                                                                          | Exported for                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `GuestDataModule`       | `GuestRepository`                                                                             | Auth, guest HTTP, devices/FCM, leaderboard names  |
+| `LeaderboardDataModule` | `LeaderboardRepository`, `LeaderboardScoreApplyService`                                       | Rank reads/writes, TX score-apply + rank delta    |
 | `CommonModule` (global) | `ApiKeyGuard` (`APP_GUARD`), `GuestAuthGuard`, `RateLimitGuard`; re-exports `GuestDataModule` | All features (auth without importing GuestModule) |
 
 `ResultsRepository` is **not** in a separate data module — it is provided by `ResultsModule` (see below).
 
 ## Feature modules
 
-| Module                | Responsibility                                                                                          |
-| --------------------- | ------------------------------------------------------------------------------------------------------- |
-| `GuestModule`         | HTTP guest init/name (`GuestService` + controller); imports `GuestDataModule`                           |
-| `ResultsModule`       | Submit batch; providers `[ResultsService, ResultsRepository]`; Top-100 exit side-effect after submit    |
+| Module                | Responsibility                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `GuestModule`         | HTTP guest init/name (`GuestService` + controller); imports `GuestDataModule`                                             |
+| `ResultsModule`       | Submit batch; providers `[ResultsService, ResultsRepository]`; Top-100 exit side-effect after submit                      |
 | `LeaderboardModule`   | Leaderboard query (`X-Api-Key`, no Bearer) + `LeaderboardRankResolverService`; exports resolver + `LeaderboardDataModule` |
-| `NotificationsModule` | Devices HTTP + FCM delivery + rank-push BullMQ; imports `GuestDataModule`, `LeaderboardModule` |
-| `MaintenanceModule`   | Wires `PartitionService` (partition cron + ensure helpers)                                              |
+| `NotificationsModule` | Devices HTTP + FCM delivery + rank-push BullMQ; imports `GuestDataModule`, `LeaderboardModule`                            |
+| `MaintenanceModule`   | Wires `PartitionService` (partition cron + ensure helpers)                                                                |
 
 `ResultsModule` imports `LeaderboardDataModule`, `LeaderboardModule`, `NotificationsModule`, and `MaintenanceModule`.
 
@@ -63,8 +63,8 @@ Rank-push files:
 
 ## Constants
 
-| File                        | Contents                                                    |
-| --------------------------- | ----------------------------------------------------------- |
-| `leaderboard.constants.ts`  | `TOP_100_THRESHOLD` (rank cutoff, not a score)              |
+| File                        | Contents                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| `leaderboard.constants.ts`  | `TOP_100_THRESHOLD` (rank cutoff, not a score)                                      |
 | `notification.constants.ts` | Queues, jobs, FCM channel, i18n, batch/lock/concurrency, `toNotificationLocaleCode` |
-| `game.constants.ts`         | `GAME_CONFIG` (`rankPushCron` optional per game)            |
+| `game.constants.ts`         | `GAME_CONFIG` (`rankPushCron` optional per game)                                    |
