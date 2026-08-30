@@ -20,6 +20,11 @@ enum DevicePlatform {
 enum NotificationLocale {
   EN
   VI
+  JA
+  KO
+  DE
+  FR
+  IT
 }
 
 model GuestPlayer {

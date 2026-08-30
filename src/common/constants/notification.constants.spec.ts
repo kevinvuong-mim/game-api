@@ -19,11 +19,20 @@ describe('notification.constants', () => {
       expect(toNotificationLocaleCode('vi_VN')).toBe('vi');
     });
 
+    it('maps supported locale codes including BCP-47 and Prisma enums', () => {
+      expect(toNotificationLocaleCode('ja')).toBe('ja');
+      expect(toNotificationLocaleCode('JA')).toBe('ja');
+      expect(toNotificationLocaleCode('ko-KR')).toBe('ko');
+      expect(toNotificationLocaleCode('de_DE')).toBe('de');
+      expect(toNotificationLocaleCode('FR')).toBe('fr');
+      expect(toNotificationLocaleCode('it-CH')).toBe('it');
+    });
+
     it('falls back to en for unknown languages', () => {
       expect(toNotificationLocaleCode('en')).toBe('en');
       expect(toNotificationLocaleCode('EN')).toBe('en');
-      expect(toNotificationLocaleCode('fr')).toBe('en');
       expect(toNotificationLocaleCode('zh-CN')).toBe('en');
+      expect(toNotificationLocaleCode('es')).toBe('en');
     });
   });
 
@@ -37,6 +46,14 @@ describe('notification.constants', () => {
         title: 'Top 100',
         body: 'Bạn đã rời Top 100. Hãy quay lại để cải thiện thứ hạng.',
       });
+      expect(getLocalizedNotification(NOTIFICATION_TYPES.TOP_100_EXITED, 'ja')).toEqual({
+        title: 'トップ100',
+        body: 'トップ100から外れました。戻って順位を上げましょう。',
+      });
+      expect(getLocalizedNotification(NOTIFICATION_TYPES.TOP_100_EXITED, 'fr')).toEqual({
+        title: 'Top 100',
+        body: 'Vous avez quitté le Top 100. Revenez pour améliorer votre classement.',
+      });
     });
 
     it('interpolates rank placeholders for weekly rank push', () => {
@@ -47,6 +64,14 @@ describe('notification.constants', () => {
       expect(getLocalizedNotification(NOTIFICATION_TYPES.RANK_PUSH, 'vi', { rank: 3 })).toEqual({
         title: 'Cập nhật thứ hạng',
         body: 'Hiện bạn đang đứng hạng #3.',
+      });
+      expect(getLocalizedNotification(NOTIFICATION_TYPES.RANK_PUSH, 'ko', { rank: 5 })).toEqual({
+        title: '주간 순위 업데이트',
+        body: '현재 순위는 #5입니다.',
+      });
+      expect(getLocalizedNotification(NOTIFICATION_TYPES.RANK_PUSH, 'de', { rank: 9 })).toEqual({
+        title: 'Wöchentliches Ranking',
+        body: 'Du bist aktuell auf Platz #9.',
       });
     });
 

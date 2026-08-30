@@ -28,7 +28,11 @@ export const NOTIFICATION_TYPES = {
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[keyof typeof NOTIFICATION_TYPES];
 
-export type NotificationLocaleCode = 'en' | 'vi';
+export const NOTIFICATION_LOCALE_CODES = ['en', 'vi', 'ja', 'ko', 'de', 'fr', 'it'] as const;
+
+export type NotificationLocaleCode = (typeof NOTIFICATION_LOCALE_CODES)[number];
+
+const NOTIFICATION_LOCALE_SET = new Set<string>(NOTIFICATION_LOCALE_CODES);
 
 export interface LocalizedNotificationContent {
   body: string;
@@ -48,6 +52,26 @@ const NOTIFICATION_I18N: Record<
       title: 'Top 100',
       body: 'Bạn đã rời Top 100. Hãy quay lại để cải thiện thứ hạng.',
     },
+    ja: {
+      title: 'トップ100',
+      body: 'トップ100から外れました。戻って順位を上げましょう。',
+    },
+    ko: {
+      title: '톱 100',
+      body: '톱 100에서 밀려났습니다. 돌아와서 순위를 올려보세요.',
+    },
+    de: {
+      title: 'Top 100',
+      body: 'Du bist aus den Top 100 gefallen. Komm zurück und verbessere deinen Rang.',
+    },
+    fr: {
+      title: 'Top 100',
+      body: 'Vous avez quitté le Top 100. Revenez pour améliorer votre classement.',
+    },
+    it: {
+      title: 'Top 100',
+      body: 'Sei uscito dalla Top 100. Torna per migliorare la tua posizione.',
+    },
   },
   [NOTIFICATION_TYPES.RANK_PUSH]: {
     en: {
@@ -58,14 +82,37 @@ const NOTIFICATION_I18N: Record<
       title: 'Cập nhật thứ hạng',
       body: 'Hiện bạn đang đứng hạng #{{rank}}.',
     },
+    ja: {
+      title: '週間ランキング',
+      body: '現在の順位は #{{rank}} です。',
+    },
+    ko: {
+      title: '주간 순위 업데이트',
+      body: '현재 순위는 #{{rank}}입니다.',
+    },
+    de: {
+      title: 'Wöchentliches Ranking',
+      body: 'Du bist aktuell auf Platz #{{rank}}.',
+    },
+    fr: {
+      title: 'Classement de la semaine',
+      body: 'Vous êtes actuellement classé #{{rank}}.',
+    },
+    it: {
+      title: 'Classifica settimanale',
+      body: 'Al momento sei al posto #{{rank}}.',
+    },
   },
 };
 
-/** Map Prisma EN/VI, BCP-47, or lowercase codes to notification locale. */
+/** Map Prisma enums, BCP-47, or lowercase codes to notification locale. */
 export function toNotificationLocaleCode(locale?: string | null): NotificationLocaleCode {
   if (!locale) return 'en';
   const code = locale.trim().split(/[-_]/)[0]?.toLowerCase();
-  return code === 'vi' ? 'vi' : 'en';
+  if (code && NOTIFICATION_LOCALE_SET.has(code)) {
+    return code as NotificationLocaleCode;
+  }
+  return 'en';
 }
 
 export function getLocalizedNotification(

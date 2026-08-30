@@ -32,6 +32,12 @@ describe('UpdateDeviceDto', () => {
     expect(
       (await validatePlain(UpdateDeviceDto, { token: 't', locale: NotificationLocale.VI })).errors,
     ).toHaveLength(0);
+    expect(
+      (await validatePlain(UpdateDeviceDto, { token: 't', locale: NotificationLocale.JA })).errors,
+    ).toHaveLength(0);
+    expect(
+      (await validatePlain(UpdateDeviceDto, { token: 't', locale: NotificationLocale.FR })).errors,
+    ).toHaveLength(0);
   });
 
   it('rejects an oversized token', async () => {

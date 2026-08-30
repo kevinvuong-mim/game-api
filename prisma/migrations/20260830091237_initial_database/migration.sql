@@ -5,7 +5,7 @@ CREATE TYPE "GameId" AS ENUM ('FRULOOP', 'MEMORA');
 CREATE TYPE "DevicePlatform" AS ENUM ('IOS', 'ANDROID');
 
 -- CreateEnum
-CREATE TYPE "NotificationLocale" AS ENUM ('EN', 'VI');
+CREATE TYPE "NotificationLocale" AS ENUM ('EN', 'VI', 'JA', 'KO', 'DE', 'FR', 'IT');
 
 -- CreateTable
 CREATE TABLE "guest_players" (
