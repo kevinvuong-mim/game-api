@@ -72,7 +72,7 @@ Clear `fcmToken`, `devicePlatform` và `notificationLocale`. Endpoint idempotent
 
 ## Errors and delivery behavior
 
-- Thiếu/sai `X-Api-Key`: **401** `Invalid API key`; `API_KEY` chưa cấu hình: **503** `API key is not configured`.
+- Thiếu/sai `X-Api-Key`: **403** `Invalid API key`; `API_KEY` chưa cấu hình: **503** `API key is not configured`.
 - Thiếu/sai Bearer token: 401; DTO invalid/field thừa: 400; vượt shared limit: 429; Redis lỗi trên rate limit: **503** (`Service Temporarily Unavailable`, fail-closed).
 - `fcmToken` unique toàn DB. Code chủ động chuyển ownership trước update để tránh unique conflict. Nếu vẫn còn race unique, `DeviceTokenService` map `FcmTokenConflictError` → **409 Conflict**.
 - Guest chưa có token khi PATCH: **404** `Device token not found`.

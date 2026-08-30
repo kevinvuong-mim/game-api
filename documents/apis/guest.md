@@ -155,16 +155,16 @@ Trả về khi body không hợp lệ (thiếu field, sai enum, name quá dài, 
 }
 ```
 
-**401 Unauthorized - Invalid API key**
+**403 Forbidden - Invalid API key**
 
-Trả về khi thiếu hoặc sai header `X-Api-Key` (mọi route trừ `GET /api/health`).
+Trả về khi thiếu hoặc sai header `X-Api-Key` (mọi route trừ `GET /api/health`). Không dùng 401 để client không nhầm với guest token chết và xóa identity.
 
 ```json
 {
   "success": false,
-  "statusCode": 401,
+  "statusCode": 403,
   "message": "Invalid API key",
-  "error": "Unauthorized",
+  "error": "Forbidden",
   "timestamp": "2026-06-27T12:00:00.000Z",
   "path": "/api/guest/init"
 }
@@ -172,7 +172,7 @@ Trả về khi thiếu hoặc sai header `X-Api-Key` (mọi route trừ `GET /ap
 
 **401 Unauthorized - Thiếu hoặc sai token**
 
-Trả về khi gọi `PATCH /api/guest/name` mà không có Bearer token hoặc token không hợp lệ (request vẫn phải có `X-Api-Key` hợp lệ; thiếu API key thì 401 `Invalid API key` xảy ra trước).
+Trả về khi gọi `PATCH /api/guest/name` mà không có Bearer token hoặc token không hợp lệ (request vẫn phải có `X-Api-Key` hợp lệ; thiếu API key thì 403 `Invalid API key` xảy ra trước).
 
 ```json
 {

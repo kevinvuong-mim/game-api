@@ -80,7 +80,7 @@ API_KEY="a-long-random-string"
 ```
 
 - Thiếu hoặc rỗng → các route (trừ health) trả **503** `API key is not configured`
-- Sai key → **401** `Invalid API key`
+- Sai key → **403** `Invalid API key`
 - Xoay key không downtime: `API_KEY="old-key,new-key"` rồi gỡ key cũ sau khi app mới đã ship
 - Secret nằm trong JS bundle — chỉ chặn client ngẫu nhiên, không chống reverse engineer
 
@@ -378,7 +378,7 @@ Error: Failed to parse private key
 
 → Kiểm tra `FIREBASE_PRIVATE_KEY` có bọc `"..."` và dùng `\n` thay xuống dòng thật.
 
-### 7. 401 Invalid API key / 503 API key is not configured
+### 7. 403 Invalid API key / 503 API key is not configured
 
 **Nguyên nhân:**
 

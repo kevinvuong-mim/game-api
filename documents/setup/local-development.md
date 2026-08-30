@@ -177,7 +177,7 @@ VITE_API_KEY=change-me
 | `EADDRINUSE :3000`          | Đổi `PORT` hoặc kill process: `lsof -i :3000`                                                                         |
 | Health 503                  | Kiểm tra Postgres (`DATABASE_URL`) **và** Redis (`REDIS_URL`, `docker-compose`) — cả hai phải connected               |
 | Validation 400 cho `gameId` | Dùng `FRULOOP` / `MEMORA` hoặc thêm game vào Prisma enum + `GAME_CONFIG` — [adding-new-game.md](./adding-new-game.md) |
-| `401 Invalid API key`       | Gửi header `X-Api-Key` khớp `API_KEY` trong `.env` (local: `change-me` nếu copy từ `.env.example`)                    |
+| `403 Invalid API key`       | Gửi header `X-Api-Key` khớp `API_KEY` trong `.env` (local: `change-me` nếu copy từ `.env.example`)                    |
 | Push không gửi              | Kiểm tra đủ `FIREBASE_*`, guest có `fcmToken`, có leaderboard rank; backend không có status/mute                      |
 
 Xem thêm troubleshooting env: [environment-variables.md](./environment-variables.md).

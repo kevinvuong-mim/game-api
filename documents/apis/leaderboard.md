@@ -135,9 +135,9 @@ Trả về khi query params không hợp lệ (thiếu `gameId`, `page` < 1, `li
 }
 ```
 
-**401 Unauthorized - Invalid API key**
+**403 Forbidden - Invalid API key**
 
-Thiếu hoặc sai `X-Api-Key` → `401` `Invalid API key`. `API_KEY` chưa cấu hình → `503` `API key is not configured`.
+Thiếu hoặc sai `X-Api-Key` → `403` `Invalid API key`. `API_KEY` chưa cấu hình → `503` `API key is not configured`.
 
 **429 Too Many Requests - Vượt quá rate limit**
 

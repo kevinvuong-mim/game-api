@@ -1,6 +1,6 @@
 import { Reflector } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { HttpException, UnauthorizedException, type ExecutionContext } from '@nestjs/common';
+import { HttpException, ForbiddenException, type ExecutionContext } from '@nestjs/common';
 
 import { API_KEY_HEADER } from '@/common/constants';
 import { SKIP_API_KEY_KEY } from '@/common/decorators';
@@ -57,7 +57,7 @@ describe('ApiKeyGuard', () => {
   });
 
   it('rejects missing or blank keys', () => {
-    expect(() => guard.canActivate(createContext())).toThrow(UnauthorizedException);
+    expect(() => guard.canActivate(createContext())).toThrow(ForbiddenException);
     expect(() => guard.canActivate(createContext('   '))).toThrow('Invalid API key');
   });
 
@@ -76,6 +76,7 @@ describe('ApiKeyGuard', () => {
   });
 
   it('rejects an unknown key', () => {
+    expect(() => guard.canActivate(createContext('nope'))).toThrow(ForbiddenException);
     expect(() => guard.canActivate(createContext('nope'))).toThrow('Invalid API key');
   });
 });

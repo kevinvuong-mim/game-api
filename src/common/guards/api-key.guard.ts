@@ -4,7 +4,7 @@ import {
   CanActivate,
   HttpException,
   ExecutionContext,
-  UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { Reflector } from '@nestjs/core';
@@ -41,7 +41,8 @@ export class ApiKeyGuard implements CanActivate {
     const provided = (Array.isArray(raw) ? raw[0] : raw)?.trim() ?? '';
 
     if (!provided || !matchesConfiguredSecret(provided, configured)) {
-      throw new UnauthorizedException('Invalid API key');
+      // 403, not 401: clients treat 401 as a dead guest token and wipe identity.
+      throw new ForbiddenException('Invalid API key');
     }
 
     return true;
