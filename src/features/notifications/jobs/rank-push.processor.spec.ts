@@ -28,10 +28,10 @@ describe('RankPushProcessor', () => {
     processor = new RankPushProcessor(
       rankPushQueue as unknown as Queue,
       fcmService as unknown as FcmService,
+      redisService as unknown as RedisService,
       deviceTokenService as unknown as DeviceTokenService,
       rankResolver as unknown as LeaderboardRankResolverService,
       notificationDelivery as unknown as NotificationDeliveryService,
-      redisService as unknown as RedisService,
     );
   });
 

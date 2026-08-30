@@ -35,10 +35,10 @@ export class RankPushProcessor extends WorkerHost {
     @InjectQueue(NOTIFICATION_QUEUE.RANK_PUSH)
     private readonly rankPushQueue: Queue,
     private readonly fcmService: FcmService,
+    private readonly redisService: RedisService,
     private readonly deviceTokenService: DeviceTokenService,
     private readonly rankResolver: LeaderboardRankResolverService,
     private readonly notificationDelivery: NotificationDeliveryService,
-    private readonly redisService: RedisService,
   ) {
     super();
   }
